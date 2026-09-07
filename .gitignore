@@ -34,3 +34,6 @@ example/windows/flutter/ephemeral/
 example/ios/Podfile.lock
 example/ios/Pods/
 *.bak
+example/ios/.symlinks/
+example/ios/Flutter/Flutter.podspec
+example/ios/Pods/

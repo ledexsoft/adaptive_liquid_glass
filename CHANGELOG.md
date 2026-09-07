@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.117]
+* **FIX**: 0 warnings en compilación iOS del código nativo del paquete:
+  * `iOS26ButtonView`: eliminado fallback legacy iOS<15 (deployment target 15) que usaba `contentEdgeInsets` deprecado.
+  * `iOS26NativeTabBarManager`: `UIApplication.shared.windows` → `connectedScenes` (deprecado iOS 15); conformancias `UISearchResultsUpdating`/`UISearchBarDelegate` ahora `@available(iOS 14)` (antes 26 — rompía el search del path legacy iOS 14-17 y era error en Swift 6).
+  * `iOS26SearchTabBarController`: extensión `UITabBarControllerDelegate` `@available(iOS 14)` (antes 26); quitado `#available` redundante en el wrapper (clase ya es 26+).
+  * `iOS26TabBarPlatformView`: eliminadas variables muertas (`spacerFlags`, `tintColor`, `unselectedColor` en `setStyle`).
+* **CHORE**: example migrado a UIScene lifecycle (plantilla Flutter 3.44); `.gitignore` del example cubre `.symlinks`/`Flutter.podspec`/`Pods`.
+
 ## [0.1.116]
 * **FIX**: producto SPM `adaptive-liquid-glass` en `Package.swift` iOS+macOS — Flutter deriva el nombre del producto del package name (guiones); el nombre viejo del fork rompía la resolución SPM al consumir el paquete como git dependency.
 * **CHORE**: paquete renombrado a `adaptive_liquid_glass` (fork unificado canónico, repo github.com/ledexsoft/adaptive_liquid_glass).

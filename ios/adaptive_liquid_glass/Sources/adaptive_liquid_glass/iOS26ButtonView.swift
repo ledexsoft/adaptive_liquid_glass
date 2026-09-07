@@ -161,157 +161,113 @@ class iOS26ButtonView: NSObject, FlutterPlatformView {
     }
 
     private func applyLiquidGlassStyle() {
-        // Always use iOS 15+ UIButton.Configuration (works on iOS 15+)
-        if #available(iOS 15.0, *) {
-            var config: UIButton.Configuration
+        // UIButton.Configuration requires iOS 15+; the plugin deployment target is iOS 15.
+        var config: UIButton.Configuration
 
-            // Select configuration based on button style
-            // Note: .glass() and .prominentGlass() are only available on iOS 26+
-            switch buttonStyle {
-            case "filled":
-                config = .filled()
-            case "tinted":
-                config = .tinted()
-            case "gray":
-                config = .gray()
-            case "bordered":
-                config = .bordered()
-            case "plain":
-                config = .plain()
-            case "glass":
-                if #available(iOS 26.0, *) {
-                    config = .glass()
-                } else {
-                    // Fallback: plain style with background material
-                    config = .plain()
-                    config.background.visualEffect = UIBlurEffect(style: .systemUltraThinMaterial)
-                }
-            case "prominentGlass":
-                if #available(iOS 26.0, *) {
-                    config = .prominentGlass()
-                } else {
-                    // Fallback: tinted style with thicker material
-                    config = .tinted()
-                    config.background.visualEffect = UIBlurEffect(style: .systemMaterial)
-                }
-            default:
-                config = .filled()
-            }
-
-            // Set title or icon based on configuration
-            if let iconName = iconName {
-                // SF Symbol icon mode
-                if let image = UIImage(systemName: iconName) ?? UIImage(named: iconName) {
-                    var finalImage = image
-
-                    // Apply icon size
-                    let symbolSize = iconSize ?? 24.0
-                    finalImage = image.applyingSymbolConfiguration(
-                        UIImage.SymbolConfiguration(pointSize: symbolSize)
-                    ) ?? image
-
-                    // Apply icon color
-                    if let color = iconColor {
-                        finalImage = finalImage.withTintColor(color, renderingMode: .alwaysOriginal)
-                    }
-
-                    config.image = finalImage
-                    config.title = nil
-                    config.attributedTitle = nil
-                }
-            } else if !buttonLabel.isEmpty {
-                // Text label mode
-                config.title = buttonLabel
-
-                // Set title font with attributed string
-                var attributedTitle = AttributedString(buttonLabel)
-                attributedTitle.font = getFontForSize()
-                config.attributedTitle = attributedTitle
-            }
-
-            // Set corner style based on useSmoothRectangleBorder
-            if useSmoothRectangleBorder {
-                // Use smooth rectangle border (default iOS style)
-                config.cornerStyle = .dynamic
-            } else {
-                // Use capsule (perfectly circular) shape
-                config.cornerStyle = .capsule
-            }
-
-            // Set colors based on button style
-            if let tint = button.tintColor {
-                switch buttonStyle {
-                case "filled":
-                    config.baseBackgroundColor = tint
-                    // Use custom text color if provided, otherwise white
-                    config.baseForegroundColor = textColor ?? .white
-                case "tinted", "bordered", "gray", "plain":
-                    // Use custom text color if provided, otherwise tint
-                    config.baseForegroundColor = textColor ?? tint
-                case "glass", "prominentGlass":
-                    // Glass buttons use tint color or custom text color
-                    config.baseForegroundColor = textColor ?? tint
-                default:
-                    break
-                }
-            } else if let customTextColor = textColor {
-                // If no tint but custom text color exists, use it
-                config.baseForegroundColor = customTextColor
-            }
-
-            // Set content insets for padding
-            config.contentInsets = NSDirectionalEdgeInsets(
-                top: 8,
-                leading: 16,
-                bottom: 8,
-                trailing: 16
-            )
-
-            // Apply configuration
-            button.configuration = config
-
-        } else {
-            // Fallback for iOS < 15 (manual styling)
-            applyLegacyStyle()
-        }
-    }
-
-    private func applyLegacyStyle() {
-        // Legacy styling for iOS < 15
-        button.layer.cornerRadius = getCornerRadiusForSize()
-        button.clipsToBounds = true
-
-        button.setTitle(buttonLabel, for: .normal)
-        button.titleLabel?.font = getFontForSize()
-
+        // Select configuration based on button style
+        // Note: .glass() and .prominentGlass() are only available on iOS 26+
         switch buttonStyle {
         case "filled":
-            button.backgroundColor = buttonColor
-            button.setTitleColor(.white, for: .normal)
+            config = .filled()
         case "tinted":
-            button.backgroundColor = buttonColor.withAlphaComponent(0.15)
-            button.setTitleColor(buttonColor, for: .normal)
+            config = .tinted()
         case "gray":
-            button.backgroundColor = UIColor.systemGray5
-            button.setTitleColor(.label, for: .normal)
+            config = .gray()
         case "bordered":
-            button.backgroundColor = .clear
-            button.setTitleColor(buttonColor, for: .normal)
-            button.layer.borderWidth = 1.5
-            button.layer.borderColor = buttonColor.cgColor
+            config = .bordered()
         case "plain":
-            button.backgroundColor = .clear
-            button.setTitleColor(buttonColor, for: .normal)
-        case "glass", "prominentGlass":
-            // Fallback for glass effects on iOS < 15
-            button.backgroundColor = buttonColor.withAlphaComponent(0.2)
-            button.setTitleColor(buttonColor, for: .normal)
+            config = .plain()
+        case "glass":
+            if #available(iOS 26.0, *) {
+                config = .glass()
+            } else {
+                // Fallback: plain style with background material
+                config = .plain()
+                config.background.visualEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+            }
+        case "prominentGlass":
+            if #available(iOS 26.0, *) {
+                config = .prominentGlass()
+            } else {
+                // Fallback: tinted style with thicker material
+                config = .tinted()
+                config.background.visualEffect = UIBlurEffect(style: .systemMaterial)
+            }
         default:
-            button.backgroundColor = buttonColor
-            button.setTitleColor(.white, for: .normal)
+            config = .filled()
         }
 
-        button.contentEdgeInsets = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
+        // Set title or icon based on configuration
+        if let iconName = iconName {
+            // SF Symbol icon mode
+            if let image = UIImage(systemName: iconName) ?? UIImage(named: iconName) {
+                var finalImage = image
+
+                // Apply icon size
+                let symbolSize = iconSize ?? 24.0
+                finalImage = image.applyingSymbolConfiguration(
+                    UIImage.SymbolConfiguration(pointSize: symbolSize)
+                ) ?? image
+
+                // Apply icon color
+                if let color = iconColor {
+                    finalImage = finalImage.withTintColor(color, renderingMode: .alwaysOriginal)
+                }
+
+                config.image = finalImage
+                config.title = nil
+                config.attributedTitle = nil
+            }
+        } else if !buttonLabel.isEmpty {
+            // Text label mode
+            config.title = buttonLabel
+
+            // Set title font with attributed string
+            var attributedTitle = AttributedString(buttonLabel)
+            attributedTitle.font = getFontForSize()
+            config.attributedTitle = attributedTitle
+        }
+
+        // Set corner style based on useSmoothRectangleBorder
+        if useSmoothRectangleBorder {
+            // Use smooth rectangle border (default iOS style)
+            config.cornerStyle = .dynamic
+        } else {
+            // Use capsule (perfectly circular) shape
+            config.cornerStyle = .capsule
+        }
+
+        // Set colors based on button style
+        if let tint = button.tintColor {
+            switch buttonStyle {
+            case "filled":
+                config.baseBackgroundColor = tint
+                // Use custom text color if provided, otherwise white
+                config.baseForegroundColor = textColor ?? .white
+            case "tinted", "bordered", "gray", "plain":
+                // Use custom text color if provided, otherwise tint
+                config.baseForegroundColor = textColor ?? tint
+            case "glass", "prominentGlass":
+                // Glass buttons use tint color or custom text color
+                config.baseForegroundColor = textColor ?? tint
+            default:
+                break
+            }
+        } else if let customTextColor = textColor {
+            // If no tint but custom text color exists, use it
+            config.baseForegroundColor = customTextColor
+        }
+
+        // Set content insets for padding
+        config.contentInsets = NSDirectionalEdgeInsets(
+            top: 8,
+            leading: 16,
+            bottom: 8,
+            trailing: 16
+        )
+
+        // Apply configuration
+        button.configuration = config
     }
 
     @objc private func buttonPressed() {

@@ -48,8 +48,12 @@ class iOS26NativeTabBarManager: NSObject {
             return flutterVC
         }
 
-        // Try to find it from windows
-        if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) {
+        // Try to find it from the key window of the active scene
+        let keyWindow = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
+        if let window = keyWindow {
             if let flutterVC = window.rootViewController as? FlutterViewController {
                 self.flutterViewController = flutterVC
                 return flutterVC
@@ -434,7 +438,7 @@ extension iOS26NativeTabBarManager: UITabBarControllerDelegate {
 
 // MARK: - UISearchResultsUpdating
 
-@available(iOS 26.0, *)
+@available(iOS 14.0, *)
 extension iOS26NativeTabBarManager: UISearchResultsUpdating {
     func updateSearchResults(for searchController: UISearchController) {
         guard let query = searchController.searchBar.text else { return }
@@ -444,7 +448,7 @@ extension iOS26NativeTabBarManager: UISearchResultsUpdating {
 
 // MARK: - UISearchBarDelegate
 
-@available(iOS 26.0, *)
+@available(iOS 14.0, *)
 extension iOS26NativeTabBarManager: UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         guard let query = searchBar.text else { return }

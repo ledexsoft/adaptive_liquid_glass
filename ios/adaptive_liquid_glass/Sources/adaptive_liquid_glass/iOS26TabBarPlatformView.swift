@@ -55,7 +55,6 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         var selectedNetworkIcons: [String] = []
         var searchFlags: [Bool] = []
         var badgeCounts: [Int?] = []
-        var spacerFlags: [Bool] = []
         var selectedIndex: Int = 0
         var isDark: Bool = false
         var isRtl: Bool = false
@@ -78,7 +77,6 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
             networkIcons = (dict["networkIcons"] as? [String]) ?? []
             selectedNetworkIcons = (dict["selectedNetworkIcons"] as? [String]) ?? []
             searchFlags = (dict["searchFlags"] as? [Bool]) ?? []
-            spacerFlags = (dict["spacerFlags"] as? [Bool]) ?? []
             if let badgeData = dict["badgeCounts"] as? [NSNumber?] {
                 badgeCounts = badgeData.map { $0?.intValue }
             }
@@ -291,10 +289,9 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         )
         bar.items = buildItems(0..<count)
 
-        // Note: spacerFlags are received but not yet implemented for UITabBar
-        // UITabBar doesn't natively support flexible spacing between items like UIToolbar does
-        // This would require custom UITabBar subclass or different approach
-        // TODO: Implement grouped tab bar layout if needed
+        // Note: spacerFlags (Dart side) are intentionally not parsed yet:
+        // UITabBar doesn't natively support flexible spacing between items like UIToolbar does.
+        // TODO: Implement grouped tab bar layout if needed (parse dict["spacerFlags"])
 
         if selectedIndex >= 0, let items = bar.items, selectedIndex < items.count {
             bar.selectedItem = items[selectedIndex]
@@ -539,13 +536,9 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                 return
             }
 
-            var tintColor: UIColor? = nil
-            var unselectedColor: UIColor? = nil
-
             if let n = args["tint"] as? NSNumber {
                 let c = Self.colorFromARGB(n.intValue)
                 self.tabBar?.tintColor = c
-                tintColor = c
             }
             if let n = args["unselectedItemTint"] as? NSNumber {
                 let c = Self.colorFromARGB(n.intValue)
@@ -559,7 +552,6 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                         self.rebuildItemsWithCurrentState()
                     }
                 }
-                unselectedColor = c
             }
             if let n = args["backgroundColor"] as? NSNumber {
                 let c = Self.colorFromARGB(n.intValue)

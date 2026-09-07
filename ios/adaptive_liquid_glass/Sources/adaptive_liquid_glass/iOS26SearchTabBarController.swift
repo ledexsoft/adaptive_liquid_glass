@@ -229,7 +229,7 @@ class iOS26SearchTabBarController: UITabBarController, UISearchResultsUpdating, 
 
 // MARK: - UITabBarControllerDelegate
 
-@available(iOS 26.0, *)
+@available(iOS 14.0, *)
 extension iOS26SearchTabBarController: UITabBarControllerDelegate {
     func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
         let index = viewControllers?.firstIndex(of: viewController) ?? 0
@@ -285,30 +285,25 @@ class iOS26SearchTabBarPlatformView: NSObject, FlutterPlatformView {
             argsDict = args
         }
 
-        if #available(iOS 26.0, *) {
-            let controller = iOS26SearchTabBarController(
-                viewId: viewId,
-                args: argsDict,
-                messenger: messenger
-            )
-            self.tabBarController = controller
+        let controller = iOS26SearchTabBarController(
+            viewId: viewId,
+            args: argsDict,
+            messenger: messenger
+        )
+        self.tabBarController = controller
 
-            super.init()
+        super.init()
 
-            // Add tab bar controller's view as subview
-            if let view = controller.view {
-                view.translatesAutoresizingMaskIntoConstraints = false
-                containerView.addSubview(view)
-                NSLayoutConstraint.activate([
-                    view.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-                    view.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-                    view.topAnchor.constraint(equalTo: containerView.topAnchor),
-                    view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
-                ])
-            }
-        } else {
-            self.tabBarController = nil
-            super.init()
+        // Add tab bar controller's view as subview
+        if let view = controller.view {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            containerView.addSubview(view)
+            NSLayoutConstraint.activate([
+                view.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+                view.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+                view.topAnchor.constraint(equalTo: containerView.topAnchor),
+                view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
+            ])
         }
     }
 
