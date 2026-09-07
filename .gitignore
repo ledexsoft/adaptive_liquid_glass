@@ -1,0 +1,36 @@
+# Flutter/Dart generated
+.dart_tool/
+.pub-cache/
+.pub/
+build/
+coverage/
+
+# Lockfiles are not committed for plugins (they are for apps)
+pubspec.lock
+example/pubspec.lock
+
+# Generated platform files (ephemeral)
+example/ios/Flutter/Generated.xcconfig
+example/ios/Flutter/Debug.xcconfig
+example/ios/Flutter/Release.xcconfig
+example/ios/Flutter/ephemeral/
+example/ios/Flutter/flutter_export_environment.sh
+example/ios/Runner/GeneratedPluginRegistrant.h
+example/ios/Runner/GeneratedPluginRegistrant.m
+example/android/local.properties
+example/android/app/src/main/java/
+example/macos/Flutter/ephemeral/
+example/windows/flutter/ephemeral/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+
+# Example iOS pods (generated)
+example/ios/Podfile.lock
+example/ios/Pods/
+*.bak
