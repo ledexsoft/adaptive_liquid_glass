@@ -9,7 +9,7 @@ let package = Package(
         .iOS("15.0")
     ],
     products: [
-        .library(name: "adaptive-platform-ui", targets: ["adaptive_liquid_glass"])
+        .library(name: "adaptive-liquid-glass", targets: ["adaptive_liquid_glass"])
     ],
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework")

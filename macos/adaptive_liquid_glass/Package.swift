@@ -9,7 +9,7 @@ let package = Package(
         .macOS("10.15")
     ],
     products: [
-        .library(name: "adaptive-platform-ui", targets: ["adaptive_liquid_glass"])
+        .library(name: "adaptive-liquid-glass", targets: ["adaptive_liquid_glass"])
     ],
     dependencies: [],
     targets: [
