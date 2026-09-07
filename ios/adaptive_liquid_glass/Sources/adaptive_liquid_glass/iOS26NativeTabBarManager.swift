@@ -427,13 +427,6 @@ extension iOS26NativeTabBarManager: UITabBarControllerDelegate {
         let index = tabBarController.viewControllers?.firstIndex(of: viewController) ?? 0
         notifyTabSelected(index)
     }
-
-    @available(iOS 18.0, *)
-    func tabBarController(_ tabBarController: UITabBarController, didSelect tab: UITab) {
-        if let index = tabBarController.tabs.firstIndex(of: tab) {
-            notifyTabSelected(index)
-        }
-    }
 }
 
 // MARK: - UISearchResultsUpdating
