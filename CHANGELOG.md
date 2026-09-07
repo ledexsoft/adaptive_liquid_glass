@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.116]
+* **FIX**: producto SPM `adaptive-liquid-glass` en `Package.swift` iOS+macOS — Flutter deriva el nombre del producto del package name (guiones); el nombre viejo del fork rompía la resolución SPM al consumir el paquete como git dependency.
+* **CHORE**: paquete renombrado a `adaptive_liquid_glass` (fork unificado canónico, repo github.com/ledexsoft/adaptive_liquid_glass).
+
 ## [0.1.115]
 * **NEW**: `hideLabels` en bottom navigation (iOS 26+ nativo): tab bar solo iconos en pantallas pequeñas, con el label real en `accessibilityLabel`. Cadena completa Dart + Swift (portado de Ledexsoft).
 * **FIX**: `AdaptiveButton` ahora renderiza el fallback Flutter cuando las constraints no son finitas (LayoutBuilder guard) — evita el crash CALayer NaN del platform view de UIButton en hojas/listas/rows sin flex (portado de Ledexsoft).
