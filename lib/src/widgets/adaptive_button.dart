@@ -578,14 +578,29 @@ class AdaptiveButton extends StatelessWidget {
     }
   }
 
-  /// 09/09 (pedido Carlos): TODOS los AdaptiveButton en iOS 26+ se ven
-  /// como la cápsula de glass prominente nativa — el mismo look de
-  /// UIBarButtonItem .prominent que usan las acciones de app bar
-  /// (ej. el botón "Saltar" del onboarding). El estilo solicitado deja
-  /// de diferenciar en iOS 26+; iOS <26 cae a tinted y Android mantiene
-  /// sus estilos Material intactos (no pasan por aquí).
+  /// 09/09 (feedback Carlos, v0.1.119): el glass prominente es SOLO para
+  /// los botones de acción primaria — los que antes eran [filled] con
+  /// fondo del color del tema (azul). El resto conserva su estilo y su
+  /// semántica visual: plain sin fondo, gray neutro, bordered con borde,
+  /// glass/tinted según lo pedido. Los botones de UI del sistema (atrás,
+  /// etc.) no pasan por aquí y no cambian.
   IOS26ButtonStyle _mapToIOS26Style(AdaptiveButtonStyle style) {
-    return IOS26ButtonStyle.prominentGlass;
+    switch (style) {
+      case AdaptiveButtonStyle.filled:
+        return IOS26ButtonStyle.prominentGlass;
+      case AdaptiveButtonStyle.tinted:
+        return IOS26ButtonStyle.tinted;
+      case AdaptiveButtonStyle.gray:
+        return IOS26ButtonStyle.gray;
+      case AdaptiveButtonStyle.bordered:
+        return IOS26ButtonStyle.bordered;
+      case AdaptiveButtonStyle.plain:
+        return IOS26ButtonStyle.plain;
+      case AdaptiveButtonStyle.glass:
+        return IOS26ButtonStyle.glass;
+      case AdaptiveButtonStyle.prominentGlass:
+        return IOS26ButtonStyle.prominentGlass;
+    }
   }
 
   IOS26ButtonSize _mapToIOS26Size(AdaptiveButtonSize size) {
