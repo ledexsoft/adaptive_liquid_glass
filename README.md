@@ -1,61 +1,61 @@
-# Adaptive Platform UI
+# adaptive_liquid_glass
 
 [![CI](https://github.com/ledexsoft/adaptive_liquid_glass/workflows/CI/badge.svg)](https://github.com/ledexsoft/adaptive_liquid_glass/actions)
 [![Release](https://github.com/ledexsoft/adaptive_liquid_glass/workflows/Release/badge.svg)](https://github.com/ledexsoft/adaptive_liquid_glass/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Flutter](https://img.shields.io/badge/Flutter-%3E%3D3.0.0-blue.svg)](https://flutter.dev)
 
-A Flutter package that provides adaptive platform-specific widgets with native iOS 26+ designs, traditional Cupertino widgets for older iOS versions, and Material Design for Android.
+Paquete de Flutter con widgets adaptativos por plataforma: **diseños nativos de iOS 26+ con Liquid Glass**, widgets Cupertino tradicionales para versiones anteriores de iOS y Material Design para Android.
 
-  <img src="https://github.com/ledexsoft/adaptive_liquid_glass/blob/main/img/highlight-img.png?raw=true" alt="iOS 26 Native Toolbar">
+  <img src="https://github.com/ledexsoft/adaptive_liquid_glass/blob/main/img/highlight-img.png?raw=true" alt="Toolbar nativa de iOS 26">
 
-## iOS 26+ Native Toolbar & Tab Bar
+## Toolbar y Tab Bar nativas de iOS 26+
 
 <p align="center">
-  <img src="https://github.com/ledexsoft/adaptive_liquid_glass/raw/main/img/appbar.gif" alt="iOS 26 Native Toolbar" width="300"/>
-  <img src="https://github.com/ledexsoft/adaptive_liquid_glass/raw/main/img/bottombar.gif" alt="iOS 26 Native Tab Bar" width="300"/>
+  <img src="https://github.com/ledexsoft/adaptive_liquid_glass/raw/main/img/appbar.gif" alt="Toolbar nativa iOS 26" width="300"/>
+  <img src="https://github.com/ledexsoft/adaptive_liquid_glass/raw/main/img/bottombar.gif" alt="Tab bar nativa iOS 26" width="300"/>
 </p>
 
-  <img src="https://github.com/ledexsoft/adaptive_liquid_glass/blob/main/img/bottom_nav2_p.png?raw=true" alt="iOS 26 Native Tab Bar">
+  <img src="https://github.com/ledexsoft/adaptive_liquid_glass/blob/main/img/bottom_nav2_p.png?raw=true" alt="Tab bar nativa iOS 26">
 
-  <img src="https://github.com/ledexsoft/adaptive_liquid_glass/blob/main/img/toolbar2_p.png?raw=true" alt="iOS 26 Native Tab Bar">
+  <img src="https://github.com/ledexsoft/adaptive_liquid_glass/blob/main/img/toolbar2_p.png?raw=true" alt="Toolbar nativa iOS 26">
 
 ![native_search](https://github.com/user-attachments/assets/da33cb62-94d7-47da-8f0c-327bbd6ee04e)
 
-Native iOS 26 UIToolbar and UITabBar with Liquid Glass blur effects, minimize behavior, and native gesture handling.
+UIToolbar y UITabBar nativas de iOS 26 con efectos de blur Liquid Glass, comportamiento *minimize* y manejo nativo de gestos.
 
-## Features
+## Características
 
-**AdaptiveApp** - Unified app configuration for all platforms:
-- Separate themes for Material (Android) and Cupertino (iOS)
-- Full theme mode support (light, dark, system)
-- Router support via `AdaptiveApp.router()`
-- Zero configuration required
+**AdaptiveApp** — Configuración unificada de la app para todas las plataformas:
+- Temas separados para Material (Android) y Cupertino (iOS)
+- Soporte completo de modos de tema (claro, oscuro, sistema)
+- Soporte de routers vía `AdaptiveApp.router()`
+- Cero configuración requerida
 
-**iOS 26+ Native Designs** - Modern iOS 26 components with:
-- **Native UIToolbar** - Liquid Glass blur effects with native iOS 26 design
-- **Native UITabBar** - Tab bar with minimize behavior and smooth animations
-- **Native UIButton** - Button styles with spring animations and haptic feedback
-- **Native UISegmentedControl** - Segmented controls with SF Symbol support
-- **Native UISwitch & UISlider** - Switches and sliders with native animations
-- Native corner radius and shadows
-- Smooth spring animations
-- Dynamic color system (light/dark mode)
-- Multiple component styles
+**Diseños nativos de iOS 26+** — Componentes modernos con:
+- **UIToolbar nativa** — Efectos de blur Liquid Glass con diseño nativo de iOS 26
+- **UITabBar nativa** — Tab bar con *minimize behavior* y animaciones suaves
+- **UIButton nativo** — Estilos de botón con animaciones de resorte y haptics
+- **UISegmentedControl nativo** — Controles segmentados con soporte de SF Symbols
+- **UISwitch y UISlider nativos** — Con animaciones nativas
+- Radio de esquina y sombras nativas
+- Animaciones spring suaves
+- Sistema de colores dinámico (modo claro/oscuro)
+- Múltiples estilos por componente
 
-**iOS Legacy Support** - Traditional Cupertino widgets for iOS 18 and below
+**Soporte iOS legacy** — Widgets Cupertino tradicionales para iOS 18 o inferior
 
-**Material Design** - Full Material 3 support for Android
+**Material Design** — Soporte completo de Material 3 para Android
 
-**Automatic Platform Detection** - Zero configuration required
+**Detección automática de plataforma** — Cero configuración requerida
 
-**Version-Aware Rendering** - Automatically selects appropriate widget based on iOS version
+**Renderizado consciente de versión** — Selecciona automáticamente el widget según la versión de iOS
 
-## Widget Showcase
+## Galería de widgets
 
-### Important: Localization Setup
+### Importante: configuración de localización
 
-⚠️ **For proper localization support (automatic translations for date/time pickers, buttons, etc.), you must add localization delegates to your `AdaptiveApp`:**
+⚠️ **Para que la localización funcione correctamente (traducciones automáticas en date/time pickers, botones, etc.), debes agregar los delegates de localización a tu `AdaptiveApp`:**
 
 ```dart
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -63,26 +63,26 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 AdaptiveApp(
   localizationsDelegates: [
     GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate, // Important!
+    GlobalCupertinoLocalizations.delegate, // ¡Importante!
     GlobalWidgetsLocalizations.delegate,
   ],
   supportedLocales: [
-    Locale('en', ''), // English
-    Locale('de', ''), // German
-    Locale('tr', ''), // Turkish
-    // Add more locales as needed
+    Locale('en', ''), // Inglés
+    Locale('de', ''), // Alemán
+    Locale('tr', ''), // Turco
+    // Agrega más locales según necesites
   ],
-  // ... rest of your app configuration
+  // ... resto de la configuración de tu app
 )
 ```
 
-Without these delegates, date/time pickers and other widgets will show English text regardless of system language.
+Sin estos delegates, los date/time pickers y otros widgets mostrarán texto en inglés sin importar el idioma del sistema.
 
-### AdaptiveScaffold with AdaptiveAppBar
+### AdaptiveScaffold con AdaptiveAppBar
 
-<img src="https://github.com/ledexsoft/adaptive_liquid_glass/blob/main/img/toolbar_p.png?raw=true" alt="iOS 26 Native Toolbar">
+<img src="https://github.com/ledexsoft/adaptive_liquid_glass/blob/main/img/toolbar_p.png?raw=true" alt="Toolbar nativa iOS 26">
 
-**Basic Usage:**
+**Uso básico:**
 ```dart
 AdaptiveScaffold(
   appBar: AdaptiveAppBar(
@@ -113,23 +113,23 @@ AdaptiveScaffold(
 )
 ```
 
-**iOS 26 Native Toolbar:**
+**Toolbar nativa de iOS 26:**
 ```dart
 AdaptiveScaffold(
   appBar: AdaptiveAppBar(
     title: 'My App',
-    useNativeToolbar: true, // Enable native iOS 26 UIToolbar with Liquid Glass effects
+    useNativeToolbar: true, // Activa la UIToolbar nativa de iOS 26 con Liquid Glass
     actions: [...],
   ),
   body: YourContent(),
 )
 ```
 
-**iOS 26 Native Bottom Bar:**
+**Barra inferior nativa de iOS 26:**
 ```dart
 AdaptiveScaffold(
   bottomNavigationBar: AdaptiveBottomNavigationBar(
-    useNativeBottomBar: true, // Enable native iOS 26 UITabBar with Liquid Glass effects (default)
+    useNativeBottomBar: true, // UITabBar nativa de iOS 26 con Liquid Glass (por defecto)
     items: [...],
     selectedIndex: 0,
     onTap: (index) {},
@@ -137,41 +137,41 @@ AdaptiveScaffold(
   body: YourContent(),
 )
 ```
-**No AppBar or Bottom Navigation:**
+**Sin AppBar ni navegación inferior:**
 ```dart
-// If appBar and bottomNavigationBar are null, neither will be shown
+// Si appBar y bottomNavigationBar son null, no se muestra ninguna
 AdaptiveScaffold(
   body: YourContent(),
 )
 ```
 
-**Key Features:**
-- 🎨 **AdaptiveAppBar**: Centralized app bar configuration
-- 📱 **AdaptiveBottomNavigationBar**: Centralized bottom navigation configuration
-- 🔧 **Custom Navigation Bars**: Provide your own navigation components
-- 🌟 **Native iOS 26 Components**: Optional Liquid Glass effects with native UIKit
-- 🎯 **Priority System**: Custom bars take priority over auto-generated ones
-- 🔄 **Flexible**: Null parameters hide components
+**Características clave:**
+- 🎨 **AdaptiveAppBar**: configuración centralizada de la app bar
+- 📱 **AdaptiveBottomNavigationBar**: configuración centralizada de la navegación inferior
+- 🔧 **Barras de navegación propias**: usa tus propios componentes
+- 🌟 **Componentes nativos de iOS 26**: efectos Liquid Glass opcionales con UIKit nativo
+- 🎯 **Sistema de prioridades**: las barras personalizadas tienen prioridad sobre las automáticas
+- 🔄 **Flexible**: parámetros en null ocultan componentes
 
-Adaptive Bottom Navigation Bar (Destinations):
+Bottom Navigation Bar adaptativa (destinos):
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ledexsoft/adaptive_liquid_glass/refs/heads/main/img/bottom_nav_p.png" alt="Native Toolbar"/>
+  <img src="https://raw.githubusercontent.com/ledexsoft/adaptive_liquid_glass/refs/heads/main/img/bottom_nav_p.png" alt="Toolbar nativa"/>
 </p>
 
 
 ### AdaptiveButton
 
-<img src="https://raw.githubusercontent.com/ledexsoft/adaptive_liquid_glass/refs/heads/main/img/buttons_p.png" alt="iOS 26 Native Toolbar">
+<img src="https://raw.githubusercontent.com/ledexsoft/adaptive_liquid_glass/refs/heads/main/img/buttons_p.png" alt="Botones iOS 26">
 
 
 ```dart
-// Basic button with label
+// Botón básico con label
 AdaptiveButton(
   onPressed: () {},
   label: 'Click Me',
 )
 
-// Button with custom child
+// Botón con child personalizado
 AdaptiveButton.child(
   onPressed: () {},
   child: Row(
@@ -182,19 +182,21 @@ AdaptiveButton.child(
   ),
 )
 
-// Icon button
+// Botón de icono
 AdaptiveButton.icon(
   onPressed: () {},
   icon: Icons.favorite,
 )
 ```
 
+> **Nota iOS 26+:** en iOS 26 o superior los botones usan el estilo nativo de Liquid Glass por defecto (`filled`/`tinted` → cápsula prominente; `bordered`/`gray` → vidrio discreto; `plain` sin fondo), cada uno con su propio color de tinte.
+
 ### AdaptiveAlertDialog
-<img src="https://raw.githubusercontent.com/ledexsoft/adaptive_liquid_glass/refs/heads/main/img/alert_p.png" alt="iOS 26 Native Toolbar">
+<img src="https://raw.githubusercontent.com/ledexsoft/adaptive_liquid_glass/refs/heads/main/img/alert_p.png" alt="Alerta nativa iOS 26">
 
 
 ```dart
-// Basic alert dialog
+// Diálogo de alerta básico
 AdaptiveAlertDialog.show(
   context: context,
   title: 'Confirm',
@@ -210,13 +212,13 @@ AdaptiveAlertDialog.show(
       title: 'Confirm',
       style: AlertActionStyle.primary,
       onPressed: () {
-        // Do something
+        // Hacer algo
       },
     ),
   ],
 );
 
-// Alert dialog with text input
+// Diálogo con campo de texto
 final result = await AdaptiveAlertDialog.show(
   context: context,
   title: 'Enter Your Name',
@@ -241,7 +243,7 @@ final result = await AdaptiveAlertDialog.show(
   ],
 );
 
-// result contains the text entered by the user
+// result contiene el texto ingresado por el usuario
 if (result != null) {
   print('User entered: $result');
 }
@@ -277,22 +279,22 @@ AdaptiveContextMenu(
   ],
   child: Container(
     padding: EdgeInsets.all(16),
-    child: Text('Long press me'),
+    child: Text('Mantén presionado'),
   ),
 )
 ```
 
-**iOS**: Uses `CupertinoContextMenu` with preview and native animations.
-**Android**: Uses `PopupMenuButton` with Material Design styling.
+**iOS**: usa `CupertinoContextMenu` con preview y animaciones nativas.
+**Android**: usa `PopupMenuButton` con estilo Material Design.
 
 ### AdaptivePopupMenuButton
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/ledexsoft/adaptive_liquid_glass/refs/heads/main/img/popup_p.png" alt="iOS 26 Native Popup">
+<img src="https://raw.githubusercontent.com/ledexsoft/adaptive_liquid_glass/refs/heads/main/img/popup_p.png" alt="Popup nativo iOS 26">
 </p>
 
 ```dart
-// Text button with popup menu
+// Botón de texto con menú popup
 AdaptivePopupMenuButton.text<String>(
   label: 'Options',
   items: [
@@ -318,7 +320,7 @@ AdaptivePopupMenuButton.text<String>(
   },
 )
 
-// Icon button with popup menu
+// Botón de icono con menú popup
 AdaptivePopupMenuButton.icon<String>(
   icon: 'ellipsis.circle',
   items: [...],
@@ -326,7 +328,7 @@ AdaptivePopupMenuButton.icon<String>(
   buttonStyle: PopupButtonStyle.glass,
 )
 
-// Custom widget with popup menu
+// Widget personalizado con menú popup
 AdaptivePopupMenuButton.widget<String>(
   items: [
     AdaptivePopupMenuItem(label: 'Option 1', value: 'opt1'),
@@ -361,14 +363,14 @@ AdaptivePopupMenuButton.widget<String>(
 
 ```dart
 AdaptiveSegmentedControl(
-  labels: ['One', 'Two', 'Three'],
+  labels: ['Uno', 'Dos', 'Tres'],
   selectedIndex: 0,
   onValueChanged: (index) {
     print('Selected: $index');
   },
 )
 
-// With icons (SF Symbols on iOS)
+// Con iconos (SF Symbols en iOS)
 AdaptiveSegmentedControl(
   labels: [],
   sfSymbols: [
@@ -424,9 +426,9 @@ AdaptiveCheckbox(
   },
 )
 
-// Tristate checkbox
+// Checkbox tristate
 AdaptiveCheckbox(
-  value: null, // Can be true, false, or null
+  value: null, // Puede ser true, false o null
   tristate: true,
   onChanged: (value) {
     print('Checkbox: $value');
@@ -456,19 +458,19 @@ AdaptiveRadio<Options>(
 ```dart
 AdaptiveCard(
   padding: EdgeInsets.all(16),
-  child: Text('Card Content'),
+  child: Text('Contenido de la tarjeta'),
 )
 
-// Card with custom styling
+// Tarjeta con estilo personalizado
 AdaptiveCard(
   padding: EdgeInsets.all(16),
   color: Colors.blue.withValues(alpha: 0.1),
   borderRadius: BorderRadius.circular(20),
-  elevation: 8, // Android only
+  elevation: 8, // Solo Android
   child: Column(
     children: [
-      Text('Custom Card'),
-      Text('With multiple elements'),
+      Text('Tarjeta personalizada'),
+      Text('Con múltiples elementos'),
     ],
   ),
 )
@@ -482,14 +484,14 @@ AdaptiveBadge(
   child: Icon(Icons.notifications),
 )
 
-// Badge with text label
+// Badge con texto
 AdaptiveBadge(
   label: 'NEW',
   backgroundColor: Colors.red,
   child: Icon(Icons.mail),
 )
 
-// Large badge
+// Badge grande
 AdaptiveBadge(
   count: 99,
   isLarge: true,
@@ -501,13 +503,13 @@ AdaptiveBadge(
 
 ```dart
 AdaptiveTooltip(
-  message: 'This is a tooltip',
+  message: 'Este es un tooltip',
   child: Icon(Icons.info),
 )
 
-// Tooltip positioned above
+// Tooltip arriba
 AdaptiveTooltip(
-  message: 'Tooltip appears above',
+  message: 'El tooltip aparece arriba',
   preferBelow: false,
   child: Icon(Icons.help),
 )
@@ -516,51 +518,51 @@ AdaptiveTooltip(
 ### AdaptiveSnackBar
 
 ```dart
-// Basic snackbar
+// Snackbar básico
 AdaptiveSnackBar.show(
   context,
-  message: 'Operation completed successfully!',
+  message: '¡Operación completada!',
   type: AdaptiveSnackBarType.success,
 )
 
-// Snackbar with action button
+// Snackbar con botón de acción
 AdaptiveSnackBar.show(
   context,
-  message: 'File deleted',
+  message: 'Archivo eliminado',
   type: AdaptiveSnackBarType.info,
-  action: 'Undo',
+  action: 'Deshacer',
   onActionPressed: () {
-    // Undo action
+    // Acción de deshacer
   },
 )
 
-// Custom duration
+// Duración personalizada
 AdaptiveSnackBar.show(
   context,
-  message: 'This will stay longer',
+  message: 'Esto durará más tiempo',
   duration: Duration(seconds: 8),
 )
 
-// Different types
+// Diferentes tipos
 AdaptiveSnackBar.show(context, message: 'Info', type: AdaptiveSnackBarType.info);
-AdaptiveSnackBar.show(context, message: 'Success', type: AdaptiveSnackBarType.success);
-AdaptiveSnackBar.show(context, message: 'Warning', type: AdaptiveSnackBarType.warning);
+AdaptiveSnackBar.show(context, message: 'Éxito', type: AdaptiveSnackBarType.success);
+AdaptiveSnackBar.show(context, message: 'Advertencia', type: AdaptiveSnackBarType.warning);
 AdaptiveSnackBar.show(context, message: 'Error', type: AdaptiveSnackBarType.error);
 ```
 
-**iOS**: Banner-style notification at the top with slide/fade animations, tap to dismiss, and icon indicators.
-**Android**: Material SnackBar at the bottom with standard Material Design appearance.
+**iOS**: notificación tipo banner arriba con animaciones slide/fade, se descarta al tocar, con indicadores de icono.
+**Android**: Material SnackBar abajo con apariencia estándar de Material Design.
 
 ### AdaptiveDatePicker
 
 ```dart
-// Basic date picker
+// Selector de fecha básico
 final selectedDate = await AdaptiveDatePicker.show(
   context: context,
   initialDate: DateTime.now(),
 );
 
-// Date picker with range
+// Selector con rango
 final selectedDate = await AdaptiveDatePicker.show(
   context: context,
   initialDate: DateTime.now(),
@@ -568,7 +570,7 @@ final selectedDate = await AdaptiveDatePicker.show(
   lastDate: DateTime(2025),
 );
 
-// Date and time picker (iOS)
+// Fecha y hora (iOS)
 final selectedDateTime = await AdaptiveDatePicker.show(
   context: context,
   initialDate: DateTime.now(),
@@ -580,20 +582,20 @@ if (selectedDate != null) {
 }
 ```
 
-**iOS**: Uses `CupertinoDatePicker` in a modal bottom sheet with Cancel/Done buttons.
-**Android**: Uses Material `DatePickerDialog`.
+**iOS**: usa `CupertinoDatePicker` en un bottom sheet modal con botones Cancelar/Listo.
+**Android**: usa `DatePickerDialog` de Material.
 
 ### AdaptiveTimePicker
 
 ```dart
-// 12-hour format
+// Formato de 12 horas
 final selectedTime = await AdaptiveTimePicker.show(
   context: context,
   initialTime: TimeOfDay.now(),
   use24HourFormat: false,
 );
 
-// 24-hour format
+// Formato de 24 horas
 final selectedTime = await AdaptiveTimePicker.show(
   context: context,
   initialTime: TimeOfDay.now(),
@@ -605,74 +607,74 @@ if (selectedTime != null) {
 }
 ```
 
-**iOS**: Uses `CupertinoDatePicker` in time mode in a modal bottom sheet.
-**Android**: Uses Material `TimePickerDialog`.
+**iOS**: usa `CupertinoDatePicker` en modo hora en un bottom sheet modal.
+**Android**: usa `TimePickerDialog` de Material.
 
 ### AdaptiveListTile
 
 ```dart
-// Basic list tile
+// List tile básico
 AdaptiveListTile(
-  title: Text('Profile'),
-  subtitle: Text('View your profile'),
-  hideBottomDivider: false, // Hide bottom border, useful for last item (iOS only)
+  title: Text('Perfil'),
+  subtitle: Text('Ver tu perfil'),
+  hideBottomDivider: false, // Oculta el borde inferior, útil para el último item (solo iOS)
   onTap: () {
-    // Handle tap
+    // Manejar tap
   },
 )
 
-// List tile with leading and trailing
+// List tile con leading y trailing
 AdaptiveListTile(
   leading: Icon(Icons.person),
-  title: Text('Profile'),
-  subtitle: Text('View your profile'),
+  title: Text('Perfil'),
+  subtitle: Text('Ver tu perfil'),
   trailing: Icon(Icons.chevron_right),
   onTap: () {
-    // Handle tap
+    // Manejar tap
   },
 )
 
-// Selectable list tile
+// List tile seleccionable
 AdaptiveListTile(
   leading: Icon(Icons.star),
-  title: Text('Favorite'),
+  title: Text('Favorito'),
   selected: true,
   trailing: Icon(Icons.check_circle),
   onTap: () {
-    // Handle tap
+    // Manejar tap
   },
 )
 
-// List tile with custom trailing widget
+// List tile con trailing personalizado
 AdaptiveListTile(
-  title: Text('Enable Feature'),
-  subtitle: Text('Toggle to enable'),
+  title: Text('Activar función'),
+  subtitle: Text('Actívalo aquí'),
   trailing: AdaptiveSwitch(
     value: switchValue,
     onChanged: (value) {
-      // Handle change
+      // Manejar cambio
     },
   ),
 )
 ```
 
-**iOS**: Uses CupertinoListTile-like styling with bottom border separator.
-**Android**: Uses Material `ListTile`.
+**iOS**: estilo tipo CupertinoListTile con separador inferior.
+**Android**: usa `ListTile` de Material.
 
 ### AdaptiveTextField
 
 ```dart
-// Basic text field
+// Campo de texto básico
 AdaptiveTextField(
-  placeholder: 'Enter your name',
+  placeholder: 'Ingresa tu nombre',
   onChanged: (value) {
     print('Text: $value');
   },
 )
 
-// Text field with icons
+// Campo con iconos
 AdaptiveTextField(
-  placeholder: 'Search',
+  placeholder: 'Buscar',
   prefixIcon: Icon(
     PlatformInfo.isIOS ? CupertinoIcons.search : Icons.search,
   ),
@@ -681,36 +683,36 @@ AdaptiveTextField(
       PlatformInfo.isIOS ? CupertinoIcons.clear : Icons.clear,
     ),
     onPressed: () {
-      // Clear text
+      // Limpiar texto
     },
   ),
 )
 
-// Password field
+// Campo de contraseña
 AdaptiveTextField(
-  placeholder: 'Enter password',
+  placeholder: 'Ingresa tu contraseña',
   obscureText: true,
   prefixIcon: Icon(
     PlatformInfo.isIOS ? CupertinoIcons.lock : Icons.lock,
   ),
 )
 
-// Multiline text field
+// Campo multilínea
 AdaptiveTextField(
-  placeholder: 'Enter description',
+  placeholder: 'Ingresa una descripción',
   maxLines: 5,
   minLines: 3,
   keyboardType: TextInputType.multiline,
 )
 ```
 
-**iOS**: Uses `CupertinoTextField` with tertiarySystemBackground color and rounded corners.
-**Android**: Uses Material `TextField` with outlined border.
+**iOS**: usa `CupertinoTextField` con color tertiarySystemBackground y esquinas redondeadas.
+**Android**: usa `TextField` de Material con borde outlined.
 
 ### AdaptiveTextFormField
 
 ```dart
-// Form with validation
+// Formulario con validación
 Form(
   key: _formKey,
   child: Column(
@@ -720,10 +722,10 @@ Form(
         keyboardType: TextInputType.emailAddress,
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return 'Please enter your email';
+            return 'Ingresa tu email';
           }
           if (!value.contains('@')) {
-            return 'Please enter a valid email';
+            return 'Ingresa un email válido';
           }
           return null;
         },
@@ -733,23 +735,23 @@ Form(
         onPressed: () {
           if (_formKey.currentState!.validate()) {
             _formKey.currentState!.save();
-            // Process form
+            // Procesar formulario
           }
         },
-        label: 'Submit',
+        label: 'Enviar',
       ),
     ],
   ),
 )
 ```
 
-**iOS**: Uses custom `FormField` wrapper with `CupertinoTextField` for proper validation with error display.
-**Android**: Uses Material `TextFormField`.
+**iOS**: usa un wrapper `FormField` personalizado con `CupertinoTextField` para validación correcta con muestra de errores.
+**Android**: usa `TextFormField` de Material.
 
 ### AdaptiveFloatingActionButton
 
 ```dart
-// Basic floating action button
+// FAB básico
 AdaptiveFloatingActionButton(
   onPressed: () {},
   child: Icon(Icons.add),
@@ -762,7 +764,7 @@ AdaptiveFloatingActionButton(
   child: Icon(Icons.edit),
 )
 
-// Custom colors
+// Colores personalizados
 AdaptiveFloatingActionButton(
   onPressed: () {},
   backgroundColor: Colors.red,
@@ -771,93 +773,93 @@ AdaptiveFloatingActionButton(
 )
 ```
 
-**iOS**: Circular button with custom shadow effects.
-**Android**: Material `FloatingActionButton` with elevation.
+**iOS**: botón circular con sombras personalizadas.
+**Android**: `FloatingActionButton` de Material con elevación.
 
 ### AdaptiveFormSection
 
 ```dart
-// Basic form section
+// Sección de formulario básica
 AdaptiveFormSection(
-  header: Text('Personal Information'),
-  footer: Text('Please provide accurate information'),
+  header: Text('Información personal'),
+  footer: Text('Provee información correcta'),
   children: [
     CupertinoFormRow(
-      prefix: Text('Name'),
-      child: AdaptiveTextField(placeholder: 'Enter name'),
+      prefix: Text('Nombre'),
+      child: AdaptiveTextField(placeholder: 'Ingresa tu nombre'),
     ),
     CupertinoFormRow(
       prefix: Text('Email'),
-      child: AdaptiveTextField(placeholder: 'Enter email'),
+      child: AdaptiveTextField(placeholder: 'Ingresa tu email'),
     ),
   ],
 )
 
-// Inset grouped style
+// Estilo inset grouped
 AdaptiveFormSection.insetGrouped(
-  header: Text('Settings'),
+  header: Text('Ajustes'),
   children: [
     CupertinoFormRow(
-      prefix: Text('Notifications'),
+      prefix: Text('Notificaciones'),
       child: AdaptiveSwitch(value: true, onChanged: (v) {}),
     ),
   ],
 )
 ```
 
-**iOS**: Uses `CupertinoFormSection` with native iOS styling.
-**Android**: Uses Material `Card` with similar grouped layout.
+**iOS**: usa `CupertinoFormSection` con estilo nativo de iOS.
+**Android**: usa `Card` de Material con layout agrupado similar.
 
 ### AdaptiveExpansionTile
 
 ```dart
-// Basic expansion tile
+// Expansion tile básico
 AdaptiveExpansionTile(
-  title: Text('Settings'),
+  title: Text('Ajustes'),
   children: [
-    ListTile(title: Text('Option 1')),
-    ListTile(title: Text('Option 2')),
+    ListTile(title: Text('Opción 1')),
+    ListTile(title: Text('Opción 2')),
   ],
 )
 
-// With leading and subtitle
+// Con leading y subtítulo
 AdaptiveExpansionTile(
   leading: Icon(Icons.settings),
-  title: Text('Advanced Settings'),
-  subtitle: Text('Configure advanced options'),
+  title: Text('Ajustes avanzados'),
+  subtitle: Text('Configura opciones avanzadas'),
   initiallyExpanded: true,
   children: [
-    ListTile(title: Text('Option 1')),
-    ListTile(title: Text('Option 2')),
+    ListTile(title: Text('Opción 1')),
+    ListTile(title: Text('Opción 2')),
   ],
 )
 
-// With custom colors
+// Con colores personalizados
 AdaptiveExpansionTile(
-  title: Text('Premium Features'),
+  title: Text('Funciones premium'),
   backgroundColor: Colors.amber.withValues(alpha: 0.1),
   iconColor: Colors.amber,
   onExpansionChanged: (expanded) {
     print('Expanded: $expanded');
   },
   children: [
-    ListTile(title: Text('Feature 1')),
-    ListTile(title: Text('Feature 2')),
+    ListTile(title: Text('Función 1')),
+    ListTile(title: Text('Función 2')),
   ],
 )
 ```
 
-**iOS**: Modern custom design with rounded corners, smooth shadows, animated chevron, and gradient separator.
-**Android**: Material `ExpansionTile` with InkWell effects.
+**iOS**: diseño moderno personalizado con esquinas redondeadas, sombras suaves, chevron animado y separador con gradiente.
+**Android**: `ExpansionTile` de Material con efectos InkWell.
 
 ### AdaptiveTabBarView
 
-Horizontal swipeable tab view with tabs at the top.
+Vista de tabs deslizable horizontal con tabs arriba.
 
 ```dart
-// Tab bar view at the top
+// Tab bar view arriba
 AdaptiveTabBarView(
-  tabs: ['Latest', 'Popular', 'Trending'],
+  tabs: ['Recientes', 'Populares', 'Tendencias'],
   children: [
     LatestPage(),
     PopularPage(),
@@ -869,43 +871,43 @@ AdaptiveTabBarView(
 )
 ```
 
-**iOS**: Uses `CupertinoSlidingSegmentedControl` for tab selection.
-**Android**: Uses Material `TabBar` + `TabBarView`.
+**iOS**: usa `CupertinoSlidingSegmentedControl` para seleccionar tabs.
+**Android**: usa `TabBar` + `TabBarView` de Material.
 
-## Usage
+## Uso
 
-### Button Styles
+### Estilos de botón
 
 ```dart
-// Filled button (primary action)
+// Botón filled (acción primaria)
 AdaptiveButton(
   onPressed: () {},
   style: AdaptiveButtonStyle.filled,
   label: 'Filled',
 )
 
-// Tinted button (secondary action)
+// Botón tinted (acción secundaria)
 AdaptiveButton(
   onPressed: () {},
   style: AdaptiveButtonStyle.tinted,
   label: 'Tinted',
 )
 
-// Gray button (neutral action)
+// Botón gris (acción neutra)
 AdaptiveButton(
   onPressed: () {},
   style: AdaptiveButtonStyle.gray,
   label: 'Gray',
 )
 
-// Bordered button
+// Botón con borde
 AdaptiveButton(
   onPressed: () {},
   style: AdaptiveButtonStyle.bordered,
   label: 'Bordered',
 )
 
-// Plain text button
+// Botón de texto plano
 AdaptiveButton(
   onPressed: () {},
   style: AdaptiveButtonStyle.plain,
@@ -913,24 +915,24 @@ AdaptiveButton(
 )
 ```
 
-### Button Sizes
+### Tamaños de botón
 
 ```dart
-// Small button (28pt height on iOS)
+// Pequeño (28pt de alto en iOS)
 AdaptiveButton(
   onPressed: () {},
   size: AdaptiveButtonSize.small,
   label: 'Small',
 )
 
-// Medium button (36pt height on iOS) - default
+// Mediano (36pt de alto en iOS) - por defecto
 AdaptiveButton(
   onPressed: () {},
   size: AdaptiveButtonSize.medium,
   label: 'Medium',
 )
 
-// Large button (44pt height on iOS)
+// Grande (44pt de alto en iOS)
 AdaptiveButton(
   onPressed: () {},
   size: AdaptiveButtonSize.large,
@@ -938,12 +940,12 @@ AdaptiveButton(
 )
 ```
 
-### Custom Styling
+### Estilos personalizados
 
 ```dart
 AdaptiveButton(
   onPressed: () {},
-  label: 'Custom Button',
+  label: 'Botón personalizado',
   color: Colors.red,
   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
   borderRadius: BorderRadius.circular(16),
@@ -951,24 +953,24 @@ AdaptiveButton(
 )
 ```
 
-### Disabled State
+### Estado deshabilitado
 
 ```dart
 AdaptiveButton(
   onPressed: () {},
-  label: 'Disabled',
+  label: 'Deshabilitado',
   enabled: false,
 )
 ```
 
-## Platform Detection
+## Detección de plataforma
 
-Use the `PlatformInfo` utility class to check platform and iOS version:
+Usa la clase `PlatformInfo` para verificar plataforma y versión de iOS:
 
 ```dart
 import 'package:adaptive_liquid_glass/adaptive_liquid_glass.dart';
 
-// Check platform
+// Verificar plataforma
 if (PlatformInfo.isIOS) {
   print('Running on iOS');
 }
@@ -977,7 +979,7 @@ if (PlatformInfo.isAndroid) {
   print('Running on Android');
 }
 
-// Check iOS version
+// Verificar versión de iOS
 if (PlatformInfo.isIOS26OrHigher()) {
   print('Using iOS 26+ features');
 }
@@ -986,38 +988,48 @@ if (PlatformInfo.isIOS18OrLower()) {
   print('Using legacy iOS widgets');
 }
 
-// Get iOS version number
-int version = PlatformInfo.iOSVersion; // e.g., 26
+// Obtener número de versión de iOS
+int version = PlatformInfo.iOSVersion; // ej. 26
 
-// Check version range
+// Verificar rango de versiones
 if (PlatformInfo.isIOSVersionInRange(24, 26)) {
   print('iOS version is between 24 and 26');
 }
 
-// Get platform description
-String description = PlatformInfo.platformDescription; // e.g., "iOS 26"
+// Descripción de la plataforma
+String description = PlatformInfo.platformDescription; // ej. "iOS 26"
 ```
 
-## Installation
+## Instalación
 
-Add this to your package's `pubspec.yaml` file:
+**Desde pub.dev:**
 
 ```yaml
 dependencies:
-  adaptive_liquid_glass: ^0.1.0
+  adaptive_liquid_glass: ^0.1.125
 ```
 
-Then run:
+**Desde GitHub (versión específica):**
+
+```yaml
+dependencies:
+  adaptive_liquid_glass:
+    git:
+      url: https://github.com/ledexsoft/adaptive_liquid_glass.git
+      ref: v0.1.125
+```
+
+Luego ejecuta:
 
 ```bash
 flutter pub get
 ```
 
-## Quick Start
+## Inicio rápido
 
-### AdaptiveApp - Platform-Specific App Configuration
+### AdaptiveApp — Configuración de la app por plataforma
 
-Use `AdaptiveApp` to automatically configure your app for each platform:
+Usa `AdaptiveApp` para configurar tu app automáticamente en cada plataforma:
 
 ```dart
 import 'package:adaptive_liquid_glass/adaptive_liquid_glass.dart';
@@ -1048,7 +1060,7 @@ class MyApp extends StatelessWidget {
 }
 ```
 
-**With Router Support (GoRouter, etc.):**
+**Con soporte de router (GoRouter, etc.):**
 
 ```dart
 AdaptiveApp.router(
@@ -1066,69 +1078,69 @@ AdaptiveApp.router(
 )
 ```
 
-**Key Features:**
-- 🎨 Separate themes for Material (Android) and Cupertino (iOS)
-- 🌓 Full theme mode support (light, dark, system)
-- 🔄 Automatic platform detection
-- 🚀 Router support via `AdaptiveApp.router()`
-- 🛠️ Platform-specific callbacks for advanced configuration
+**Características clave:**
+- 🎨 Temas separados para Material (Android) y Cupertino (iOS)
+- 🌓 Soporte completo de modos de tema (claro, oscuro, sistema)
+- 🔄 Detección automática de plataforma
+- 🚀 Soporte de routers vía `AdaptiveApp.router()`
+- 🛠️ Callbacks específicos por plataforma para configuración avanzada
 
 
-## iOS 26 Native Features
+## Funciones nativas de iOS 26
 
-When running on iOS 26+, widgets automatically use **native UIKit platform views** with Liquid Glass design:
+En iOS 26 o superior, los widgets usan automáticamente **platform views nativas de UIKit** con diseño Liquid Glass:
 
-### Platform Architecture
-- **Native UIKit Views**: Uses `UiKitView` to render actual iOS 26 UIKit components
-- **Platform Channels**: Bidirectional communication between Flutter and native iOS code
-- **Liquid Glass Design**: Authentic iOS 26 visual effects rendered by UIKit
-- **Zero Overhead**: No custom painting or emulation - pure native rendering
+### Arquitectura de plataforma
+- **Vistas UIKit nativas**: usa `UiKitView` para renderizar componentes reales de iOS 26
+- **Platform channels**: comunicación bidireccional entre Flutter y el código nativo de iOS
+- **Diseño Liquid Glass**: efectos visuales auténticos de iOS 26 renderizados por UIKit
+- **Cero overhead**: sin pintura custom ni emulación — renderizado 100% nativo
 
-### Visual Features
-- **Modern corner radius**: Native iOS 26 design language
-- **Dynamic shadows**: Subtle multi-layer shadows
-- **Spring animations**: Smooth spring damping with 0.95x scale on press
-- **Native color system**: Uses iOS system colors with proper light/dark mode support
-- **Liquid Glass effects**: Native iOS 26 translucency and blur effects
-- **SF Symbols**: Native SF Symbol rendering with hierarchical color support
+### Características visuales
+- **Radio de esquina moderno**: lenguaje de diseño nativo de iOS 26
+- **Sombras dinámicas**: sombras sutiles multicapa
+- **Animaciones spring**: amortiguación suave con escala 0.95x al presionar
+- **Sistema de colores nativo**: colores del sistema de iOS con soporte correcto de modo claro/oscuro
+- **Efectos Liquid Glass**: transparencia y blur nativos de iOS 26
+- **SF Symbols**: renderizado nativo de SF Symbols con soporte de color jerárquico
 
-### Interaction
-- **Press states**: Visual feedback with scale animation
-- **Gesture handling**: Native UIKit gesture recognizers
-- **Haptic feedback**: Medium impact feedback on interactions
-- **Disabled states**: Proper opacity and interaction blocking
+### Interacción
+- **Estados de presión**: feedback visual con animación de escala
+- **Manejo de gestos**: reconocedores de gestos nativos de UIKit
+- **Haptic feedback**: feedback de impacto medio en interacciones
+- **Estados deshabilitados**: opacidad correcta y bloqueo de interacción
 
-### Typography
-- **SF Pro font**: Native iOS system font with proper weights
-- **Dynamic Type**: Respects system font size settings
-- **Weight**: Appropriate font weights for each component
+### Tipografía
+- **Fuente SF Pro**: fuente del sistema de iOS con pesos correctos
+- **Dynamic Type**: respeta la configuración de tamaño de fuente del sistema
+- **Peso**: pesos de fuente apropiados para cada componente
 
-## Example App
+## App de ejemplo
 
-Run the example app to see all widgets in action:
+Ejecuta la app de ejemplo para ver todos los widgets en acción:
 
 ```bash
 cd example
 flutter run
 ```
 
-The example app includes:
-- Platform information display
-- All widget types showcase
-- Interactive demos
-- Style and size comparisons
-- Dark mode support
+La app de ejemplo incluye:
+- Información de la plataforma
+- Muestra de todos los tipos de widgets
+- Demos interactivos
+- Comparaciones de estilos y tamaños
+- Soporte de modo oscuro
 
-### IOS26NativeSearchTabBar (EXPERIMENTAL) (Do not confuse it with a different widget, AdaptiveBottomNavigationBar.)
+### IOS26NativeSearchTabBar (EXPERIMENTAL) (No confundir con AdaptiveBottomNavigationBar.)
 
-⚠️ **WARNING: This is a highly experimental feature with significant limitations. Only use for prototyping and demos.**
+⚠️ **ADVERTENCIA: esta es una función altamente experimental con limitaciones importantes. Úsala solo para prototipos y demos.**
 
-Native iOS 26+ search tab bar with UITabBarController that transforms the tab bar into a search bar when the search tab is selected.
+Search tab bar nativa de iOS 26+ con UITabBarController que transforma la tab bar en una barra de búsqueda cuando se selecciona la tab de búsqueda.
 
 ```dart
 import 'package:adaptive_liquid_glass/adaptive_liquid_glass.dart';
 
-// Enable native search tab bar
+// Activar la search tab bar nativa
 await IOS26NativeSearchTabBar.enable(
   tabs: [
     const NativeTabConfig(
@@ -1138,7 +1150,7 @@ await IOS26NativeSearchTabBar.enable(
     const NativeTabConfig(
       title: 'Search',
       sfSymbol: 'magnifyingglass',
-      isSearchTab: true, // This tab transforms into search
+      isSearchTab: true, // Esta tab se transforma en búsqueda
     ),
     const NativeTabConfig(
       title: 'Profile',
@@ -1160,148 +1172,136 @@ await IOS26NativeSearchTabBar.enable(
   },
 );
 
-// Disable when done
+// Desactivar al terminar
 await IOS26NativeSearchTabBar.disable();
 
-// Programmatically show search
+// Mostrar búsqueda programáticamente
 await IOS26NativeSearchTabBar.showSearch();
 ```
 
-**Features:**
-- ✨ Native UITabBarController integration
-- 🔍 Search tab transforms into UISearchController
-- 💎 iOS 26+ Liquid Glass effects
-- 🎯 Method channel communication
-- 📱 Native animations and gestures
+**Características:**
+- ✨ Integración nativa con UITabBarController
+- 🔍 La tab de búsqueda se transforma en UISearchController
+- 💎 Efectos Liquid Glass de iOS 26+
+- 🎯 Comunicación por method channel
+- 📱 Animaciones y gestos nativos
 
-**Known Issues & Limitations:**
+**Problemas y limitaciones conocidos:**
 
-This feature replaces Flutter's root view controller with a native UITabBarController, which creates fundamental architectural conflicts:
+Esta función reemplaza el root view controller de Flutter con una UITabBarController nativa, lo que crea conflictos arquitectónicos fundamentales:
 
-1. **Widget Lifecycle**: `initState`, `dispose`, and other lifecycle methods may not work correctly
-2. **Navigation Stack**: `Navigator.pop()` and related methods become unreliable
-3. **State Management**: Provider, Riverpod, Bloc, etc. may lose state or behave unpredictably
-4. **Hot Reload**: Does not work properly - requires full app restart
-5. **Memory Leaks**: Potential memory management issues between Flutter and UIKit
-6. **Gesture Conflicts**: Native and Flutter gestures may interfere with each other
-7. **Frame Synchronization**: Potential visual stuttering during transitions
+1. **Ciclo de vida de widgets**: `initState`, `dispose` y otros métodos pueden no funcionar correctamente
+2. **Stack de navegación**: `Navigator.pop()` y métodos relacionados se vuelven poco confiables
+3. **Manejo de estado**: Provider, Riverpod, Bloc, etc. pueden perder estado o comportarse de forma impredecible
+4. **Hot reload**: no funciona correctamente — requiere reiniciar la app por completo
+5. **Memory leaks**: posibles problemas de manejo de memoria entre Flutter y UIKit
+6. **Conflictos de gestos**: los gestos nativos y de Flutter pueden interferir entre sí
+7. **Sincronización de frames**: posible stuttering visual durante transiciones
 
-**Why These Issues Occur:**
+**Por qué ocurren estos problemas:**
 
-The feature attempts to merge two incompatible architectural philosophies:
-- **Flutter**: Single-threaded, declarative, expects to own entire screen
-- **UIKit**: Multi-threaded, imperative, view controller-based
+La función intenta fusionar dos filosofías arquitectónicas incompatibles:
+- **Flutter**: single-threaded, declarativo, espera ser dueño de toda la pantalla
+- **UIKit**: multi-threaded, imperativo, basado en view controllers
 
-When UITabBarController becomes root, Flutter engine still believes it owns the screen, creating a parent-child relationship neither framework was designed to handle.
+Cuando UITabBarController se vuelve root, el engine de Flutter sigue creyendo que es dueño de la pantalla, creando una relación padre-hijo que ningún framework fue diseñado para manejar.
 
-**Recommendation:**
-- ✅ Use for prototyping and concept validation
-- ✅ Use for demos and presentations
-- ❌ Do NOT use in production apps
-- ❌ Do NOT rely on Flutter navigation when active
-- ❌ Do NOT expect hot reload to work
+**Recomendación:**
+- ✅ Úsala para prototipos y validación de conceptos
+- ✅ Úsala para demos y presentaciones
+- ❌ NO la uses en apps de producción
+- ❌ NO dependas de la navegación de Flutter mientras esté activa
+- ❌ NO esperes que el hot reload funcione
 
-For production apps, use Flutter's built-in `TabBar` or implement search within the existing navigation structure.
+Para apps de producción, usa el `TabBar` integrado de Flutter o implementa la búsqueda dentro de la estructura de navegación existente.
 
-See the example app's Native Search Tab demo page for detailed technical explanation.
+Mira la página de demo de Native Search Tab en la app de ejemplo para una explicación técnica detallada.
 
 ---
 
-## Widget Catalog
+## Catálogo de widgets
 
-Currently available adaptive widgets:
+Widgets adaptativos disponibles actualmente:
 
-- ✅ **AdaptiveApp** - Platform-specific app configuration with theme support and router
-- ✅ **AdaptiveAppBar** - Centralized app bar configuration with custom navigation bar support
-- ✅ **AdaptiveBottomNavigationBar** - Centralized bottom navigation configuration with custom tab bar support
-- ✅ **AdaptiveScaffold** - Scaffold with optional native iOS 26 toolbar and tab bar
-- ✅ **AdaptiveButton** - Buttons with iOS 26+ native designs
-- ✅ **AdaptiveSegmentedControl** - Native segmented controls
-- ✅ **AdaptiveSwitch** - Native switches
-- ✅ **AdaptiveSlider** - Native sliders
-- ✅ **AdaptiveCheckbox** - Checkboxes with adaptive styling
-- ✅ **AdaptiveRadio** - Radio button groups with adaptive styling
-- ✅ **AdaptiveCard** - Cards with platform-specific styling
-- ✅ **AdaptiveBadge** - Notification badges with adaptive styling
-- ✅ **AdaptiveTooltip** - Platform-specific tooltips
-- ✅ **AdaptiveSnackBar** - Platform-specific notification snackbars
-- ✅ **AdaptiveAlertDialog** - Native alert dialogs with text input support
-- ✅ **AdaptiveContextMenu** - Long-press context menus with platform-specific styling
-- ✅ **AdaptivePopupMenuButton** - Native popup menus
-- ✅ **AdaptiveDatePicker** - Platform-specific date selection dialogs
-- ✅ **AdaptiveTimePicker** - Platform-specific time selection dialogs
-- ✅ **AdaptiveListTile** - Platform-specific list item tiles
-- ✅ **AdaptiveTextField** - Platform-specific text input fields
-- ✅ **AdaptiveTextFormField** - Platform-specific form fields with validation
-- ✅ **AdaptiveFloatingActionButton** - Platform-specific circular action buttons
-- ✅ **AdaptiveFormSection** - Grouped form sections with headers and footers
-- ✅ **AdaptiveExpansionTile** - Modern expandable/collapsible content
-- ✅ **AdaptiveTabBarView** - Horizontal swipeable tab bar view
-- ⚠️ **IOS26NativeSearchTabBar** - EXPERIMENTAL native search tab bar (iOS 26+ only)
+- ✅ **AdaptiveApp** — Configuración de la app por plataforma con soporte de temas y router
+- ✅ **AdaptiveAppBar** — Configuración centralizada de la app bar con soporte de barras de navegación custom
+- ✅ **AdaptiveBottomNavigationBar** — Configuración centralizada de la navegación inferior con soporte de tab bar custom
+- ✅ **AdaptiveScaffold** — Scaffold con toolbar y tab bar nativas opcionales de iOS 26
+- ✅ **AdaptiveButton** — Botones con diseños nativos de iOS 26+
+- ✅ **AdaptiveSegmentedControl** — Controles segmentados nativos
+- ✅ **AdaptiveSwitch** — Switches nativos
+- ✅ **AdaptiveSlider** — Sliders nativos
+- ✅ **AdaptiveCheckbox** — Checkboxes con estilo adaptativo
+- ✅ **AdaptiveRadio** — Grupos de radio buttons con estilo adaptativo
+- ✅ **AdaptiveCard** — Tarjetas con estilo específico por plataforma
+- ✅ **AdaptiveBadge** — Badges de notificación con estilo adaptativo
+- ✅ **AdaptiveTooltip** — Tooltips específicos por plataforma
+- ✅ **AdaptiveSnackBar** — Snackbars de notificación específicos por plataforma
+- ✅ **AdaptiveAlertDialog** — Diálogos de alerta nativos con soporte de campo de texto
+- ✅ **AdaptiveContextMenu** — Menús contextuales de presión larga con estilo por plataforma
+- ✅ **AdaptivePopupMenuButton** — Menús popup nativos
+- ✅ **AdaptiveDatePicker** — Diálogos de selección de fecha por plataforma
+- ✅ **AdaptiveTimePicker** — Diálogos de selección de hora por plataforma
+- ✅ **AdaptiveListTile** — Tiles de lista específicos por plataforma
+- ✅ **AdaptiveTextField** — Campos de texto específicos por plataforma
+- ✅ **AdaptiveTextFormField** — Campos de formulario con validación por plataforma
+- ✅ **AdaptiveFloatingActionButton** — Botones circulares de acción por plataforma
+- ✅ **AdaptiveFormSection** — Secciones de formulario agrupadas con headers y footers
+- ✅ **AdaptiveExpansionTile** — Contenido expandible/colapsable moderno
+- ✅ **AdaptiveTabBarView** — Vista de tabs deslizable horizontal
+- ⚠️ **IOS26NativeSearchTabBar** — Search tab bar nativa EXPERIMENTAL (solo iOS 26+)
 
-## Design Philosophy
+## Filosofía de diseño
 
-This package follows Apple's Human Interface Guidelines for iOS and Material Design guidelines for Android. The goal is to provide:
+Este paquete sigue las Human Interface Guidelines de Apple para iOS y las guías de Material Design para Android. El objetivo es proveer:
 
-1. **Native Look & Feel**: Widgets that feel at home on each platform
-2. **Zero Configuration**: Automatic platform detection and adaptation
-3. **Version Awareness**: Leverage new platform features while maintaining backward compatibility
-4. **Consistency**: Unified API across platforms
-5. **Customization**: Allow overrides when needed
+1. **Look & feel nativo**: widgets que se sienten en casa en cada plataforma
+2. **Cero configuración**: detección y adaptación automática de plataforma
+3. **Conciencia de versión**: aprovechar las funciones nuevas de cada plataforma manteniendo compatibilidad hacia atrás
+4. **Consistencia**: API unificada entre plataformas
+5. **Personalización**: permitir overrides cuando se necesiten
 
-## iOS Version Support
+## Soporte de versiones de iOS
 
-- **iOS 26+**: Modern native iOS 26 designs
-- **iOS 18 and below**: Traditional Cupertino widgets
-- **Automatic fallback**: Seamless degradation for older versions
+- **iOS 26+**: diseños nativos modernos de iOS 26
+- **iOS 18 o inferior**: widgets Cupertino tradicionales
+- **Fallback automático**: degradación transparente para versiones anteriores
 
-## Requirements
+## Requisitos
 
 - Flutter SDK: >=1.17.0
 - Dart SDK: ^3.9.2
 
-## Contributing
+## Contribuir
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+¡Las contribuciones son bienvenidas! Siéntete libre de enviar un Pull Request.
 
-## License
+## Licencia
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Este proyecto está bajo la Licencia MIT — consulta el archivo [LICENSE](LICENSE) para más detalles.
 
-## Acknowledgments
+## Agradecimientos
 
-- Inspired by cupertino_native
-- Design guidelines from Apple's Human Interface Guidelines
-- Material Design guidelines from Google
+- Inspirado en cupertino_native
+- Guías de diseño de las Human Interface Guidelines de Apple
+- Guías de Material Design de Google
 
-## Contributors
+## Contribuidores
 
-Thanks to all contributors who helped improve this package!
+Gracias a todos los contribuidores que han ayudado a mejorar este paquete:
 
 <a href="https://github.com/ledexsoft/adaptive_liquid_glass/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=ledexsoft/adaptive_liquid_glass" />
 </a>
 
-## Author
+## Soporte
 
-Ledexsoft Çatak
+- 💬 **[Discussions](https://github.com/ledexsoft/adaptive_liquid_glass/discussions)** — Haz preguntas, comparte ideas y muestra tus proyectos
+- 🐛 **[Issues](https://github.com/ledexsoft/adaptive_liquid_glass/issues)** — Reporta bugs y solicita funciones
+- 📖 **[Guía de contribución](.github/CONTRIBUTING.md)** — Aprende cómo contribuir
 
-## Support
+# Comportamiento nativo de Liquid Glass
 
-- 💬 **[Discussions](https://github.com/ledexsoft/adaptive_liquid_glass/discussions)** - Ask questions, share ideas, and showcase your projects
-- 🐛 **[Issues](https://github.com/ledexsoft/adaptive_liquid_glass/issues)** - Report bugs and request features
-- 📖 **[Contributing Guide](.github/CONTRIBUTING.md)** - Learn how to contribute
-# Native Liquid Glass behavior
+En iOS 26 y posteriores, las superficies nativas usan las APIs públicas de UIKit Liquid Glass de Apple. Las superficies de toolbar y blur usan un helper de material compartido. Las superficies nativas agrupadas pueden usar `UIGlassContainerEffect` para que los elementos de vidrio cercanos se fundan en sus bordes, pero requiere múltiples elementos de vidrio anidados; un contenedor con una sola superficie es solo un fondo de vidrio. Las tab bars estándar usan la apariencia propia de UIKit en iOS 26 en lugar de un blur forzado manualmente.
 
-On iOS 26 and later, native surfaces use Apple's public UIKit Liquid Glass
-APIs. Toolbar and blur surfaces use a shared material helper. Grouped native
-surfaces can use `UIGlassContainerEffect` so nearby glass elements blend at
-their edges, but it requires multiple nested glass elements; a container with
-only one surface is just a glass background. Standard tab bars use UIKit's
-own iOS 26 appearance instead of a manually forced blur.
-
-The package keeps an iOS 15 fallback using `UIBlurEffect`/Flutter materials.
-The package does not raise the host app's minimum deployment target to iOS 26.
-For arbitrary Flutter children, adjacent elements can only participate in the
-native glass grouping when they are rendered inside the same native platform
-view; separate Flutter platform views cannot be merged by UIKit.
+El paquete mantiene un fallback para iOS 15 usando `UIBlurEffect`/materiales de Flutter. El paquete no eleva el deployment target mínimo de la app anfitriona a iOS 26. Para children arbitrarios de Flutter, los elementos adyacentes solo pueden participar en el agrupamiento nativo de vidrio cuando se renderizan dentro de la misma platform view nativa; UIKit no puede fusionar platform views de Flutter separadas.
