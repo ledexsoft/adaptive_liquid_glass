@@ -168,12 +168,26 @@ class AdaptiveButton extends StatelessWidget {
     if (useNative && PlatformInfo.isIOS26OrHigher()) {
       return LayoutBuilder(
         builder: (context, constraints) {
-          final finito =
-              constraints.maxWidth.isFinite && constraints.maxHeight.isFinite;
-          if (!finito) {
+          if (!constraints.maxWidth.isFinite) {
+            // Ancho infinito (Rows sin flex): el platform view recibe
+            // Size(Infinity, h) → CALayer NaN → crash nativo iOS 26.
             return _buildMaterialButton(context);
           }
-          return _buildIOS26Native(context);
+          // 09/09 (v0.1.123, reporte Carlos — CTA "Contactar al vendedor"
+          // sin glass): altura infinita NO es motivo de fallback. Un botón
+          // dentro de un scroll (Column en ListView) llega con maxHeight
+          // infinito y antes perdía el botón nativo. Se acota con el alto
+          // del preset y se usa el nativo igual.
+          final button = _buildIOS26Native(context);
+          if (constraints.maxHeight.isFinite) return button;
+          return SizedBox(
+            height: switch (size) {
+              AdaptiveButtonSize.small => 28.0,
+              AdaptiveButtonSize.medium => 36.0,
+              AdaptiveButtonSize.large => 44.0,
+            },
+            child: button,
+          );
         },
       );
     }
