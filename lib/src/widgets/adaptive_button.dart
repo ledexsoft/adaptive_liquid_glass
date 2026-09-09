@@ -578,18 +578,17 @@ class AdaptiveButton extends StatelessWidget {
     }
   }
 
-  /// 09/09 (feedback Carlos, v0.1.121): el botón secundario común (tinted)
-  /// también es glass prominente, pero con SU color — cada botón se tiñe
-  /// con su tint correspondiente (rojo→rojo, verde→verde); solo se ve del
-  /// primario si no se le pasa color explícito. bordered/gray siguen en
-  /// glass discreto; plain sin fondo; atrás (scaffold) intacto.
+  /// 09/09 (feedback Carlos, v0.1.122): bordered también es prominentGlass
+  /// — son los botones secundarios comunes de las apps (Cambiar, Editar
+  /// datos, Cerrar sesión) y debían verse igual que tinted. Quedan fuera
+  /// del look prominente: gray (glass discreto) y plain (sin fondo).
   IOS26ButtonStyle _mapToIOS26Style(AdaptiveButtonStyle style) {
     switch (style) {
       case AdaptiveButtonStyle.filled:
       case AdaptiveButtonStyle.tinted:
+      case AdaptiveButtonStyle.bordered:
         return IOS26ButtonStyle.prominentGlass;
       case AdaptiveButtonStyle.gray:
-      case AdaptiveButtonStyle.bordered:
       case AdaptiveButtonStyle.glass:
         return IOS26ButtonStyle.glass;
       case AdaptiveButtonStyle.plain:
