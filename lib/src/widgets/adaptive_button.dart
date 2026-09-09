@@ -578,26 +578,25 @@ class AdaptiveButton extends StatelessWidget {
     }
   }
 
-  /// 09/09 (feedback Carlos, v0.1.119): el glass prominente es SOLO para
-  /// los botones de acción primaria — los que antes eran [filled] con
-  /// fondo del color del tema (azul). El resto conserva su estilo y su
-  /// semántica visual: plain sin fondo, gray neutro, bordered con borde,
-  /// glass/tinted según lo pedido. Los botones de UI del sistema (atrás,
-  /// etc.) no pasan por aquí y no cambian.
+  /// 09/09 (feedback Carlos, v0.1.120): el material Liquid Glass es para
+  /// TODOS los botones excepto el de atrás (que vive en el scaffold, no
+  /// aquí). Cada estilo conserva su jerarquía y su color:
+  /// - filled (acción primaria) → prominentGlass (vidrio prominente)
+  /// - tinted/bordered/gray → glass (mismo material, más discreto, con
+  ///   su propio tint — no se fuerzan azules)
+  /// - plain → sin fondo (botón de texto)
+  /// Los botones de UI del sistema (atrás, etc.) no pasan por aquí.
   IOS26ButtonStyle _mapToIOS26Style(AdaptiveButtonStyle style) {
     switch (style) {
       case AdaptiveButtonStyle.filled:
         return IOS26ButtonStyle.prominentGlass;
       case AdaptiveButtonStyle.tinted:
-        return IOS26ButtonStyle.tinted;
       case AdaptiveButtonStyle.gray:
-        return IOS26ButtonStyle.gray;
       case AdaptiveButtonStyle.bordered:
-        return IOS26ButtonStyle.bordered;
-      case AdaptiveButtonStyle.plain:
-        return IOS26ButtonStyle.plain;
       case AdaptiveButtonStyle.glass:
         return IOS26ButtonStyle.glass;
+      case AdaptiveButtonStyle.plain:
+        return IOS26ButtonStyle.plain;
       case AdaptiveButtonStyle.prominentGlass:
         return IOS26ButtonStyle.prominentGlass;
     }
