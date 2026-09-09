@@ -592,21 +592,29 @@ class AdaptiveButton extends StatelessWidget {
     }
   }
 
-  /// 09/09 (feedback Carlos, v0.1.122): bordered también es prominentGlass
-  /// — son los botones secundarios comunes de las apps (Cambiar, Editar
-  /// datos, Cerrar sesión) y debían verse igual que tinted. Quedan fuera
-  /// del look prominente: gray (glass discreto) y plain (sin fondo).
+  /// 09/09 (v0.1.124, feedback Carlos): mapeo 1:1 — cada estilo conserva
+  /// su estilo nativo. ÚNICA excepción: filled → prominentGlass, para que
+  /// las acciones primarias (fondo del color del tema) usen Liquid Glass.
+  ///
+  /// Historia: v0.1.118–122 remapearon tinted/bordered a glass/prominente
+  /// y rompieron botones que ya se veían bien (saldo blanco sobre
+  /// gradiente, Ver mis pedidos, Cerrar sesión). Los reportes de botones
+  /// "sin efecto" (Contactar al vendedor, Cambiar) eran el bug del
+  /// fallback por altura infinita — arreglado en v0.1.123 de raíz.
   IOS26ButtonStyle _mapToIOS26Style(AdaptiveButtonStyle style) {
     switch (style) {
       case AdaptiveButtonStyle.filled:
-      case AdaptiveButtonStyle.tinted:
-      case AdaptiveButtonStyle.bordered:
         return IOS26ButtonStyle.prominentGlass;
+      case AdaptiveButtonStyle.tinted:
+        return IOS26ButtonStyle.tinted;
       case AdaptiveButtonStyle.gray:
-      case AdaptiveButtonStyle.glass:
-        return IOS26ButtonStyle.glass;
+        return IOS26ButtonStyle.gray;
+      case AdaptiveButtonStyle.bordered:
+        return IOS26ButtonStyle.bordered;
       case AdaptiveButtonStyle.plain:
         return IOS26ButtonStyle.plain;
+      case AdaptiveButtonStyle.glass:
+        return IOS26ButtonStyle.glass;
       case AdaptiveButtonStyle.prominentGlass:
         return IOS26ButtonStyle.prominentGlass;
     }
