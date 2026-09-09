@@ -592,29 +592,25 @@ class AdaptiveButton extends StatelessWidget {
     }
   }
 
-  /// 09/09 (v0.1.124, feedback Carlos): mapeo 1:1 — cada estilo conserva
-  /// su estilo nativo. ÚNICA excepción: filled → prominentGlass, para que
-  /// las acciones primarias (fondo del color del tema) usen Liquid Glass.
-  ///
-  /// Historia: v0.1.118–122 remapearon tinted/bordered a glass/prominente
-  /// y rompieron botones que ya se veían bien (saldo blanco sobre
-  /// gradiente, Ver mis pedidos, Cerrar sesión). Los reportes de botones
-  /// "sin efecto" (Contactar al vendedor, Cambiar) eran el bug del
-  /// fallback por altura infinita — arreglado en v0.1.123 de raíz.
+  /// 09/09 (v0.1.125): restaurado el mapeo de v0.1.121 (el que Carlos
+  /// validó como "más o menos bien") + el fix de altura infinita de
+  /// v0.1.123, que juntos nunca llegaron al dispositivo:
+  /// - filled (primaria) y tinted (secundaria común) → prominentGlass,
+  ///   cada uno con su tint
+  /// - bordered → glass discreto (cápsula sutil, conserva su color)
+  /// - gray → glass discreto; plain → sin fondo
+  /// - El botón de atrás vive en el scaffold y no pasa por aquí.
   IOS26ButtonStyle _mapToIOS26Style(AdaptiveButtonStyle style) {
     switch (style) {
       case AdaptiveButtonStyle.filled:
-        return IOS26ButtonStyle.prominentGlass;
       case AdaptiveButtonStyle.tinted:
-        return IOS26ButtonStyle.tinted;
-      case AdaptiveButtonStyle.gray:
-        return IOS26ButtonStyle.gray;
+        return IOS26ButtonStyle.prominentGlass;
       case AdaptiveButtonStyle.bordered:
-        return IOS26ButtonStyle.bordered;
-      case AdaptiveButtonStyle.plain:
-        return IOS26ButtonStyle.plain;
+      case AdaptiveButtonStyle.gray:
       case AdaptiveButtonStyle.glass:
         return IOS26ButtonStyle.glass;
+      case AdaptiveButtonStyle.plain:
+        return IOS26ButtonStyle.plain;
       case AdaptiveButtonStyle.prominentGlass:
         return IOS26ButtonStyle.prominentGlass;
     }
