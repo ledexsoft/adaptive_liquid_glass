@@ -56,27 +56,10 @@ Escribe tu app **una sola vez** y los componentes (botones, menús, alertas, bar
 
 ## 📦 Paso 1: Instalar el paquete
 
-Elige **una** de las dos opciones:
-
-### Opción A — Desde pub.dev (la más simple)
+El paquete se instala **directamente desde GitHub** (no requiere pub.dev):
 
 1. Abre el archivo `pubspec.yaml` de tu proyecto.
 2. Debajo de `dependencies:` agrega:
-
-```yaml
-dependencies:
-  adaptive_liquid_glass: ^0.1.125
-```
-
-3. En la terminal, dentro de la carpeta de tu proyecto:
-
-```bash
-flutter pub get
-```
-
-### Opción B — Desde GitHub (versión exacta, recomendado para producción)
-
-Si quieres fijar una versión exacta directamente desde este repositorio:
 
 ```yaml
 dependencies:
@@ -86,7 +69,15 @@ dependencies:
       ref: v0.1.125
 ```
 
-> 💡 El `ref` apunta a un **tag** (versión congelada). Cada versión nueva del paquete publica su tag (`v0.1.121`, `v0.1.125`…). Así tu app nunca cambia sin que tú lo decidas.
+3. En la terminal, dentro de la carpeta de tu proyecto:
+
+```bash
+flutter pub get
+```
+
+> 💡 **¿Qué es el `ref`?** Apunta a un **tag** del repositorio (versión congelada). Cada versión nueva del paquete publica su tag (`v0.1.121`, `v0.1.125`…). Así tu app nunca cambia sin que tú lo decidas: actualizas solo cuando cambias ese número.
+>
+> 🔎 Puedes ver todas las versiones disponibles en: https://github.com/ledexsoft/adaptive_liquid_glass/tags
 
 ---
 
