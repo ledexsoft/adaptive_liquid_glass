@@ -56,7 +56,7 @@ Escribe tu app **una sola vez** y los componentes (botones, menús, alertas, bar
 
 ## 📦 Paso 1: Instalar el paquete
 
-El paquete se instala **directamente desde GitHub** (no requiere pub.dev):
+El paquete se instala **directamente desde este repositorio de GitHub**:
 
 1. Abre el archivo `pubspec.yaml` de tu proyecto.
 2. Debajo de `dependencies:` agrega:
@@ -835,9 +835,20 @@ await IOS26NativeSearchTabBar.disable();
 
 ---
 
-## 🧪 App de ejemplo
+## 📱 Descarga la app de ejemplo (APK)
 
-Para ver todo en vivo:
+No hace falta compilar nada: descarga el APK listo para instalar en cualquier Android 6.0+:
+
+- 📲 **[Descargar APK (última versión)](https://github.com/ledexsoft/adaptive_liquid_glass/releases/latest)** — siempre apunta al build más reciente
+- 📦 [Ver todas las versiones del APK](https://github.com/ledexsoft/adaptive_liquid_glass/releases)
+
+> El APK se recompila automáticamente con GitHub Actions cada vez que se actualiza el paquete.
+
+---
+
+## 🧪 App de ejemplo (compilar tú mismo)
+
+Para ver todo en vivo desde el código:
 
 ```bash
 git clone https://github.com/ledexsoft/adaptive_liquid_glass.git
