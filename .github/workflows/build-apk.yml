@@ -28,6 +28,10 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          # Fijada a la misma versión con la que se desarrolla y valida el
+          # paquete localmente (Flutter nuevo trae AGP 9 y rompe el DSL del
+          # ejemplo — ver fallo del run 34416276315).
+          flutter-version: 3.44.8
           channel: stable
           cache: true
 
