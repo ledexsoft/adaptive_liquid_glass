@@ -216,6 +216,11 @@ class iOS26NativeTabBarManager: NSObject {
                 let searchTab = UISearchTab { _ in
                     return navController
                 }
+                // 10/10: al tocar el botón de búsqueda, el campo nativo se
+                // activa solo (búsqueda "bien hecha").
+                if #available(iOS 26.0, *) {
+                    searchTab.automaticallyActivatesSearch = true
+                }
 
                 if let count = config.badgeCount, count > 0 {
                     searchTab.badgeValue = count > 99 ? "99+" : String(count)
@@ -311,15 +316,20 @@ class iOS26NativeTabBarManager: NSObject {
     private func notifyTabSelected(_ index: Int) {
         methodChannel?.invokeMethod("onTabSelected", arguments: ["index": index])
 
-        // Move Flutter view to selected tab if not search tab
-        if index != searchTabIndex,
-           let flutterView = getFlutterViewController()?.view,
+        // Move Flutter view to selected tab. Para la tab de búsqueda TAMBIÉN:
+        // así el contenido Flutter (SearchPage con resultados) se renderiza
+        // debajo del campo nativo (10/10, búsqueda "bien hecha").
+        if let flutterView = getFlutterViewController()?.view,
            let tabBar = tabBarController {
             
             if #available(iOS 18.0, *) {
                 if index < tabBar.tabs.count,
                    let selectedVC = tabBar.tabs[index].viewController as? FlutterTabViewController {
                     selectedVC.embedFlutterView(flutterView)
+                } else if index == searchTabIndex,
+                          let nav = tabBar.tabs[index].viewController as? UINavigationController,
+                          let searchVC = nav.viewControllers.first as? SearchTabViewController {
+                    searchVC.embedFlutterView(flutterView)
                 }
             } else if let selectedVC = tabBar.selectedViewController as? FlutterTabViewController {
                 selectedVC.embedFlutterView(flutterView)
@@ -377,6 +387,13 @@ class iOS26NativeTabBarManager: NSObject {
             searchController?.isActive = true
             result(nil)
 
+        // 10/10: ocultar/mostrar la barra al navegar a páginas empujadas.
+        case "setTabBarHidden":
+            let hidden = (call.arguments as? [String: Any])?["hidden"] as? Bool ?? false
+            let animated = (call.arguments as? [String: Any])?["animated"] as? Bool ?? true
+            setTabBarHidden(hidden, animated: animated)
+            result(nil)
+
         case "hideSearch":
             searchController?.isActive = false
             result(nil)
@@ -428,6 +445,17 @@ extension iOS26NativeTabBarManager: UITabBarControllerDelegate {
     func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
         let index = tabBarController.viewControllers?.firstIndex(of: viewController) ?? 0
         notifyTabSelected(index)
+    }
+
+    // 10/10: ocultar/mostrar la barra de tabs (pedido desde Flutter al
+    // navegar a páginas empujadas).
+    func setTabBarHidden(_ hidden: Bool, animated: Bool) {
+        guard let tabBar = tabBarController else { return }
+        if #available(iOS 18.0, *) {
+            tabBar.setTabBarHidden(hidden, animated: animated)
+        } else {
+            tabBar.tabBar.isHidden = hidden
+        }
     }
 }
 
@@ -498,6 +526,8 @@ private class FlutterTabViewController: UIViewController {
 private class SearchTabViewController: UIViewController {
     var tabIndex: Int = 0
     var onTabSelected: ((Int) -> Void)?
+    private var embeddedFlutterView: UIView?
+    private var placeholderLabel: UILabel?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -519,6 +549,31 @@ private class SearchTabViewController: UIViewController {
             label.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 20),
             label.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -20)
         ])
+        placeholderLabel = label
+    }
+
+    // 10/10 (búsqueda "bien hecha"): la vista Flutter (SearchPage con
+    // resultados) se incrusta bajo el campo nativo cuando la tab está
+    // activa; el placeholder se retira.
+    func embedFlutterView(_ flutterView: UIView) {
+        flutterView.removeFromSuperview()
+        placeholderLabel?.isHidden = true
+        flutterView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(flutterView)
+        NSLayoutConstraint.activate([
+            flutterView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            flutterView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            flutterView.topAnchor.constraint(equalTo: view.topAnchor),
+            flutterView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        embeddedFlutterView = flutterView
+        view.bringSubviewToFront(flutterView)
+    }
+
+    func removeFlutterView() {
+        embeddedFlutterView?.removeFromSuperview()
+        embeddedFlutterView = nil
+        placeholderLabel?.isHidden = false
     }
 
     override func viewDidAppear(_ animated: Bool) {

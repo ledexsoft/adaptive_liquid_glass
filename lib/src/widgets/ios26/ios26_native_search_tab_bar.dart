@@ -105,6 +105,17 @@ class IOS26NativeSearchTabBar {
     await _channel.invokeMethod('setSelectedIndex', {'index': index});
   }
 
+  /// 10/10: oculta o muestra la barra de tabs nativa — para que desaparezca
+  /// al navegar a páginas empujadas y reaparezca al volver. No-op si la
+  /// barra nativa no está activa.
+  static Future<void> setHidden(bool hidden, {bool animated = true}) async {
+    if (!_isEnabled) return;
+    await _channel.invokeMethod('setTabBarHidden', {
+      'hidden': hidden,
+      'animated': animated,
+    });
+  }
+
   /// Show the search bar (activates the search controller)
   static Future<void> showSearch() async {
     await _channel.invokeMethod('showSearch');
