@@ -70,7 +70,7 @@ class iOS26NativeTabBarManager: NSObject {
         }
 
         if #available(iOS 18.0, *) {
-            enableModernTabBar(tabs: tabs, selectedIndex: selectedIndex, flutterVC: flutterVC, showActions: showActions)
+            enableModernTabBar(tabs: tabs, selectedIndex: selectedIndex, flutterVC: flutterVC, showActions: showActions, searchPlaceholder: searchPlaceholder)
             return
         }
 
