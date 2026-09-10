@@ -53,6 +53,9 @@ class IOS26NativeSearchTabBar {
     /// [onAccessoryAction]. En compacto la barra sale sin accesorio.
     bool showActions = false,
     void Function(int index)? onAccessoryAction,
+
+    /// Placeholder del campo nativo (localizado desde la app anfitriona).
+    String? searchPlaceholder,
   }) async {
     if (_isEnabled) {
       return;
@@ -95,6 +98,7 @@ class IOS26NativeSearchTabBar {
           .toList(),
       'selectedIndex': selectedIndex,
       'showActions': showActions,
+      'searchPlaceholder': searchPlaceholder ?? '',
     });
 
     _isEnabled = true;

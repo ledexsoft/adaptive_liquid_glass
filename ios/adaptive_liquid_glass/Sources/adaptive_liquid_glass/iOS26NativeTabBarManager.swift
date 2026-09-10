@@ -64,7 +64,7 @@ class iOS26NativeTabBarManager: NSObject {
     }
 
     /// Enable native tab bar mode
-    private func enableNativeTabBar(tabs: [TabConfig], selectedIndex: Int, showActions: Bool) {
+    private func enableNativeTabBar(tabs: [TabConfig], selectedIndex: Int, showActions: Bool, searchPlaceholder: String) {
         guard let flutterVC = getFlutterViewController() else {
             return
         }
@@ -173,7 +173,7 @@ class iOS26NativeTabBarManager: NSObject {
     }
 
     @available(iOS 18.0, *)
-    private func enableModernTabBar(tabs: [TabConfig], selectedIndex: Int, flutterVC: FlutterViewController, showActions: Bool) {
+    private func enableModernTabBar(tabs: [TabConfig], selectedIndex: Int, flutterVC: FlutterViewController, showActions: Bool, searchPlaceholder: String) {
         if tabBarController == nil {
             let tabBar = UITabBarController()
             tabBarController = tabBar
@@ -205,6 +205,9 @@ class iOS26NativeTabBarManager: NSObject {
                 search.obscuresBackgroundDuringPresentation = false
                 search.hidesNavigationBarDuringPresentation = false
 
+                if !searchPlaceholder.isEmpty {
+                    search.searchBar.placeholder = searchPlaceholder
+                }
                 searchVC.navigationItem.searchController = search
                 searchVC.navigationItem.hidesSearchBarWhenScrolling = false
                 self.searchController = search
@@ -436,7 +439,8 @@ class iOS26NativeTabBarManager: NSObject {
 
             let selectedIndex = (args["selectedIndex"] as? Int) ?? 0
             let showActions = (args["showActions"] as? Bool) ?? false
-            enableNativeTabBar(tabs: tabs, selectedIndex: selectedIndex, showActions: showActions)
+            let searchPlaceholder = (args["searchPlaceholder"] as? String) ?? ""
+            enableNativeTabBar(tabs: tabs, selectedIndex: selectedIndex, showActions: showActions, searchPlaceholder: searchPlaceholder)
             result(nil)
 
         case "disableNativeTabBar":
