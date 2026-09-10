@@ -295,7 +295,7 @@ class iOS26NativeTabBarManager: NSObject {
                     UIImage(systemName: action.symbol, withConfiguration: symbolConfig),
                     for: .normal,
                 )
-                button.tintColor = .systemBlue
+                button.tintColor = .label
                 button.tag = action.index
                 button.translatesAutoresizingMaskIntoConstraints = false
                 button.widthAnchor.constraint(equalToConstant: 44).isActive = true
