@@ -255,13 +255,36 @@ class iOS26NativeTabBarManager: NSObject {
                 ("list.clipboard", 1),
                 ("bell.fill", 2),
             ]
-            var buttons: [UIButton] = []
-            for action in actions {
-                let button = UIButton(type: .system)
-                if let image = UIImage(systemName: action.symbol) {
-                    button.setImage(image, for: .normal)
+
+            // Contenedor de vidrio con el MISMO material de la barra.
+            let glass = UIVisualEffectView(effect: AdaptiveGlassMaterial.effect(
+                styleRawValue: 0,
+                fallback: .systemThinMaterial
+            ))
+            glass.frame = CGRect(x: 0, y: 0, width: 182, height: 52)
+
+            var arranged: [UIView] = []
+            for (i, action) in actions.enumerated() {
+                if i > 0 {
+                    // Hairline divisor entre acciones (estilo mini-player).
+                    let separator = UIView()
+                    separator.backgroundColor = UIColor.separator.withAlphaComponent(0.35)
+                    separator.translatesAutoresizingMaskIntoConstraints = false
+                    separator.widthAnchor.constraint(equalToConstant: 0.5).isActive = true
+                    separator.heightAnchor.constraint(equalToConstant: 24).isActive = true
+                    arranged.append(separator)
                 }
+                let button = UIButton(type: .system)
+                let symbolConfig = UIImage.SymbolConfiguration(pointSize: 19, weight: .medium)
+                button.setImage(
+                    UIImage(systemName: action.symbol, withConfiguration: symbolConfig),
+                    for: .normal,
+                )
+                button.tintColor = .systemBlue
                 button.tag = action.index
+                button.translatesAutoresizingMaskIntoConstraints = false
+                button.widthAnchor.constraint(equalToConstant: 44).isActive = true
+                button.heightAnchor.constraint(equalToConstant: 44).isActive = true
                 button.addAction(
                     UIAction { [weak self] uiAction in
                         guard let sender = uiAction.sender as? UIButton else { return }
@@ -272,13 +295,24 @@ class iOS26NativeTabBarManager: NSObject {
                     },
                     for: .touchUpInside,
                 )
-                buttons.append(button)
+                arranged.append(button)
             }
-            let row = UIStackView(arrangedSubviews: buttons)
+            let row = UIStackView(arrangedSubviews: arranged)
             row.axis = .horizontal
-            row.spacing = 28
-            row.frame = CGRect(x: 0, y: 0, width: 190, height: 44)
-            tabBar.bottomAccessory = UITabAccessory(contentView: row)
+            row.spacing = 10
+            row.alignment = .center
+            row.translatesAutoresizingMaskIntoConstraints = false
+            row.isLayoutMarginsRelativeArrangement = true
+            row.layoutMargins = UIEdgeInsets(top: 4, left: 14, bottom: 4, right: 14)
+            glass.contentView.addSubview(row)
+            NSLayoutConstraint.activate([
+                row.leadingAnchor.constraint(equalTo: glass.contentView.leadingAnchor),
+                row.trailingAnchor.constraint(equalTo: glass.contentView.trailingAnchor),
+                row.topAnchor.constraint(equalTo: glass.contentView.topAnchor),
+                row.bottomAnchor.constraint(equalTo: glass.contentView.bottomAnchor),
+            ])
+
+            tabBar.bottomAccessory = UITabAccessory(contentView: glass)
         }
 
         if let window = flutterVC.view.window {
