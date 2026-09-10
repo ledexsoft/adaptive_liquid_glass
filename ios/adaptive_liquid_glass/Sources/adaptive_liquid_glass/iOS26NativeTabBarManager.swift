@@ -328,7 +328,9 @@ class iOS26NativeTabBarManager: NSObject {
                 row.bottomAnchor.constraint(equalTo: glass.contentView.bottomAnchor),
             ])
 
-            tabBar.bottomAccessory = UITabAccessory(contentView: glass)
+            let accessory = UITabAccessory(contentView: glass)
+            actionsAccessory = accessory
+            tabBar.bottomAccessory = accessory
         }
 
         if let window = flutterVC.view.window {
@@ -519,8 +521,21 @@ class iOS26NativeTabBarManager: NSObject {
 
 @available(iOS 14.0, *)
 extension iOS26NativeTabBarManager: UITabBarControllerDelegate {
+    private var actionsAccessory: UITabAccessory?
+
     func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
         let index = tabBarController.viewControllers?.firstIndex(of: viewController) ?? 0
+
+        // 10/10 (Carlos): en la tab de búsqueda el accesorio de acciones se
+        // oculta (no aporta ahí); se restaura al salir de ella.
+        if #available(iOS 26.0, *) {
+            if index == searchTabIndex {
+                tabBarController.bottomAccessory = nil
+            } else if let accessory = actionsAccessory {
+                tabBarController.bottomAccessory = accessory
+            }
+        }
+
         notifyTabSelected(index)
     }
 
@@ -630,8 +645,9 @@ private class SearchTabViewController: UIViewController {
     }
 
     // 10/10 (búsqueda "bien hecha"): la vista Flutter (SearchPage con
-    // resultados) se incrusta bajo el campo nativo cuando la tab está
-    // activa; el placeholder se retira.
+    // resultados) se incrusta DEBAJO del campo nativo (safe area top) —
+    // full-bleed haría que el contenido quede detrás de la barra
+    // (feedback Carlos). El placeholder se retira.
     func embedFlutterView(_ flutterView: UIView) {
         flutterView.removeFromSuperview()
         placeholderLabel?.isHidden = true
@@ -640,8 +656,10 @@ private class SearchTabViewController: UIViewController {
         NSLayoutConstraint.activate([
             flutterView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             flutterView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            flutterView.topAnchor.constraint(equalTo: view.topAnchor),
-            flutterView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            flutterView.topAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.topAnchor,
+            ),
+            flutterView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
         embeddedFlutterView = flutterView
         view.bringSubviewToFront(flutterView)
