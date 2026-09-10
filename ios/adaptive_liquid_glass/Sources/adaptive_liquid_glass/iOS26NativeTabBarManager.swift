@@ -196,9 +196,20 @@ class iOS26NativeTabBarManager: NSObject {
                 }
 
                 let navController = UINavigationController(rootViewController: searchVC)
-                // 10/10: SIN UISearchController nativo — la SearchPage de
-                // Flutter trae su propio campo; el nativo duplicaba y quedaba
-                // tapado por la vista incrustada (feedback Carlos).
+                // RESTAURADO 10/10 (v0.1.134): el UISearchController en el
+                // navigationItem es lo que hace a la UISearchTab una tab de
+                // búsqueda REAL — sin él iOS no aplica el tratamiento de
+                // búsqueda y la tab queda inline en compacto.
+                let search = UISearchController(searchResultsController: nil)
+                search.searchResultsUpdater = self
+                search.searchBar.delegate = self
+                search.obscuresBackgroundDuringPresentation = false
+                search.searchBar.placeholder = "Search"
+                search.hidesNavigationBarDuringPresentation = false
+
+                searchVC.navigationItem.searchController = search
+                searchVC.navigationItem.hidesSearchBarWhenScrolling = false
+                self.searchController = search
 
                 // 09/09: init DESIGNADO de UISearchTab — solo el provider.
                 // El sistema aplica el searchRole, título localizado ("Buscar")
@@ -208,6 +219,10 @@ class iOS26NativeTabBarManager: NSObject {
                 // (feedback Carlos en ventana compacta).
                 let searchTab = UISearchTab { _ in
                     return navController
+                }
+                // El campo nativo se activa solo al tocar la lupa.
+                if #available(iOS 26.0, *) {
+                    searchTab.automaticallyActivatesSearch = true
                 }
 
                 if let count = config.badgeCount, count > 0 {
