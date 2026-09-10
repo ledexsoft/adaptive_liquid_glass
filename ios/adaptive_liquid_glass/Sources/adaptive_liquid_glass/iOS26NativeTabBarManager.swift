@@ -17,10 +17,11 @@ class iOS26NativeTabBarManager: NSObject {
     private var tabConfigurations: [TabConfig] = []
     private var searchTabIndex: Int = -1
     private var isEnabled: Bool = false
-    // 10/10: accesorio de acciones (carrito/pedidos/notificaciones) — se
-    // oculta en la tab de búsqueda y se restaura al salir.
-    @available(iOS 26.0, *)
-    private var actionsAccessory: UITabAccessory?
+    // 10/10: fila de ACCIONES del toolbar (carrito/pedidos/notificaciones)
+    // para el accesorio nativo — se oculta en la tab de búsqueda y se
+    // restaura al salir. UIView (iOS 14-safe); el UITabAccessory se recrea
+    // al mostrar porque UITabAccessory es iOS 26+.
+    private var actionsRow: UIView?
 
     struct TabConfig {
         let title: String
@@ -332,9 +333,8 @@ class iOS26NativeTabBarManager: NSObject {
                 row.bottomAnchor.constraint(equalTo: glass.contentView.bottomAnchor),
             ])
 
-            let accessory = UITabAccessory(contentView: glass)
-            actionsAccessory = accessory
-            tabBar.bottomAccessory = accessory
+            actionsRow = glass
+            tabBar.bottomAccessory = UITabAccessory(contentView: glass)
         }
 
         if let window = flutterVC.view.window {
@@ -533,8 +533,8 @@ extension iOS26NativeTabBarManager: UITabBarControllerDelegate {
         if #available(iOS 26.0, *) {
             if index == searchTabIndex {
                 tabBarController.bottomAccessory = nil
-            } else if let accessory = actionsAccessory {
-                tabBarController.bottomAccessory = accessory
+            } else if let row = actionsRow {
+                tabBarController.bottomAccessory = UITabAccessory(contentView: row)
             }
         }
 
