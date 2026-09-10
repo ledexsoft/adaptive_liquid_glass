@@ -207,11 +207,13 @@ class iOS26NativeTabBarManager: NSObject {
                 searchVC.navigationItem.hidesSearchBarWhenScrolling = false
                 self.searchController = search
 
-                let searchTab = UISearchTab(
-                    title: config.title.isEmpty ? "Search" : config.title,
-                    image: UIImage(systemName: "magnifyingglass"),
-                    identifier: "tab_\(index)"
-                ) { _ in
+                // 09/09: init DESIGNADO de UISearchTab — solo el provider.
+                // El sistema aplica el searchRole, título localizado ("Buscar")
+                // y la lupa automáticamente. Pasar title/image por el init de
+                // UITab resolvía al init de la clase padre y el searchRole
+                // nunca se aplicaba → la búsqueda quedaba inline en la píldora
+                // (feedback Carlos en ventana compacta).
+                let searchTab = UISearchTab { _ in
                     return navController
                 }
 
