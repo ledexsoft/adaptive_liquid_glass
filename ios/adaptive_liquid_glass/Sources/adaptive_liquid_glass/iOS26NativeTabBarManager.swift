@@ -70,7 +70,7 @@ class iOS26NativeTabBarManager: NSObject {
         }
 
         if #available(iOS 18.0, *) {
-            enableModernTabBar(tabs: tabs, selectedIndex: selectedIndex, flutterVC: flutterVC)
+            enableModernTabBar(tabs: tabs, selectedIndex: selectedIndex, flutterVC: flutterVC, showActions: showActions)
             return
         }
 
@@ -174,7 +174,7 @@ class iOS26NativeTabBarManager: NSObject {
     }
 
     @available(iOS 18.0, *)
-    private func enableModernTabBar(tabs: [TabConfig], selectedIndex: Int, flutterVC: FlutterViewController) {
+    private func enableModernTabBar(tabs: [TabConfig], selectedIndex: Int, flutterVC: FlutterViewController, showActions: Bool) {
         if tabBarController == nil {
             let tabBar = UITabBarController()
             tabBarController = tabBar
@@ -278,9 +278,6 @@ class iOS26NativeTabBarManager: NSObject {
             row.axis = .horizontal
             row.spacing = 28
             row.frame = CGRect(x: 0, y: 0, width: 190, height: 44)
-            if let tint = tabBar.tintColor {
-                row.tintColor = tint
-            }
             tabBar.bottomAccessory = UITabAccessory(contentView: row)
         }
 
