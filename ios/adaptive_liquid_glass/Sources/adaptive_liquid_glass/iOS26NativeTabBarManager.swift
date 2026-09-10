@@ -108,7 +108,6 @@ class iOS26NativeTabBarManager: NSObject {
                 search.searchResultsUpdater = self
                 search.searchBar.delegate = self
                 search.obscuresBackgroundDuringPresentation = false
-                search.searchBar.placeholder = "Search"
                 search.hidesNavigationBarDuringPresentation = false
 
                 searchVC.navigationItem.searchController = search
@@ -204,7 +203,6 @@ class iOS26NativeTabBarManager: NSObject {
                 search.searchResultsUpdater = self
                 search.searchBar.delegate = self
                 search.obscuresBackgroundDuringPresentation = false
-                search.searchBar.placeholder = "Search"
                 search.hidesNavigationBarDuringPresentation = false
 
                 searchVC.navigationItem.searchController = search
