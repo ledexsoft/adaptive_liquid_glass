@@ -17,6 +17,10 @@ class iOS26NativeTabBarManager: NSObject {
     private var tabConfigurations: [TabConfig] = []
     private var searchTabIndex: Int = -1
     private var isEnabled: Bool = false
+    // 10/10: accesorio de acciones (carrito/pedidos/notificaciones) — se
+    // oculta en la tab de búsqueda y se restaura al salir.
+    @available(iOS 26.0, *)
+    private var actionsAccessory: UITabAccessory?
 
     struct TabConfig {
         let title: String
@@ -521,8 +525,6 @@ class iOS26NativeTabBarManager: NSObject {
 
 @available(iOS 14.0, *)
 extension iOS26NativeTabBarManager: UITabBarControllerDelegate {
-    private var actionsAccessory: UITabAccessory?
-
     func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
         let index = tabBarController.viewControllers?.firstIndex(of: viewController) ?? 0
 
