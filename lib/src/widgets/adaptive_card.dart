@@ -244,12 +244,15 @@ class _IOSCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: radius,
-        border: Border.all(
-          color: isDark
-              ? CupertinoColors.systemGrey6
-              : CupertinoColors.separator,
-          width: 0.5,
-        ),
+        // 09/09: sin borde en modo oscuro. Antes: CupertinoColors.systemGrey6
+        // crudo — como es un CupertinoDynamicColor sin resolver, en oscuro
+        // pintaba su valor CLARO (F2F2F7 ≈ blanco) → "borde blanco marcado"
+        // sobre tarjetas oscuras (feedback Carlos). En oscuro la separación
+        // la da el contraste del fondo elevado, como en iOS nativo. En claro
+        // se conserva el hairline separator.
+        border: isDark
+            ? null
+            : Border.all(color: CupertinoColors.separator, width: 0.5),
         boxShadow: isDark
             ? null
             : [

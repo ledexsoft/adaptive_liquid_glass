@@ -133,7 +133,12 @@ class AdaptiveAlertDialog {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: CupertinoColors.systemGrey6,
+                          // 09/09: resolver el color dinámico — crudo pintaba
+                          // el valor claro (≈blanco) también en modo oscuro.
+                          color: CupertinoDynamicColor.resolve(
+                            CupertinoColors.systemGrey6,
+                            context,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
