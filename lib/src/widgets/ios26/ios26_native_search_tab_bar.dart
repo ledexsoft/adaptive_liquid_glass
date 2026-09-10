@@ -47,6 +47,12 @@ class IOS26NativeSearchTabBar {
     void Function(String query)? onSearchQueryChanged,
     void Function(String query)? onSearchSubmitted,
     VoidCallback? onSearchCancelled,
+
+    /// 10/10: en ancho completo la barra muestra un accesorio nativo con
+    /// ACCIONES del toolbar (carrito/pedidos/notificaciones) — taps via
+    /// [onAccessoryAction]. En compacto la barra sale sin accesorio.
+    bool showActions = false,
+    void Function(int index)? onAccessoryAction,
   }) async {
     if (_isEnabled) {
       return;
@@ -69,6 +75,9 @@ class IOS26NativeSearchTabBar {
           break;
         case 'onSearchCancelled':
           onSearchCancelled?.call();
+        case 'onAccessoryAction':
+          final index = (call.arguments as Map)['index'] as int;
+          onAccessoryAction?.call(index);
           break;
       }
     });
@@ -85,6 +94,7 @@ class IOS26NativeSearchTabBar {
           )
           .toList(),
       'selectedIndex': selectedIndex,
+      'showActions': showActions,
     });
 
     _isEnabled = true;

@@ -64,7 +64,7 @@ class iOS26NativeTabBarManager: NSObject {
     }
 
     /// Enable native tab bar mode
-    private func enableNativeTabBar(tabs: [TabConfig], selectedIndex: Int) {
+    private func enableNativeTabBar(tabs: [TabConfig], selectedIndex: Int, showActions: Bool) {
         guard let flutterVC = getFlutterViewController() else {
             return
         }
@@ -244,6 +244,46 @@ class iOS26NativeTabBarManager: NSObject {
         }
         tabBar.delegate = self
 
+        // 10/10: ACCESORIO nativo de iOS 26 (UITabAccessory) con las ACCIONES
+        // del toolbar (carrito/pedidos/notificaciones) — fuera del set de
+        // tabs para NO comprimir la búsqueda (feedback Carlos). Solo en
+        // ancho completo (showActions); el sistema lo coloca en la barra de
+        // vidrio como el mini-player de Apple Music.
+        if showActions, #available(iOS 26.0, *) {
+            let actions: [(symbol: String, index: Int)] = [
+                ("cart.fill", 0),
+                ("list.clipboard", 1),
+                ("bell.fill", 2),
+            ]
+            var buttons: [UIButton] = []
+            for action in actions {
+                let button = UIButton(type: .system)
+                if let image = UIImage(systemName: action.symbol) {
+                    button.setImage(image, for: .normal)
+                }
+                button.tag = action.index
+                button.addAction(
+                    UIAction { [weak self] uiAction in
+                        guard let sender = uiAction.sender as? UIButton else { return }
+                        self?.methodChannel?.invokeMethod(
+                            "onAccessoryAction",
+                            arguments: ["index": sender.tag],
+                        )
+                    },
+                    for: .touchUpInside,
+                )
+                buttons.append(button)
+            }
+            let row = UIStackView(arrangedSubviews: buttons)
+            row.axis = .horizontal
+            row.spacing = 28
+            row.frame = CGRect(x: 0, y: 0, width: 190, height: 44)
+            if let tint = tabBar.tintColor {
+                row.tintColor = tint
+            }
+            tabBar.bottomAccessory = UITabAccessory(contentView: row)
+        }
+
         if let window = flutterVC.view.window {
             if let firstTabVC = tabBar.tabs.first(where: { !($0 is UISearchTab) })?.viewController as? FlutterTabViewController {
                 firstTabVC.embedFlutterView(flutterVC.view)
@@ -351,7 +391,8 @@ class iOS26NativeTabBarManager: NSObject {
             }
 
             let selectedIndex = (args["selectedIndex"] as? Int) ?? 0
-            enableNativeTabBar(tabs: tabs, selectedIndex: selectedIndex)
+            let showActions = (args["showActions"] as? Bool) ?? false
+            enableNativeTabBar(tabs: tabs, selectedIndex: selectedIndex, showActions: showActions)
             result(nil)
 
         case "disableNativeTabBar":
