@@ -193,7 +193,7 @@ class AdaptiveButton extends StatelessWidget {
     }
 
     // iOS 18 and below - Use traditional CupertinoButton
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isIOS || PlatformInfo.isMacOS) {
       return _buildCupertinoButton(context);
     }
 

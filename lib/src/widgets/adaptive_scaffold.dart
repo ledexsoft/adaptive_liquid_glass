@@ -326,7 +326,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 
     // iOS <26 (iOS 18 and below) OR iOS 26+ with useNativeToolbar: false
     // Use CupertinoPageScaffold with CupertinoTabBar if destinations provided
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isIOS || PlatformInfo.isMacOS) {
       Widget? effectiveLeading = widget.appBar?.leading;
 
       if (widget.bottomNavigationBar?.items != null &&
