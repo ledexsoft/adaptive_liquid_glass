@@ -1,3 +1,6 @@
+## [0.1.145]
+* **FIX**: migración a Built-in Kotlin (Flutter 3.44+): el plugin ya no aplica Kotlin Gradle Plugin propio (eliminados `kotlin-android`, `kotlin_version` y `kotlin-stdlib` explícito); usa el KGP provisto por Flutter con `kotlin { compilerOptions { jvmTarget = JVM_1_8 } }`. Requiere Flutter >=3.44 / Dart >=3.12. Elimina la advertencia de KGP obsoleto en `flutter build appbundle`.
+
 # Changelog
 
 ## [0.1.117]
