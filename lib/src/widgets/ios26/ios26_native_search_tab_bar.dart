@@ -34,6 +34,7 @@ class IOS26NativeSearchTabBar {
   );
 
   static bool _isEnabled = false;
+  static int _tabCount = 0;
 
   /// Enable native tab bar mode
   ///
@@ -57,6 +58,32 @@ class IOS26NativeSearchTabBar {
     /// Placeholder del campo nativo (localizado desde la app anfitriona).
     String? searchPlaceholder,
   }) async {
+    if (tabs.isEmpty) {
+      throw ArgumentError.value(tabs, 'tabs', 'must not be empty');
+    }
+    if (!tabs.any((tab) => !tab.isSearchTab)) {
+      throw ArgumentError.value(
+        tabs,
+        'tabs',
+        'must include at least one content tab',
+      );
+    }
+    if (selectedIndex < 0 || selectedIndex >= tabs.length) {
+      throw RangeError.range(
+        selectedIndex,
+        0,
+        tabs.length - 1,
+        'selectedIndex',
+      );
+    }
+    if (tabs.where((tab) => tab.isSearchTab).length > 1) {
+      throw ArgumentError.value(
+        tabs,
+        'tabs',
+        'at most one tab may be a search tab',
+      );
+    }
+
     if (_isEnabled) {
       return;
     }
@@ -102,6 +129,7 @@ class IOS26NativeSearchTabBar {
     });
 
     _isEnabled = true;
+    _tabCount = tabs.length;
   }
 
   /// Disable native tab bar and return to Flutter-only mode
@@ -112,10 +140,17 @@ class IOS26NativeSearchTabBar {
 
     await _channel.invokeMethod('disableNativeTabBar');
     _isEnabled = false;
+    _tabCount = 0;
   }
 
   /// Set the selected tab index
   static Future<void> setSelectedIndex(int index) async {
+    if (!_isEnabled || _tabCount == 0) {
+      throw StateError('Native tab bar is not enabled');
+    }
+    if (index < 0 || index >= _tabCount) {
+      throw RangeError.range(index, 0, _tabCount - 1, 'index');
+    }
     await _channel.invokeMethod('setSelectedIndex', {'index': index});
   }
 

@@ -69,14 +69,14 @@ class iOS26NativeTabBarManager: NSObject {
     }
 
     /// Enable native tab bar mode
-    private func enableNativeTabBar(tabs: [TabConfig], selectedIndex: Int, showActions: Bool, searchPlaceholder: String) {
+    private func enableNativeTabBar(tabs: [TabConfig], selectedIndex: Int, showActions: Bool, searchPlaceholder: String) -> Bool {
         guard let flutterVC = getFlutterViewController() else {
-            return
+            return false
         }
+        guard flutterVC.view.window != nil else { return false }
 
         if #available(iOS 18.0, *) {
-            enableModernTabBar(tabs: tabs, selectedIndex: selectedIndex, flutterVC: flutterVC, showActions: showActions, searchPlaceholder: searchPlaceholder)
-            return
+            return enableModernTabBar(tabs: tabs, selectedIndex: selectedIndex, flutterVC: flutterVC, showActions: showActions, searchPlaceholder: searchPlaceholder)
         }
 
         // Create tab bar controller if needed
@@ -88,7 +88,7 @@ class iOS26NativeTabBarManager: NSObject {
             setupTabBarAppearance(tabBar)
         }
 
-        guard let tabBar = tabBarController else { return }
+        guard let tabBar = tabBarController else { return false }
 
         // Store configuration
         self.tabConfigurations = tabs
@@ -163,28 +163,30 @@ class iOS26NativeTabBarManager: NSObject {
         tabBar.delegate = self
 
         // Replace root view controller
-        if let window = flutterVC.view.window {
-            // Embed Flutter view in the first non-search tab
-            if let firstTab = viewControllers.first(where: { !($0 is UINavigationController) }) as? FlutterTabViewController {
-                firstTab.embedFlutterView(flutterVC.view)
-            }
-
-            UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve) {
-                window.rootViewController = tabBar
-            }
-
-            self.isEnabled = true
+        guard let window = flutterVC.view.window else { return false }
+        // Embed Flutter view in the first non-search tab
+        if let firstTab = viewControllers.first(where: { !($0 is UINavigationController) }) as? FlutterTabViewController {
+            firstTab.embedFlutterView(flutterVC.view)
         }
+
+        UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve) {
+            window.rootViewController = tabBar
+        }
+
+        self.isEnabled = true
+        return true
     }
 
     @available(iOS 18.0, *)
-    private func enableModernTabBar(tabs: [TabConfig], selectedIndex: Int, flutterVC: FlutterViewController, showActions: Bool, searchPlaceholder: String) {
+    private func enableModernTabBar(tabs: [TabConfig], selectedIndex: Int, flutterVC: FlutterViewController, showActions: Bool, searchPlaceholder: String) -> Bool {
+        guard let window = flutterVC.view.window else { return false }
+
         if tabBarController == nil {
             let tabBar = UITabBarController()
             tabBarController = tabBar
         }
 
-        guard let tabBar = tabBarController else { return }
+        guard let tabBar = tabBarController else { return false }
 
         self.tabConfigurations = tabs
         self.searchTabIndex = tabs.firstIndex(where: { $0.isSearchTab }) ?? -1
@@ -260,9 +262,7 @@ class iOS26NativeTabBarManager: NSObject {
         }
 
         tabBar.tabs = modernTabs
-        if selectedIndex < modernTabs.count {
-            tabBar.selectedTab = modernTabs[selectedIndex]
-        }
+        tabBar.selectedTab = modernTabs[selectedIndex]
         tabBar.delegate = self
 
         // 10/10: ACCESORIO nativo de iOS 26 (UITabAccessory) con las ACCIONES
@@ -282,7 +282,9 @@ class iOS26NativeTabBarManager: NSObject {
                 styleRawValue: 0,
                 fallback: .systemThinMaterial
             ))
-            glass.frame = CGRect(x: 0, y: 0, width: 182, height: 52)
+            // 3 × 44pt buttons + 2 × 0.5pt dividers + 4 × 10pt spacing
+            // + 28pt horizontal margins = 201pt required width.
+            glass.frame = CGRect(x: 0, y: 0, width: 201, height: 52)
 
             var arranged: [UIView] = []
             for (i, action) in actions.enumerated() {
@@ -337,17 +339,16 @@ class iOS26NativeTabBarManager: NSObject {
             tabBar.bottomAccessory = UITabAccessory(contentView: glass)
         }
 
-        if let window = flutterVC.view.window {
-            if let firstTabVC = tabBar.tabs.first(where: { !($0 is UISearchTab) })?.viewController as? FlutterTabViewController {
-                firstTabVC.embedFlutterView(flutterVC.view)
-            }
-
-            UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve) {
-                window.rootViewController = tabBar
-            }
-
-            self.isEnabled = true
+        if let firstTabVC = tabBar.tabs.first(where: { !($0 is UISearchTab) })?.viewController as? FlutterTabViewController {
+            firstTabVC.embedFlutterView(flutterVC.view)
         }
+
+        UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve) {
+            window.rootViewController = tabBar
+        }
+
+        self.isEnabled = true
+        return true
     }
 
     /// Disable native tab bar and return to Flutter-only mode
@@ -446,7 +447,17 @@ class iOS26NativeTabBarManager: NSObject {
             let selectedIndex = (args["selectedIndex"] as? Int) ?? 0
             let showActions = (args["showActions"] as? Bool) ?? false
             let searchPlaceholder = (args["searchPlaceholder"] as? String) ?? ""
-            enableNativeTabBar(tabs: tabs, selectedIndex: selectedIndex, showActions: showActions, searchPlaceholder: searchPlaceholder)
+            guard !tabs.isEmpty,
+                  tabs.indices.contains(selectedIndex),
+                  tabs.contains(where: { !$0.isSearchTab }),
+                  tabs.filter(\.isSearchTab).count <= 1 else {
+                result(FlutterError(code: "invalid_args", message: "Tabs must include a content tab, selectedIndex must be in range, and at most one tab may be a search tab", details: nil))
+                return
+            }
+            guard enableNativeTabBar(tabs: tabs, selectedIndex: selectedIndex, showActions: showActions, searchPlaceholder: searchPlaceholder) else {
+                result(FlutterError(code: "not_ready", message: "Could not find an attached Flutter view controller to enable the native tab bar", details: nil))
+                return
+            }
             result(nil)
 
         case "disableNativeTabBar":
@@ -459,10 +470,23 @@ class iOS26NativeTabBarManager: NSObject {
                 result(FlutterError(code: "invalid_args", message: "Invalid index", details: nil))
                 return
             }
-            if #available(iOS 18.0, *), let tabs = tabBarController?.tabs, index < tabs.count {
-                tabBarController?.selectedTab = tabs[index]
+            guard let tabBarController else {
+                result(FlutterError(code: "not_enabled", message: "Native tab bar is not enabled", details: nil))
+                return
+            }
+            if #available(iOS 18.0, *) {
+                guard tabBarController.tabs.indices.contains(index) else {
+                    result(FlutterError(code: "invalid_args", message: "Tab index is out of range", details: nil))
+                    return
+                }
+                tabBarController.selectedTab = tabBarController.tabs[index]
             } else {
-                tabBarController?.selectedIndex = index
+                guard let viewControllers = tabBarController.viewControllers,
+                      viewControllers.indices.contains(index) else {
+                    result(FlutterError(code: "invalid_args", message: "Tab index is out of range", details: nil))
+                    return
+                }
+                tabBarController.selectedIndex = index
             }
             result(nil)
 
