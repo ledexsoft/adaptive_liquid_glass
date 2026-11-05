@@ -53,25 +53,39 @@ class AdaptivePopupMenuButton<T> {
           height: height,
         );
       }
-      return AndroidM3EPlatformView(
-        key: key,
-        component: 'popupMenuButton',
-        height: height,
-        properties: {
-          'anchorType': 'text',
-          'label': label,
-          'style': _nativeMenuButtonStyle(buttonStyle),
-          'tint': tint?.toARGB32(),
-          'items': _nativeMenuItems<T>(items),
-        },
-        onEvent: (event, value) {
-          if (event == 'selected' &&
-              value is int &&
-              value >= 0 &&
-              value < items.length) {
-            final entry = items[value];
-            if (entry is AdaptivePopupMenuItem<T>) onSelected(value, entry);
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          if (!constraints.maxWidth.isFinite) {
+            return _flutterPopupMenu<T>(
+              key: key,
+              items: items,
+              onSelected: onSelected,
+              child: Text(label),
+              height: height,
+            );
           }
+          return AndroidM3EPlatformView(
+            key: key,
+            component: 'popupMenuButton',
+            height: height,
+            width: constraints.maxWidth,
+            properties: {
+              'anchorType': 'text',
+              'label': label,
+              'style': _nativeMenuButtonStyle(buttonStyle),
+              'tint': tint?.toARGB32(),
+              'items': _nativeMenuItems<T>(items),
+            },
+            onEvent: (event, value) {
+              if (event == 'selected' &&
+                  value is int &&
+                  value >= 0 &&
+                  value < items.length) {
+                final entry = items[value];
+                if (entry is AdaptivePopupMenuItem<T>) onSelected(value, entry);
+              }
+            },
+          );
         },
       );
     }

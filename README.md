@@ -63,7 +63,7 @@ En Android, `AdaptiveBlurView` no dibuja un blur de Flutter para imitar Liquid G
 
 `AdaptiveCarousel` usa los carruseles oficiales de Compose en Android. Declara `androidItems` con datos e iconos `AndroidM3EIcon`; los `Widget` de Flutter no se pueden insertar en un árbol Compose nativo. `AdaptiveSplitButton` recibe `AdaptiveSplitButtonItem`, `AdaptiveToolbar` recibe `AdaptiveToolbarAction` y `AdaptiveButtonGroup` recibe `AdaptiveButtonGroupAction` con iconos serializables. Los menús popup con hijo personalizado mantienen el hijo Flutter como ancla y dibujan el menú en Compose.
 
-En Android, los botones, menús popup, campos de texto, filas adaptativas y acciones de app bar usan controles Material de Flutter como alternativa cuando el contenido personalizado no se puede serializar para Compose; así se conservan los widgets y callbacks. Para conservar la app bar nativa, asigna `AdaptiveAppBarAction.androidIcon` a cada acción cuyo `icon` no sea uno de los iconos reconocidos:
+En Android, los botones, menús popup, campos de texto, filas adaptativas y acciones de app bar usan controles Material de Flutter como alternativa cuando el contenido personalizado no se puede serializar para Compose; también usan alternativa cuando un menú está en un `Row` sin ancho finito. Así se conservan los widgets y callbacks. Para conservar la app bar nativa, asigna `AdaptiveAppBarAction.androidIcon` a cada acción cuyo `icon` no sea uno de los iconos reconocidos:
 
 ```dart
 AdaptiveAppBarAction(

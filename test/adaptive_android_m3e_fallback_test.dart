@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:adaptive_liquid_glass/adaptive_liquid_glass.dart';
+import 'package:adaptive_liquid_glass/src/widgets/android/android_m3e_platform_view.dart';
 
 void main() {
   setUp(() {
@@ -129,6 +130,31 @@ void main() {
     expect(find.byType(ListTile), findsOneWidget);
     await tester.tap(find.text('Account'));
     expect(tapped, isTrue);
+  });
+
+  testWidgets('Android text popup in an unbounded Row uses Flutter layout', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Row(
+            children: [
+              AdaptivePopupMenuButton.text<String>(
+                label: 'Change',
+                items: const [
+                  AdaptivePopupMenuItem(label: 'Choice', value: 'x'),
+                ],
+                onSelected: (index, item) {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(PopupMenuButton<int>), findsOneWidget);
+    expect(find.byType(AndroidM3EPlatformView), findsNothing);
   });
 
   testWidgets(

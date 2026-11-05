@@ -1,3 +1,7 @@
+## [0.2.13]
+* **FIX**: Android text popup menus now use a Flutter Material fallback when placed in an unbounded layout such as a `Row`, and constrain native views when bounded.
+* **TESTS**: Added regression coverage for a text popup in an unbounded row.
+
 ## [0.2.12]
 * **FIX**: Android adaptive list tiles with styled/custom title, subtitle, leading, or trailing widgets now use Material `ListTile`, retaining the full Flutter layout and interactions rather than failing Compose serialization.
 * **TESTS**: Added regression coverage for a custom list-tile title.
