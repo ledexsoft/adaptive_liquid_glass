@@ -1,13 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_overlay.dart';
 
 /// An adaptive tooltip that renders platform-specific tooltip styles
 ///
 /// On iOS: Uses custom iOS-style tooltip with Cupertino design
-/// On Android: Uses Material Design Tooltip
+/// On Android: Uses a native Compose Material 3 tooltip overlay.
 ///
 /// Example:
 /// ```dart
@@ -89,23 +88,23 @@ class AdaptiveTooltip extends StatelessWidget {
       );
     }
 
-    if (PlatformInfo.isAndroid &&
-        preferBelow &&
-        verticalOffset == null &&
-        padding == null &&
-        margin == null &&
-        waitDuration == null &&
-        showDuration == null &&
-        decoration == null &&
-        textStyle == null &&
-        height == null) {
-      return withAdaptiveMaterialExpressiveTheme(
-        context,
-        m3e.M3ETooltip(message: message, child: child),
+    if (PlatformInfo.isAndroid) {
+      return _AndroidM3ETooltip(
+        message: message,
+        preferBelow: preferBelow,
+        verticalOffset: verticalOffset,
+        padding: padding,
+        margin: margin,
+        height: height,
+        decoration: decoration,
+        textStyle: textStyle,
+        waitDuration: waitDuration,
+        showDuration: showDuration,
+        child: child,
       );
     }
 
-    // Android and fallback - Use Material Design Tooltip
+    // Other platforms use Flutter Material Tooltip.
     return Tooltip(
       message: message,
       preferBelow: preferBelow,
@@ -122,6 +121,107 @@ class AdaptiveTooltip extends StatelessWidget {
       child: child,
     );
   }
+}
+
+class _AndroidM3ETooltip extends StatefulWidget {
+  const _AndroidM3ETooltip({
+    required this.message,
+    required this.preferBelow,
+    required this.verticalOffset,
+    required this.padding,
+    required this.margin,
+    required this.height,
+    required this.decoration,
+    required this.textStyle,
+    required this.waitDuration,
+    required this.showDuration,
+    required this.child,
+  });
+
+  final String message;
+  final bool preferBelow;
+  final double? verticalOffset;
+  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
+  final double? height;
+  final Decoration? decoration;
+  final TextStyle? textStyle;
+  final Duration? waitDuration;
+  final Duration? showDuration;
+  final Widget child;
+
+  @override
+  State<_AndroidM3ETooltip> createState() => _AndroidM3ETooltipState();
+}
+
+class _AndroidM3ETooltipState extends State<_AndroidM3ETooltip> {
+  final _key = GlobalKey();
+  bool _visible = false;
+  bool _disposed = false;
+
+  void _show() async {
+    if (_visible || _disposed) return;
+    final box = _key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final origin = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    final padding =
+        widget.padding?.resolve(Directionality.of(context)) ??
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    final margin =
+        widget.margin?.resolve(Directionality.of(context)) ?? EdgeInsets.zero;
+    final decoration = widget.decoration;
+    Color? background;
+    if (decoration != null) {
+      if (decoration is BoxDecoration) {
+        background = decoration.color;
+      } else {
+        throw FlutterError(
+          'Android native tooltips support BoxDecoration only.',
+        );
+      }
+    }
+    setState(() => _visible = true);
+    await showAndroidM3EOverlay(
+      context: context,
+      component: 'tooltip',
+      terminalEvents: const {'dismissed'},
+      properties: {
+        'message': widget.message,
+        'left': origin.dx,
+        'top': origin.dy,
+        'width': size.width,
+        'height': size.height,
+        'preferBelow': widget.preferBelow,
+        'verticalOffset': widget.verticalOffset ?? 8,
+        'tooltipHeight': widget.height,
+        'padding': [padding.left, padding.top, padding.right, padding.bottom],
+        'margin': [margin.left, margin.top, margin.right, margin.bottom],
+        'backgroundColor': background?.toARGB32(),
+        'textColor': widget.textStyle?.color?.toARGB32(),
+        'fontSize': widget.textStyle?.fontSize,
+        'showDurationMs':
+            (widget.showDuration ?? const Duration(seconds: 2)).inMilliseconds,
+      },
+    );
+    if (mounted) setState(() => _visible = false);
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    key: _key,
+    onLongPress: () =>
+        Future<void>.delayed(widget.waitDuration ?? Duration.zero, _show),
+    onTap: () =>
+        Future<void>.delayed(widget.waitDuration ?? Duration.zero, _show),
+    child: widget.child,
+  );
 }
 
 /// iOS-style tooltip widget

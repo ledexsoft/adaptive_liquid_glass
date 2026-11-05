@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_native_icon.dart';
+import 'android/android_m3e_text_field.dart';
 
 /// An adaptive text form field that renders platform-specific styles
 ///
@@ -34,6 +34,8 @@ class AdaptiveTextFormField extends StatelessWidget {
     this.suffix,
     this.prefixIcon,
     this.suffixIcon,
+    this.nativePrefixIcon,
+    this.nativeSuffixIcon,
     this.onChanged,
     this.onSubmitted,
     this.onTap,
@@ -113,6 +115,12 @@ class AdaptiveTextFormField extends StatelessWidget {
   /// An icon that appears after the editable part of the text field.
   final Widget? suffixIcon;
 
+  /// Native Compose prefix icon for Android-only/custom Material icons.
+  final AndroidM3EIcon? nativePrefixIcon;
+
+  /// Native Compose suffix icon for Android-only/custom Material icons.
+  final AndroidM3EIcon? nativeSuffixIcon;
+
   /// Called when the user initiates a change to the TextField's value.
   final ValueChanged<String>? onChanged;
 
@@ -162,34 +170,56 @@ class AdaptiveTextFormField extends StatelessWidget {
       return _buildCupertinoTextFormField(context);
     }
 
-    if (PlatformInfo.isAndroid && _canUseM3E) {
-      return withAdaptiveMaterialExpressiveTheme(
-        context,
-        FormField<String>(
-          initialValue: controller!.text,
-          validator: validator,
-          onSaved: onSaved,
-          autovalidateMode: autovalidateMode ?? AutovalidateMode.disabled,
-          builder: (field) => m3e.M3ETextField(
-            controller: controller,
-            focusNode: focusNode,
-            label: placeholder,
-            errorText: field.errorText,
-            leading: prefixIcon ?? prefix,
-            trailing: suffixIcon ?? suffix,
-            keyboardType: keyboardType,
-            textInputAction: textInputAction,
-            inputFormatters: inputFormatters,
-            obscureText: obscureText,
-            enabled: enabled,
-            maxLines: maxLines!,
-            onChanged: (value) {
-              field.didChange(value);
-              onChanged?.call(value);
-            },
-            onSubmitted: onSubmitted,
-            onTapOutside: onTapOutside,
-          ),
+    if (PlatformInfo.isAndroid) {
+      final inputDecoration = decoration;
+      return FormField<String>(
+        initialValue: controller?.text ?? initialValue ?? '',
+        validator: validator,
+        onSaved: onSaved,
+        autovalidateMode: autovalidateMode ?? AutovalidateMode.disabled,
+        builder: (field) => AndroidM3ETextField(
+          controller: controller,
+          focusNode: focusNode,
+          initialValue: field.value,
+          label: inputDecoration?.labelText ?? placeholder,
+          placeholder: inputDecoration?.hintText,
+          helperText: inputDecoration?.helperText,
+          errorText: field.errorText ?? inputDecoration?.errorText,
+          prefixText:
+              inputDecoration?.prefixText ??
+              _plainDecorationText(prefix, 'prefix'),
+          suffixText:
+              inputDecoration?.suffixText ??
+              _plainDecorationText(suffix, 'suffix'),
+          prefixIcon: inputDecoration?.prefixIcon ?? prefixIcon,
+          suffixIcon: inputDecoration?.suffixIcon ?? suffixIcon,
+          nativePrefixIcon: nativePrefixIcon,
+          nativeSuffixIcon: nativeSuffixIcon,
+          keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          textCapitalization: textCapitalization,
+          style: style,
+          textAlign: textAlign,
+          maxLines: maxLines,
+          minLines: minLines,
+          maxLength: maxLength,
+          obscureText: obscureText,
+          autocorrect: autocorrect,
+          autofocus: autofocus,
+          enabled: enabled,
+          readOnly: readOnly,
+          padding: inputDecoration?.contentPadding ?? padding,
+          filled: inputDecoration?.filled ?? false,
+          fillColor: inputDecoration?.fillColor,
+          inputFormatters: inputFormatters,
+          autofillHints: autofillHints,
+          onTapOutside: onTapOutside,
+          onChanged: (value) {
+            field.didChange(value);
+            onChanged?.call(value);
+          },
+          onSubmitted: onSubmitted,
+          onTap: onTap,
         ),
       );
     }
@@ -197,21 +227,16 @@ class AdaptiveTextFormField extends StatelessWidget {
     return _buildMaterialTextFormField(context);
   }
 
-  bool get _canUseM3E =>
-      controller != null &&
-      initialValue == null &&
-      decoration == null &&
-      style == null &&
-      minLines == null &&
-      maxLength == null &&
-      maxLines != null &&
-      textAlign == TextAlign.start &&
-      !autofocus &&
-      !readOnly &&
-      onTap == null &&
-      autocorrect &&
-      textCapitalization == TextCapitalization.none &&
-      autofillHints == null;
+  String? _plainDecorationText(Widget? widget, String parameter) {
+    if (widget == null) return null;
+    if (widget is Text && widget.data != null && widget.style == null) {
+      return widget.data;
+    }
+    throw FlutterError(
+      'Android native text fields require $parameter to be plain Text. '
+      'Custom Flutter widget trees cannot cross into Compose.',
+    );
+  }
 
   Widget _buildCupertinoTextFormField(BuildContext context) {
     return FormField<String>(

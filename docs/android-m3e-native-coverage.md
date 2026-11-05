@@ -1,0 +1,50 @@
+# Native Android Material 3 Expressive coverage
+
+Android adaptive controls in this package use the package-owned Jetpack Compose bridge (`AndroidM3EPlatformView` and native Compose overlays). The Flutter `material_3_expressive` dependency and public catalog re-export have been removed. iOS behavior remains on its existing UIKit/Cupertino paths.
+
+## Implemented routes
+
+| Package API | Android implementation | Flutter content or limits |
+|---|---|---|
+| Buttons, icon buttons, switches, checkboxes, radio buttons, sliders | Compose Material 3 Expressive controls | Button content must be serializable text/icons. Focus and hover color overrides on checkbox/radio are not separately mapped. |
+| Button groups, split buttons, toolbars, FABs and FAB menus | Compose expressive layouts and serializable action models | Labels and icons cross the bridge as primitive data and `AndroidM3EIcon` identifiers. |
+| Tabs, segmented controls, navigation rail, app bars, bottom navigation | Compose Material 3 Expressive navigation controls | Scaffold/page structure and arbitrary page content remain Flutter-owned. |
+| Carousels | Official Compose carousel components | Android callers supply `androidItems`; Flutter `children` are used on other platforms. |
+| Badge, divider, progress and loading indicators | Compose Material 3 Expressive components | Badge can decorate Flutter child content. |
+| List tiles and switch list tiles | Compose `ListItem`, `Switch` | Titles/subtitles use plain `Text`; icons must be serializable. |
+| Popup and context menus | Compose `DropdownMenu` in the Android window | Flutter anchors remain Flutter; menu rows are serialized. |
+| Popup menu with custom Flutter child anchor | Compose `DropdownMenu` in the Android window | The anchor remains Flutter; menu rows, images, enabled state, subtitle, and selection are serialized. |
+| Navigation drawer | Compose `ModalNavigationDrawer`, `ModalDrawerSheet`, and `NavigationDrawerItem` through `AdaptiveNavigationDrawer` | Flutter Scaffold keeps `openDrawer()` compatibility and edge gesture initiation; caller-supplied custom drawer widgets remain Flutter content. |
+| Alert/input dialogs, action sheets, date/time pickers | Compose dialogs, official `ModalBottomSheet`, picker controls, and package-owned Android modal host | Callbacks and results cross as serializable events. |
+| Search bars and text fields/form fields | Compose Material 3 text controls | Flutter controllers, formatters, focus, and `FormField` validation are bridged. Prefix/suffix content must be plain text or serializable icons. |
+| Snackbars and tooltips | Compose Material 3 `Snackbar` and `PlainTooltip` in Android overlays | Tooltip anchor is measured by Flutter; Material 3 draws and positions the tooltip. |
+| Cards and form sections | Compose `Card`/surface underneath Flutter content | Arbitrary child widgets remain Flutter-rendered and may not be clipped by the Compose surface itself. |
+| Expansion tile | Compose `ListItem` header and native icon/control; expanded body is Flutter content | Header title/subtitle must be plain `Text`; leading/trailing widgets must be icons. |
+| Pull-to-refresh | Compose M3 Expressive loading indicator | Flutter detects scroll/edge gestures and invokes `onRefresh`; Compose draws the active indicator. |
+| Blur / Liquid Glass | No Android glass effect is claimed; standalone `AdaptiveBlurView` does not draw a Flutter blur on Android, while `AdaptiveCard.glass` uses a native Material surface | Android cannot natively blur Flutter-rendered content behind a platform view. Liquid Glass remains an Apple-platform feature. |
+
+## Native bridge and toolchain
+
+- Android minimum SDK: 24.
+- Compile SDK: 37.
+- Compose Material 3: `1.5.0-rc01`; Compose UI: `1.12.0`.
+- Android Gradle Plugin: 9.1.1; Gradle wrapper: 9.3.1; Kotlin: 2.4.20; JDK: 17+.
+- Flutter: 3.47+; the global Flutter installation used for the example build is 3.47.9.
+
+Compose cannot mount an arbitrary Flutter widget subtree. The APIs that accept content models serialize supported data and fail clearly when an unsupported custom widget is supplied; hybrid surface/layout APIs keep arbitrary child content on Flutter while their Android control or visual surface is native.
+
+## Review against Material 3 Expressive
+
+| Foundation / update | Status | Notes |
+|---|---|---|
+| Expressive color and dynamic color | Applied | Native Compose uses `MaterialExpressiveTheme` and the expressive light scheme. Android 12+ wallpaper colors are enabled by default; callers can disable them with `AdaptiveMaterialExpressiveTheme(dynamicColoring: false)`. Older Android versions use the package's expressive fallback palette. |
+| Expressive motion | Native Compose controls use the M3 system; package-owned hybrid transitions use matching Flutter physics | The Compose theme explicitly selects `MotionScheme.expressive()`, so native Material controls use its spatial and effects specs. Android tab selection/swipe settling and expansion content use Flutter spring simulations with the corresponding M3 spatial token values because their content is Flutter-rendered. Material currently lists Jetpack Compose as available and Flutter as unavailable for its motion system, so these hybrid paths are token-matched Flutter physics, not the official M3 Flutter implementation. Programmatic transitions honor reduced motion; finger-driven swipes retain spring settling. Arbitrary app-owned Flutter child animations do not inherit Compose's spring specs. |
+| Updated and new components | Broad native coverage | The package routes its Android adaptive controls to official Compose Material 3 components, including button groups, split buttons, FAB menus, floating toolbars, carousels, loading/progress indicators, and wide navigation rail. This does not mean every Material component is exposed as an adaptive package API. |
+| Typography | Partial | Components use Compose's Material 3 typography defaults and role styles. The current Compose `MaterialExpressiveTheme` implementation still falls back to `Typography()`; this package does not bundle a distinct expressive font family or a separate emphasized typography scale. |
+| Expanded shape library | Partial | Native components use Compose Material 3 shape defaults and component-specific expressive shapes. The package does not expose the full expanded shape catalog or shape morphing as a public API. |
+
+The package therefore applies the native expressive theme and a broad set of expressive components, but does not reproduce every design-system resource or expose every component in Google's catalog. The typography and full shape-library items remain the main coverage gaps.
+
+## Verification status
+
+The Dart analyzer and example Android debug APK build have passed after the current migration. The local Android AVD remained `offline` in ADB during boot, so native runtime interaction and visual behavior have not been verified on-device.

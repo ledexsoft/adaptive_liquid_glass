@@ -1,8 +1,7 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_native_icon.dart';
+import 'android/android_m3e_overlay.dart';
 
 /// A context menu action item
 class AdaptiveContextMenuAction {
@@ -13,6 +12,7 @@ class AdaptiveContextMenuAction {
     this.icon,
     this.isDestructive = false,
     this.isDisabled = false,
+    this.androidIcon,
   });
 
   /// The title of the action
@@ -29,14 +29,17 @@ class AdaptiveContextMenuAction {
 
   /// Whether this action is disabled
   final bool isDisabled;
+
+  /// Serializable Compose icon for Android when [icon] cannot be mapped.
+  final AndroidM3EIcon? androidIcon;
 }
 
 /// An adaptive context menu that renders platform-specific styles
 ///
 /// On iOS 26+: Uses native UIContextMenu with Liquid Glass effects
 /// On iOS <26: Uses CupertinoContextMenu
-/// On Android: Uses an M3E anchored menu when the app theme is installed above
-/// the root Navigator; otherwise uses a Material popup menu.
+/// On Android: Uses a native Compose `DropdownMenu` anchored at the long-press
+/// position.
 class AdaptiveContextMenu extends StatelessWidget {
   /// Creates an adaptive context menu
   const AdaptiveContextMenu({
@@ -68,7 +71,7 @@ class AdaptiveContextMenu extends StatelessWidget {
       return _buildCupertinoContextMenu(context);
     }
 
-    // Android - Use the expressive anchored menu.
+    // Android - Flutter detects the long press; Compose draws the native menu.
     return _buildAndroidContextMenu(context);
   }
 
@@ -94,75 +97,59 @@ class AdaptiveContextMenu extends StatelessWidget {
   }
 
   Widget _buildAndroidContextMenu(BuildContext context) {
-    if (!hasAdaptiveMaterialExpressiveNavigatorTheme(
-      context,
-      rootNavigator: true,
-    )) {
-      return GestureDetector(
-        onLongPressStart: (details) =>
-            _showAndroidMenu(context, details.globalPosition),
-        child: child,
-      );
-    }
-
-    return m3e.M3EMenu.entries(
-      anchorBuilder: (context, open) =>
-          GestureDetector(onLongPress: open, child: child),
-      entries: [
-        for (final action in actions)
-          m3e.M3EMenuEntry(
-            label: action.title,
-            leading: action.icon is IconData
-                ? Icon(action.icon as IconData)
-                : null,
-            enabled: !action.isDisabled,
-            isDestructive: action.isDestructive,
-            onPressed: action.onPressed,
-          ),
-      ],
+    return GestureDetector(
+      onLongPressStart: (details) =>
+          _showAndroidMenu(context, details.globalPosition),
+      child: child,
     );
   }
 
   void _showAndroidMenu(BuildContext context, Offset anchor) {
-    final screenSize = MediaQuery.sizeOf(context);
-    showMenu<int>(
+    showAndroidM3EOverlay(
       context: context,
-      position: RelativeRect.fromLTRB(
-        anchor.dx,
-        anchor.dy,
-        screenSize.width - anchor.dx,
-        screenSize.height - anchor.dy,
-      ),
-      items: [
-        for (var index = 0; index < actions.length; index++)
-          PopupMenuItem<int>(
-            value: index,
-            enabled: !actions[index].isDisabled,
-            child: Row(
-              children: [
-                if (actions[index].icon is IconData) ...[
-                  Icon(
-                    actions[index].icon as IconData,
-                    color: actions[index].isDestructive
-                        ? Theme.of(context).colorScheme.error
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                Text(
-                  actions[index].title,
-                  style: TextStyle(
-                    color: actions[index].isDestructive
-                        ? Theme.of(context).colorScheme.error
-                        : null,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    ).then((selectedIndex) {
-      if (selectedIndex != null) actions[selectedIndex].onPressed();
-    });
+      component: 'contextMenu',
+      rootNavigator: true,
+      properties: {
+        'anchorX': anchor.dx,
+        'anchorY': anchor.dy,
+        'actions': [
+          for (final action in actions)
+            {
+              'title': action.title,
+              'icon': _nativeIcon(action),
+              'enabled': !action.isDisabled,
+              'destructive': action.isDestructive,
+            },
+        ],
+      },
+      onEvent: (event, value) {
+        if (event == 'selected' &&
+            value is int &&
+            value >= 0 &&
+            value < actions.length) {
+          actions[value].onPressed();
+        }
+      },
+    );
+  }
+
+  String? _nativeIcon(AdaptiveContextMenuAction action) {
+    if (action.androidIcon != null) return action.androidIcon!.name;
+    if (action.icon is AndroidM3EIcon) {
+      return (action.icon as AndroidM3EIcon).name;
+    }
+    if (action.icon is IconData) {
+      return resolveAndroidM3EIcon(
+        child: Icon(action.icon as IconData),
+        nativeIcon: null,
+        parameterName: 'action.androidIcon',
+      );
+    }
+    if (action.icon != null) {
+      throw FlutterError(
+        'Android context-menu icons must be mapped Material icons or AndroidM3EIcon.',
+      );
+    }
+    return null;
   }
 }

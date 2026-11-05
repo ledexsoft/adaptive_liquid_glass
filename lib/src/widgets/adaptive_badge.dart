@@ -1,8 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// An adaptive badge that renders platform-specific badge styles
 ///
@@ -102,27 +101,31 @@ class AdaptiveBadge extends StatelessWidget {
 
     // Android - Use Material Design Badge
     if (PlatformInfo.isAndroid) {
-      if (count != null && label == null && alignment == null && !isLarge) {
-        return withAdaptiveMaterialExpressiveTheme(
-          context,
-          m3e.M3EBadge(
-            count: count,
-            backgroundColor: backgroundColor,
-            foregroundColor: textColor,
-            offset: offset,
-            child: child,
+      final badgeWidth = displayText.isEmpty
+          ? 12.0
+          : (isLarge ? 32.0 : 24.0) + (displayText.length > 2 ? 8.0 : 0.0);
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          child,
+          Align(
+            alignment: alignment ?? AlignmentDirectional.topEnd,
+            child: Transform.translate(
+              offset: offset ?? Offset.zero,
+              child: AndroidM3EPlatformView(
+                component: 'badge',
+                width: badgeWidth,
+                height: isLarge ? 24 : 20,
+                properties: {
+                  'label': displayText,
+                  'backgroundColor': backgroundColor?.toARGB32(),
+                  'textColor': textColor?.toARGB32(),
+                },
+                onEvent: (_, __) {},
+              ),
+            ),
           ),
-        );
-      }
-      return Badge(
-        label: Text(displayText),
-        backgroundColor: backgroundColor,
-        textColor: textColor,
-        isLabelVisible: true,
-        alignment: alignment ?? AlignmentDirectional.topEnd,
-        offset: offset,
-        largeSize: isLarge ? 24 : null,
-        child: child,
+        ],
       );
     }
 

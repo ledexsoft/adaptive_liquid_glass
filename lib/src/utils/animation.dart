@@ -1,11 +1,16 @@
 import 'package:flutter/animation.dart';
 import 'package:flutter/physics.dart';
 
+/// M3 Expressive default spatial spring for component-sized transitions.
+SpringDescription materialExpressiveDefaultSpatialSpring() =>
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 380, ratio: 0.8);
+
+/// M3 Expressive slow spatial spring for full-page movement.
+SpringDescription materialExpressiveSlowSpatialSpring() =>
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 200, ratio: 0.8);
+
 class IOSSpringCurve extends Curve {
-  const IOSSpringCurve({
-    this.stiffness = 100,
-    this.damping = 18,
-  });
+  const IOSSpringCurve({this.stiffness = 100, this.damping = 18});
 
   final double stiffness;
   final double damping;

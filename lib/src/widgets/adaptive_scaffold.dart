@@ -1,15 +1,17 @@
 import 'package:adaptive_liquid_glass/src/widgets/ios26/ios26_native_tab_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
 import '../style/sf_symbol.dart';
 import 'adaptive_app_bar.dart';
+import 'adaptive_app_bar_action.dart';
 import 'adaptive_badge.dart';
 import 'adaptive_bottom_navigation_bar.dart';
 import 'adaptive_button.dart';
+import 'adaptive_navigation_drawer.dart';
 import 'ios26/ios26_scaffold.dart';
+import 'android/android_m3e_native_icon.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// Navigation destination for bottom navigation
 class AdaptiveNavigationDestination {
@@ -135,7 +137,9 @@ class AdaptiveScaffold extends StatefulWidget {
   final bool extendBodyBehindAppBar;
 
   /// A panel displayed to the side of the body, often hidden on mobile.
-  /// On Android, passed directly to the Material Scaffold.
+  /// On Android, use [AdaptiveNavigationDrawer] for native Compose drawer
+  /// content. Other caller-supplied drawer widgets are preserved as custom
+  /// Flutter content.
   /// On iOS/iOS 26+, wrapped with a transparent Material Scaffold for drawer behavior.
   /// Open programmatically via `Scaffold.of(context).openDrawer()`.
   final Widget? drawer;
@@ -181,6 +185,47 @@ class AdaptiveScaffold extends StatefulWidget {
 class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
   final GlobalKey<_MinimizableTabBarState> _tabBarKey =
       GlobalKey<_MinimizableTabBarState>();
+  final GlobalKey<ScaffoldState> _internalScaffoldKey =
+      GlobalKey<ScaffoldState>();
+
+  GlobalKey<ScaffoldState> get _effectiveScaffoldKey =>
+      widget.scaffoldKey ?? _internalScaffoldKey;
+
+  Widget? _drawerForAndroidScaffold(Widget? drawer) {
+    if (!PlatformInfo.isAndroid || drawer is! AdaptiveNavigationDrawer) {
+      return drawer;
+    }
+    return drawer.buildAndroidScaffoldPlaceholder();
+  }
+
+  Color? get _androidDrawerScrimColor {
+    if (widget.drawer is AdaptiveNavigationDrawer ||
+        widget.endDrawer is AdaptiveNavigationDrawer) {
+      return Colors.transparent;
+    }
+    return widget.drawerScrimColor;
+  }
+
+  void _handleAndroidDrawerChanged(bool isOpen, {required bool endDrawer}) {
+    (endDrawer ? widget.onEndDrawerChanged : widget.onDrawerChanged)?.call(
+      isOpen,
+    );
+    if (!isOpen || !PlatformInfo.isAndroid) return;
+    final drawer = endDrawer ? widget.endDrawer : widget.drawer;
+    if (drawer is! AdaptiveNavigationDrawer) return;
+    drawer.showNativeModal(
+      context,
+      isEndDrawer: endDrawer,
+      onClose: () {
+        final scaffold = _effectiveScaffoldKey.currentState;
+        if (endDrawer) {
+          scaffold?.closeEndDrawer();
+        } else {
+          scaffold?.closeDrawer();
+        }
+      },
+    );
+  }
 
   /// Builds the app bar title area, optionally with a subtitle below it.
   ///
@@ -644,34 +689,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               (widget.appBar!.actions != null &&
                   widget.appBar!.actions!.isNotEmpty) ||
               widget.appBar!.leading != null)) {
-        appBar = m3e.M3EAppBar.top(
-          title: _buildAppBarTitle(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            subtitleFontSize: 13,
-            subtitleColor: Theme.of(
-              context,
-            ).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-          ),
-          centerTitle: widget.appBar!.titleWidget != null,
-          actions: widget.appBar!.actions?.map((action) {
-            if (action.title != null) {
-              return m3e.M3EButton.text(
-                onPressed: action.onPressed,
-                child: Text(action.title!),
-              );
-            }
-            return m3e.M3EIconButton(
-              icon:
-                  action.iconWidget ??
-                  (action.icon != null
-                      ? Icon(action.icon!)
-                      : const Icon(Icons.circle)),
-              onPressed: action.onPressed,
-            );
-          }).toList(),
-          leading: widget.appBar!.leading,
-          automaticallyImplyLeading: true,
-        );
+        appBar = _buildAndroidTopAppBar(context);
       }
 
       // Determine which bottom navigation bar to use
@@ -683,49 +701,52 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       }
       // Priority 2: Build from items
       else {
-        bottomNavBar = m3e.M3ENavigationBar(
-          selectedIndex: widget.bottomNavigationBar!.selectedIndex!,
-          onDestinationSelected: widget.bottomNavigationBar!.onTap!,
-          indicatorColor: widget.bottomNavigationBar!.selectedItemColor,
-          destinations: widget.bottomNavigationBar!.items!.map((dest) {
-            Widget iconWidget = _buildNavigationIconWidget(
-              rawIcon: dest.icon,
-              platform: TargetPlatform.android,
-            );
-
-            Widget selectedIconWidget = _buildNavigationIconWidget(
-              rawIcon: dest.selectedIcon ?? dest.icon,
-              platform: TargetPlatform.android,
-            );
-
-            return m3e.M3ENavigationBarDestination(
-              icon: iconWidget,
-              selectedIcon: selectedIconWidget,
-              label: dest.label,
-              badgeCount: dest.badgeCount,
-            );
-          }).toList(),
+        bottomNavBar = AndroidM3EPlatformView(
+          component: 'bottomNavigationBar',
+          height: 80,
+          properties: {
+            'selectedIndex': widget.bottomNavigationBar!.selectedIndex,
+            'selectedColor': widget.bottomNavigationBar!.selectedItemColor
+                ?.toARGB32(),
+            'hideLabels': widget.bottomNavigationBar!.hideLabels,
+            'interactive': widget.bottomNavigationBar!.onTap != null,
+            'destinations': [
+              for (final dest in widget.bottomNavigationBar!.items!)
+                {
+                  'label': dest.label,
+                  'icon': _resolveAndroidNavigationIcon(dest.icon),
+                  'selectedIcon': dest.selectedIcon == null
+                      ? null
+                      : _resolveAndroidNavigationIcon(dest.selectedIcon),
+                  'badgeCount': dest.badgeCount,
+                },
+            ],
+          },
+          onEvent: (event, value) {
+            if (event == 'destinationSelected' && value is int) {
+              widget.bottomNavigationBar!.onTap?.call(value);
+            }
+          },
         );
       }
 
-      return withAdaptiveMaterialExpressiveTheme(
-        context,
-        Scaffold(
-          key: widget.scaffoldKey,
-          appBar: appBar,
-          body: widget.body ?? const SizedBox.shrink(),
-          resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
-          bottomNavigationBar: bottomNavBar,
-          floatingActionButton: widget.floatingActionButton,
-          extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
-          drawer: widget.drawer,
-          endDrawer: widget.endDrawer,
-          drawerScrimColor: widget.drawerScrimColor,
-          onDrawerChanged: widget.onDrawerChanged,
-          onEndDrawerChanged: widget.onEndDrawerChanged,
-          drawerEnableOpenDragGesture: widget.drawerEnableOpenDragGesture,
-          endDrawerEnableOpenDragGesture: widget.endDrawerEnableOpenDragGesture,
-        ),
+      return Scaffold(
+        key: _effectiveScaffoldKey,
+        appBar: appBar,
+        body: widget.body ?? const SizedBox.shrink(),
+        resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
+        bottomNavigationBar: bottomNavBar,
+        floatingActionButton: widget.floatingActionButton,
+        extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
+        drawer: _drawerForAndroidScaffold(widget.drawer),
+        endDrawer: _drawerForAndroidScaffold(widget.endDrawer),
+        drawerScrimColor: _androidDrawerScrimColor,
+        onDrawerChanged: (isOpen) =>
+            _handleAndroidDrawerChanged(isOpen, endDrawer: false),
+        onEndDrawerChanged: (isOpen) =>
+            _handleAndroidDrawerChanged(isOpen, endDrawer: true),
+        drawerEnableOpenDragGesture: widget.drawerEnableOpenDragGesture,
+        endDrawerEnableOpenDragGesture: widget.endDrawerEnableOpenDragGesture,
       );
     }
 
@@ -740,54 +761,116 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     }
     // Priority 2: Build AppBar if widget.appBar is provided (even if empty - for automatic back button)
     else if (widget.appBar != null) {
-      appBar = m3e.M3EAppBar.top(
-        title: _buildAppBarTitle(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          subtitleFontSize: 13,
-          subtitleColor: Theme.of(
-            context,
-          ).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-        ),
-        centerTitle: widget.appBar!.titleWidget != null,
-        actions: widget.appBar!.actions?.map((action) {
-          if (action.title != null) {
-            return m3e.M3EButton.text(
-              onPressed: action.onPressed,
-              child: Text(action.title!),
-            );
-          }
-          return m3e.M3EIconButton(
-            icon:
-                action.iconWidget ??
-                (action.icon != null
-                    ? Icon(action.icon!)
-                    : const Icon(Icons.circle)),
-            onPressed: action.onPressed,
-          );
-        }).toList(),
-        leading: widget.appBar!.leading,
-        automaticallyImplyLeading: true,
-        // automaticallyImplyLeading defaults to true, so back button will show automatically
-      );
+      appBar = _buildAndroidTopAppBar(context);
     }
 
     // Always use Scaffold to ensure Material context
-    return withAdaptiveMaterialExpressiveTheme(
-      context,
-      Scaffold(
-        key: widget.scaffoldKey,
-        appBar: appBar,
-        body: widget.body ?? const SizedBox.shrink(),
-        resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
-        floatingActionButton: widget.floatingActionButton,
-        extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
-        drawer: widget.drawer,
-        endDrawer: widget.endDrawer,
-        drawerScrimColor: widget.drawerScrimColor,
-        onDrawerChanged: widget.onDrawerChanged,
-        onEndDrawerChanged: widget.onEndDrawerChanged,
-        drawerEnableOpenDragGesture: widget.drawerEnableOpenDragGesture,
-        endDrawerEnableOpenDragGesture: widget.endDrawerEnableOpenDragGesture,
+    return Scaffold(
+      key: _effectiveScaffoldKey,
+      appBar: appBar,
+      body: widget.body ?? const SizedBox.shrink(),
+      resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
+      floatingActionButton: widget.floatingActionButton,
+      extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
+      drawer: _drawerForAndroidScaffold(widget.drawer),
+      endDrawer: _drawerForAndroidScaffold(widget.endDrawer),
+      drawerScrimColor: _androidDrawerScrimColor,
+      onDrawerChanged: (isOpen) =>
+          _handleAndroidDrawerChanged(isOpen, endDrawer: false),
+      onEndDrawerChanged: (isOpen) =>
+          _handleAndroidDrawerChanged(isOpen, endDrawer: true),
+      drawerEnableOpenDragGesture: widget.drawerEnableOpenDragGesture,
+      endDrawerEnableOpenDragGesture: widget.endDrawerEnableOpenDragGesture,
+    );
+  }
+
+  PreferredSizeWidget _buildAndroidTopAppBar(BuildContext context) {
+    final config = widget.appBar!;
+    final titleWidget = config.titleWidget;
+    if (titleWidget != null && titleWidget is! Text) {
+      throw FlutterError(
+        'AdaptiveAppBar.titleWidget on Android must be a Text widget for the native Compose app bar.',
+      );
+    }
+    final title =
+        config.title ?? (titleWidget is Text ? titleWidget.data : null) ?? '';
+    final leadingWidget = config.leading;
+    final hasDrawer = widget.drawer != null || widget.endDrawer != null;
+    final leadingAction = leadingWidget is IconButton
+        ? leadingWidget.onPressed
+        : null;
+    final leadingIconChild = leadingWidget is IconButton
+        ? leadingWidget.icon
+        : leadingWidget;
+    final canPop = Navigator.maybeOf(context)?.canPop() ?? false;
+    final leadingIcon = leadingWidget == null
+        ? (hasDrawer
+              ? AndroidM3EIcon.menu.name
+              : (canPop ? AndroidM3EIcon.arrowBack.name : null))
+        : resolveAndroidM3EIcon(
+            child: leadingIconChild,
+            nativeIcon: null,
+            parameterName: 'AdaptiveAppBar.leading',
+          );
+    final actions = config.actions ?? const <AdaptiveAppBarAction>[];
+    final serializedActions = [
+      for (final action in actions)
+        {
+          'title': action.title,
+          'icon': action.title != null
+              ? null
+              : resolveAndroidM3EIcon(
+                  child:
+                      action.iconWidget ??
+                      (action.icon == null ? null : Icon(action.icon)),
+                  nativeIcon: null,
+                  parameterName: 'AdaptiveAppBarAction.iconWidget',
+                ),
+          'tooltip': action.title,
+          'semanticLabel': action.title,
+          'enabled': true,
+        },
+    ];
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(64),
+      child: AndroidM3EPlatformView(
+        component: 'topAppBar',
+        height: 64,
+        properties: {
+          'title': title,
+          'subtitle': config.subtitle,
+          'leadingIcon': leadingIcon,
+          'leadingEnabled': leadingWidget == null || leadingAction != null,
+          'leadingDescription': leadingWidget == null
+              ? (hasDrawer ? 'Open navigation drawer' : 'Navigate back')
+              : null,
+          'backgroundColor': Theme.of(context).colorScheme.surface.toARGB32(),
+          'contentColor':
+              config.tintColor?.toARGB32() ??
+              Theme.of(context).colorScheme.onSurface.toARGB32(),
+          'actions': serializedActions,
+        },
+        onEvent: (event, value) {
+          if (event == 'leadingPressed') {
+            if (leadingAction != null) {
+              leadingAction();
+            } else if (hasDrawer) {
+              if (widget.drawer != null) {
+                _effectiveScaffoldKey.currentState?.openDrawer();
+              } else {
+                _effectiveScaffoldKey.currentState?.openEndDrawer();
+              }
+            } else {
+              Navigator.of(context).maybePop();
+            }
+          }
+          if (event == 'actionPressed' &&
+              value is int &&
+              value >= 0 &&
+              value < actions.length) {
+            actions[value].onPressed();
+          }
+        },
       ),
     );
   }
@@ -844,6 +927,48 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     }
 
     return color != null ? Icon(iconData, color: color) : Icon(iconData);
+  }
+
+  String _resolveAndroidNavigationIcon(dynamic rawIcon) {
+    if (rawIcon is AndroidM3EIcon) return rawIcon.name;
+    if (rawIcon is IconData) {
+      return resolveAndroidM3EIcon(
+        child: Icon(rawIcon),
+        nativeIcon: null,
+        parameterName: 'AdaptiveNavigationDestination.icon',
+      );
+    }
+    if (rawIcon is Icon) {
+      return resolveAndroidM3EIcon(
+        child: rawIcon,
+        nativeIcon: null,
+        parameterName: 'AdaptiveNavigationDestination.icon',
+      );
+    }
+    if (rawIcon is String) {
+      final symbolAliases = <String, AndroidM3EIcon>{
+        'house': AndroidM3EIcon.home,
+        'house.fill': AndroidM3EIcon.home,
+        'person.fill': AndroidM3EIcon.person,
+        'magnifyingglass': AndroidM3EIcon.search,
+        'bell': AndroidM3EIcon.notifications,
+        'bell.fill': AndroidM3EIcon.notifications,
+        'message.fill': AndroidM3EIcon.message,
+        'gearshape': AndroidM3EIcon.settings,
+        'gearshape.fill': AndroidM3EIcon.settings,
+        'info.circle': AndroidM3EIcon.info,
+        'info.circle.fill': AndroidM3EIcon.info,
+      };
+      final alias = symbolAliases[rawIcon];
+      if (alias != null) return alias.name;
+      for (final icon in AndroidM3EIcon.values) {
+        if (icon.name == rawIcon) return icon.name;
+      }
+    }
+    throw FlutterError(
+      'AdaptiveScaffold Android navigation requires a serializable Material '
+      'icon. Use AndroidM3EIcon, a supported IconData, or an enum name string.',
+    );
   }
 }
 

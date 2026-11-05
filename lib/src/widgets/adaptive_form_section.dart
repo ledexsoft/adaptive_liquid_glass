@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
+import 'package:flutter/rendering.dart';
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// An adaptive form section widget that displays a group of form rows with
 /// optional header and footer.
@@ -97,67 +97,67 @@ class AdaptiveFormSection extends StatelessWidget {
       return _buildIOSFormSection(context);
     }
     if (PlatformInfo.isAndroid) {
-      if (backgroundColor == null && decoration == null) {
-        return withAdaptiveMaterialExpressiveTheme(
-          context,
-          Builder(
-            builder: (context) {
-              final expressiveTheme = m3e.M3ETheme.of(context);
-              final content = m3e.M3ECard(
-                variant: insetGrouped
-                    ? m3e.M3ECardVariant.elevated
-                    : m3e.M3ECardVariant.filled,
-                padding: EdgeInsets.zero,
-                clipBehavior: clipBehavior,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: children,
-                ),
-              );
-              return Padding(
-                padding: margin,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (header != null)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          left: 16,
-                          right: 16,
-                          bottom: 8,
-                        ),
-                        child: DefaultTextStyle(
-                          style: expressiveTheme.typeScale.titleSmall.copyWith(
-                            color: expressiveTheme.colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          child: header!,
-                        ),
-                      ),
-                    content,
-                    if (footer != null)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          left: 16,
-                          right: 16,
-                          top: 8,
-                        ),
-                        child: DefaultTextStyle(
-                          style: expressiveTheme.typeScale.bodySmall.copyWith(
-                            color: expressiveTheme.colorScheme.onSurfaceVariant,
-                          ),
-                          child: footer!,
-                        ),
-                      ),
-                  ],
-                ),
-              );
-            },
+      final theme = Theme.of(context);
+      final radius = insetGrouped ? 12.0 : 0.0;
+      final background =
+          backgroundColor ??
+          decoration?.color ??
+          (insetGrouped
+              ? theme.colorScheme.surfaceContainerLow
+              : theme.colorScheme.surfaceContainerHighest);
+      final content = Stack(
+        children: [
+          Positioned.fill(
+            child: AndroidM3EPlatformView(
+              component: 'cardSurface',
+              hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+              properties: {
+                'color': background.toARGB32(),
+                'elevation': insetGrouped ? 1.0 : 0.0,
+                'radius': radius,
+                'clip': clipBehavior != Clip.none,
+              },
+              onEvent: (_, __) {},
+            ),
           ),
-        );
-      }
-      return _buildMaterialFormSection(context);
+          Column(mainAxisSize: MainAxisSize.min, children: children),
+        ],
+      );
+      return Padding(
+        padding: margin,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (header != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+                child: DefaultTextStyle(
+                  style: theme.textTheme.titleSmall!.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  child: header!,
+                ),
+              ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(radius),
+              clipBehavior: clipBehavior,
+              child: content,
+            ),
+            if (footer != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
+                child: DefaultTextStyle(
+                  style: theme.textTheme.bodySmall!.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  child: footer!,
+                ),
+              ),
+          ],
+        ),
+      );
     }
     return _buildMaterialFormSection(context);
   }

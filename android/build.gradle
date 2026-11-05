@@ -8,9 +8,10 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.3.0'
-        // Match the Kotlin Gradle Plugin version declared by Flutter apps.
-        classpath 'org.jetbrains.kotlin.plugin.compose:org.jetbrains.kotlin.plugin.compose.gradle.plugin:2.1.0'
+        classpath 'com.android.tools.build:gradle:9.1.1'
+        // Keep the Compose compiler plugin aligned with the Kotlin toolchain
+        // required by Material 3 Expressive 1.5.
+        classpath 'org.jetbrains.kotlin.plugin.compose:org.jetbrains.kotlin.plugin.compose.gradle.plugin:2.4.20'
     }
 }
 
@@ -26,15 +27,15 @@ apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 
 android {
     namespace 'com.ledexsoft.adaptive_liquid_glass'
-    compileSdk 35
+    compileSdk = 37
 
     buildFeatures {
-        compose true
+        compose = true
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 
     sourceSets {
@@ -42,18 +43,19 @@ android {
     }
 
     defaultConfig {
-        minSdk 21
+        minSdk = 24
     }
 }
 
 dependencies {
-    implementation 'androidx.compose.material3:material3:1.4.0'
-    implementation 'androidx.compose.ui:ui:1.8.2'
+    implementation 'androidx.compose.material3:material3:1.5.0-rc01'
+    implementation 'androidx.compose.material:material-icons-extended:1.7.8'
+    implementation 'androidx.compose.ui:ui:1.12.0'
 }
 
-// Built-in Kotlin (Flutter 3.44+): KGP lo aplica Flutter, no este plugin.
+// AGP 9 built-in Kotlin; the Compose compiler plugin above enables Compose compilation.
 kotlin {
     compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
     }
 }

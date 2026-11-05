@@ -16,7 +16,9 @@ String _colorToRgbaHex(Color color) {
 ///
 /// - On iOS 26+: Uses native UIVisualEffectView with systemUltraThinMaterial
 /// - On iOS <26: Uses BackdropFilter with ImageFilter.blur
-/// - On Android: Uses BackdropFilter with ImageFilter.blur
+/// - On Android: Displays the child without a simulated Flutter blur. Android
+///   cannot natively blur Flutter-rendered content behind this widget.
+///   Use `AdaptiveCard.glass` for a native Material surface instead.
 class AdaptiveBlurView extends StatelessWidget {
   const AdaptiveBlurView({
     super.key,
@@ -29,9 +31,9 @@ class AdaptiveBlurView extends StatelessWidget {
   /// The widget to display on top of the blur effect
   final Widget child;
 
-  /// The blur style (iOS only)
+  /// The blur style (Apple platforms)
   /// On iOS 26+, uses UIBlurEffect styles
-  /// On iOS <26 and Android, uses BackdropFilter
+  /// On iOS <26, uses BackdropFilter. Ignored on Android.
   final BlurStyle blurStyle;
 
   /// Border radius for the blur view (optional)
@@ -64,7 +66,13 @@ class AdaptiveBlurView extends StatelessWidget {
       );
     }
 
-    // iOS <26 and Android use Flutter Liquid Glass effect
+    // A Flutter BackdropFilter here would imitate an Apple glass effect and
+    // cannot use Android's native RenderEffect to blur Flutter content behind
+    // this widget. Keep the Android path honest; callers can use
+    // AdaptiveCard.glass for a native Material surface.
+    if (PlatformInfo.isAndroid) return child;
+
+    // iOS <26 uses a Flutter blur approximation for older system versions.
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.zero,
       child: Stack(
@@ -428,7 +436,8 @@ class MacosNativeBlurViewState extends State<MacosNativeBlurView> {
     // it, use it; otherwise default to 0 (the view clips its own corners).
     final r = widget.borderRadius;
     if (r == null) return 0;
-    final allSame = r.topLeft.x == r.topRight.x &&
+    final allSame =
+        r.topLeft.x == r.topRight.x &&
         r.topLeft.x == r.bottomLeft.x &&
         r.topLeft.x == r.bottomRight.x &&
         r.topLeft.y == r.topRight.y &&
@@ -437,9 +446,8 @@ class MacosNativeBlurViewState extends State<MacosNativeBlurView> {
     return allSame ? r.topLeft.x.round() : 0;
   }
 
-  int? get _tintArgb => widget.tintColor == null
-      ? null
-      : (_colorToArgb(widget.tintColor!));
+  int? get _tintArgb =>
+      widget.tintColor == null ? null : (_colorToArgb(widget.tintColor!));
 
   static int _colorToArgb(Color c) {
     final r = (c.r * 255).round().clamp(0, 255);

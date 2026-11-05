@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_native_icon.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// An adaptive list tile with a trailing switch.
 ///
@@ -21,6 +21,7 @@ class AdaptiveSwitchListTile extends StatelessWidget {
     this.activeColor,
     this.enabled = true,
     this.secondary,
+    this.androidLeadingIcon,
   });
 
   /// A widget to display before the title.
@@ -50,6 +51,10 @@ class AdaptiveSwitchListTile extends StatelessWidget {
   /// Optional widget to show after the title (deprecated by Material in favor
   /// of [trailing], kept for API symmetry with ListTile).
   final Widget? secondary;
+
+  /// Native Android icon for Compose. Use this when [leading] is not a
+  /// standard Flutter Material [Icon].
+  final AndroidM3EIcon? androidLeadingIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -102,24 +107,58 @@ class AdaptiveSwitchListTile extends StatelessWidget {
       );
     }
 
-    final Text? titleText = title is Text ? title as Text : null;
-    final Text? subtitleText = subtitle is Text ? subtitle as Text : null;
-    if (PlatformInfo.isAndroid &&
-        activeColor == null &&
-        _isM3EText(titleText) &&
-        (subtitle == null || _isM3EText(subtitleText))) {
-      return withAdaptiveMaterialExpressiveTheme(
-        context,
-        m3e.M3EListItem(
-          headline: titleText!.data!,
-          supportingText: subtitleText?.data,
-          leading: leading,
-          trailing: m3e.M3ESwitch(
-            value: value,
-            onChanged: enabled ? onChanged : null,
-          ),
-          onTap: enabled ? onTap : null,
-        ),
+    if (PlatformInfo.isAndroid) {
+      final titleText = title is Text ? title as Text : null;
+      final subtitleText = subtitle is Text ? subtitle as Text : null;
+      if (titleText?.data == null || titleText!.style != null) {
+        throw FlutterError(
+          'Android AdaptiveSwitchListTile uses a native Compose ListItem. '
+          'Pass a plain Text title so it can be serialized.',
+        );
+      }
+      if (subtitle != null &&
+          (subtitleText?.data == null || subtitleText!.style != null)) {
+        throw FlutterError(
+          'Android AdaptiveSwitchListTile requires subtitle to be a plain Text.',
+        );
+      }
+      if (secondary != null) {
+        throw FlutterError(
+          'Android AdaptiveSwitchListTile cannot render the deprecated '
+          'secondary widget in Compose; use androidLeadingIcon or omit it.',
+        );
+      }
+      final iconName = androidLeadingIcon != null
+          ? androidLeadingIcon!.name
+          : leading is Icon && (leading as Icon).icon != null
+          ? resolveAndroidM3EIcon(
+              child: leading,
+              nativeIcon: null,
+              parameterName: 'androidLeadingIcon',
+            )
+          : null;
+      if (leading != null && leading is! Icon && androidLeadingIcon == null) {
+        throw FlutterError(
+          'Android AdaptiveSwitchListTile requires a serializable leading icon. '
+          'Pass androidLeadingIcon: AndroidM3EIcon.<value>.',
+        );
+      }
+      return AndroidM3EPlatformView(
+        component: 'switchListTile',
+        height: subtitleText == null ? 72 : 88,
+        properties: {
+          'title': titleText.data,
+          'subtitle': subtitleText?.data,
+          'leadingIcon': iconName,
+          'value': value,
+          'enabled': enabled,
+          'activeColor': activeColor?.toARGB32(),
+          'hasOnTap': onTap != null,
+        },
+        onEvent: (event, value) {
+          if (event == 'changed' && value is bool) onChanged?.call(value);
+          if (event == 'tapped') onTap?.call();
+        },
       );
     }
 
@@ -142,13 +181,4 @@ class AdaptiveSwitchListTile extends StatelessWidget {
     if (widget is Text) return widget.data;
     return null;
   }
-
-  bool _isM3EText(Text? text) =>
-      text != null &&
-      text.data != null &&
-      text.style == null &&
-      text.textAlign == null &&
-      text.maxLines == null &&
-      text.overflow == null &&
-      text.semanticsLabel == null;
 }

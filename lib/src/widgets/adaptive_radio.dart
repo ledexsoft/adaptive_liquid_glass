@@ -82,37 +82,23 @@ class AdaptiveRadio<T> extends StatelessWidget {
 
     // Android - Use Material Design Radio
     if (PlatformInfo.isAndroid) {
-      if (focusColor == null && hoverColor == null) {
-        return AndroidM3EPlatformView(
-          component: 'radio',
-          width: 48,
-          height: 48,
-          properties: {
-            'selected': value == groupValue,
-            'toggleable': toggleable,
-            'enabled': onChanged != null,
-            'hasCallback':
-                onChanged != null && (value != groupValue || toggleable),
-            'activeColor': activeColor?.toARGB32(),
-          },
-          onEvent: (event, nextValue) {
-            if (event == 'changed' && nextValue is bool) {
-              onChanged?.call(nextValue ? value : null);
-            }
-          },
-        );
-      }
-      // ignore: deprecated_member_use
-      return Radio<T>(
-        value: value,
-        // ignore: deprecated_member_use
-        groupValue: groupValue,
-        // ignore: deprecated_member_use
-        onChanged: onChanged,
-        activeColor: activeColor,
-        focusColor: focusColor,
-        hoverColor: hoverColor,
-        toggleable: toggleable,
+      return AndroidM3EPlatformView(
+        component: 'radio',
+        width: 48,
+        height: 48,
+        properties: {
+          'selected': value == groupValue,
+          'toggleable': toggleable,
+          'enabled': onChanged != null,
+          'hasCallback':
+              onChanged != null && (value != groupValue || toggleable),
+          'activeColor': activeColor?.toARGB32(),
+        },
+        onEvent: (event, nextValue) {
+          if (event == 'changed' && nextValue is bool) {
+            onChanged?.call(nextValue ? value : null);
+          }
+        },
       );
     }
 

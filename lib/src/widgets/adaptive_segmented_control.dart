@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
 import 'ios26/ios26_segmented_control.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_platform_view.dart';
+import 'android/android_m3e_native_icon.dart';
 
 /// An adaptive segmented control that renders platform-specific styles
 ///
@@ -91,37 +91,48 @@ class AdaptiveSegmentedControl extends StatelessWidget {
 
     // Android - Use Material SegmentedButton
     if (PlatformInfo.isAndroid) {
-      if (enabled &&
-          labels.length >= 2 &&
-          labels.length <= 5 &&
-          sfSymbols == null &&
-          color == null &&
-          height == 36.0 &&
-          !shrinkWrap &&
-          iconSize == null &&
-          iconColor == null &&
-          textColor == null &&
-          selectedTextColor == null) {
-        final selected = {selectedIndex.clamp(0, labels.length - 1).toInt()};
-        return withAdaptiveMaterialExpressiveTheme(
-          context,
-          m3e.M3ESegmentedButton<int>(
-            selected: selected,
-            onSelectionChanged: (values) {
-              if (values.isNotEmpty) onValueChanged(values.first);
-            },
-            segments: [
-              for (var index = 0; index < labels.length; index++)
-                m3e.M3ESegment<int>(value: index, label: labels[index]),
-            ],
-          ),
+      final nativeIcons = sfSymbols?.map((symbol) {
+        if (symbol is AndroidM3EIcon) return symbol.name;
+        if (symbol is IconData) {
+          return resolveAndroidM3EIcon(
+            child: Icon(symbol),
+            nativeIcon: null,
+            parameterName: 'sfSymbols',
+          );
+        }
+        if (symbol is String) {
+          for (final icon in AndroidM3EIcon.values) {
+            if (icon.name == symbol) return icon.name;
+          }
+        }
+        throw FlutterError(
+          'Android segmented-control icons must use a mapped Material '
+          'IconData or AndroidM3EIcon value.',
         );
-      }
-      return _buildMaterialSegmentedButton(context);
+      }).toList();
+      final itemCount = nativeIcons?.length ?? labels.length;
+      if (itemCount == 0) return const SizedBox.shrink();
+      return SizedBox(
+        height: height,
+        child: AndroidM3EPlatformView(
+          component: 'segmentedButton',
+          properties: {
+            'labels': labels,
+            'icons': nativeIcons,
+            'selectedIndex': selectedIndex.clamp(0, labels.length - 1),
+            'enabled': enabled,
+            'height': height,
+            'selectedColor': color?.toARGB32(),
+          },
+          onEvent: (event, value) {
+            if (event == 'selected' && value is int) onValueChanged(value);
+          },
+        ),
+      );
     }
 
-    // Fallback
-    return _buildCupertinoSegmentedControl(context);
+    // Desktop/web fallback
+    return _buildMaterialSegmentedButton(context);
   }
 
   Widget _buildCupertinoSegmentedControl(BuildContext context) {

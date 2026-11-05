@@ -11,7 +11,7 @@
 /// - iOS version-specific widget rendering
 /// - Native iOS 26 designs following Apple's Human Interface Guidelines
 /// - Seamless fallback to appropriate widgets for older iOS versions
-/// - Material 3 Expressive on Android, with the complete expressive catalog
+/// - Native Android Material 3 Expressive widgets where an adaptive wrapper exists
 ///
 /// ## Usage
 ///
@@ -37,21 +37,21 @@ export 'src/utils/animation.dart';
 export 'src/style/sf_symbol.dart';
 export 'src/theme/adaptive_material_expressive_theme.dart';
 
-// Material 3 Expressive catalog and design tokens. Consumers still depend on
-// and import only adaptive_liquid_glass; adaptive widgets select M3E on Android.
-export 'package:material_3_expressive/material_3_expressive.dart';
-
 // Widgets
 export 'src/widgets/adaptive_app.dart';
 export 'src/widgets/adaptive_app_bar.dart';
 export 'src/widgets/adaptive_bottom_navigation_bar.dart';
 export 'src/widgets/adaptive_button.dart';
+export 'src/widgets/adaptive_button_group.dart';
+export 'src/widgets/android/android_m3e_native_icon.dart';
+export 'src/widgets/adaptive_carousel.dart';
 export 'src/widgets/adaptive_switch.dart';
 export 'src/widgets/adaptive_checkbox.dart';
 export 'src/widgets/adaptive_radio.dart';
 export 'src/widgets/adaptive_card.dart';
 export 'src/widgets/adaptive_badge.dart';
 export 'src/widgets/adaptive_tooltip.dart';
+export 'src/widgets/adaptive_toolbar.dart';
 export 'src/widgets/adaptive_slider.dart';
 export 'src/widgets/adaptive_segmented_control.dart';
 export 'src/widgets/adaptive_alert_dialog.dart';
@@ -60,6 +60,7 @@ export 'src/widgets/adaptive_context_menu.dart';
 export 'src/widgets/adaptive_scaffold.dart';
 export 'src/widgets/adaptive_app_bar_action.dart';
 export 'src/widgets/adaptive_snackbar.dart';
+export 'src/widgets/adaptive_split_button.dart';
 export 'src/widgets/adaptive_date_picker.dart';
 export 'src/widgets/adaptive_time_picker.dart';
 export 'src/widgets/adaptive_list_tile.dart';
@@ -67,13 +68,20 @@ export 'src/widgets/adaptive_text_field.dart';
 export 'src/widgets/adaptive_text_form_field.dart';
 export 'src/widgets/adaptive_tab_view.dart';
 export 'src/widgets/adaptive_floating_action_button.dart';
+export 'src/widgets/adaptive_extended_floating_action_button.dart';
+export 'src/widgets/adaptive_fab_menu.dart';
+export 'src/widgets/adaptive_icon_button.dart';
 export 'src/widgets/adaptive_form_section.dart';
 export 'src/widgets/adaptive_expansion_tile.dart';
 export 'src/widgets/adaptive_blur_view.dart';
 export 'src/widgets/adaptive_divider.dart';
 export 'src/widgets/adaptive_search_bar.dart';
 export 'src/widgets/adaptive_switch_list_tile.dart';
+export 'src/widgets/adaptive_navigation_rail.dart';
+export 'src/widgets/adaptive_navigation_drawer.dart';
 export 'src/widgets/adaptive_progress_indicator.dart';
+export 'src/widgets/adaptive_loading_indicator.dart';
+export 'src/widgets/adaptive_refresh_indicator.dart';
 export 'src/widgets/adaptive_action_sheet.dart';
 
 // iOS 26 specific widgets (for advanced usage)

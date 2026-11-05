@@ -1,14 +1,16 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
+import 'package:flutter/physics.dart';
 import 'package:adaptive_liquid_glass/src/platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import '../utils/animation.dart';
+import 'android/android_m3e_native_icon.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// A platform-adaptive expansion tile widget that provides expandable/collapsible content.
 ///
 /// - On iOS: Creates a custom Cupertino-style expansion tile with chevron icon
-/// - On Android: Uses an M3E expandable item when supported by its options, and
-///   otherwise uses Material [ExpansionTile].
+/// - On Android: Uses a Compose Material 3 Expressive list item header; children
+///   remain Flutter widgets so callers can supply arbitrary content.
 ///
 /// Example:
 /// ```dart
@@ -119,9 +121,10 @@ class AdaptiveExpansionTile extends StatefulWidget {
 }
 
 class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late bool _isExpanded;
   late AnimationController _animationController;
+  late AnimationController _androidExpansionController;
   late Animation<double> _iconTurns;
 
   @override
@@ -130,6 +133,10 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
     _isExpanded = widget.initiallyExpanded;
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _androidExpansionController = AnimationController.unbounded(
+      value: widget.initiallyExpanded ? 1 : 0,
       vsync: this,
     );
     _iconTurns = _animationController.drive(
@@ -146,6 +153,7 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
   @override
   void dispose() {
     _animationController.dispose();
+    _androidExpansionController.dispose();
     super.dispose();
   }
 
@@ -154,7 +162,23 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
 
     setState(() {
       _isExpanded = !_isExpanded;
-      if (_isExpanded) {
+      if (PlatformInfo.isAndroid) {
+        final target = _isExpanded ? 1.0 : 0.0;
+        if (MediaQuery.of(context).disableAnimations) {
+          _androidExpansionController
+            ..stop()
+            ..value = target;
+        } else {
+          _androidExpansionController.animateWith(
+            SpringSimulation(
+              materialExpressiveDefaultSpatialSpring(),
+              _androidExpansionController.value,
+              target,
+              _androidExpansionController.velocity,
+            ),
+          );
+        }
+      } else if (_isExpanded) {
         _animationController.forward();
       } else {
         _animationController.reverse();
@@ -168,74 +192,106 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
     if (PlatformInfo.isIOS) {
       return _buildIOSExpansionTile(context);
     }
-    if (PlatformInfo.isAndroid && _canUseM3E) {
-      final titleText = widget.title as Text;
-      final subtitleText = widget.subtitle is Text
-          ? widget.subtitle as Text
-          : null;
-      return withAdaptiveMaterialExpressiveTheme(
-        context,
-        m3e.M3EExpandableList(
-          data: [
-            m3e.M3EExpandableData(
-              title: titleText.data!,
-              titleStyle: titleText.style == null ? null : [titleText.style!],
-              subtitle: subtitleText?.data,
-              subtitleStyle: subtitleText?.style == null
-                  ? null
-                  : [subtitleText!.style!],
-              subtitleMaxLines: subtitleText?.maxLines,
-              leading: widget.leading,
-              trailing: widget.trailing,
-              expanded: m3e.M3EExpandableExpanded.content(
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment:
-                      widget.expandedCrossAxisAlignment ??
-                      CrossAxisAlignment.stretch,
-                  children: widget.children,
-                ),
-              ),
-            ),
-          ],
-          initiallyExpanded: widget.initiallyExpanded ? const {0} : const {},
-          onExpansionChanged: (index, {required isExpanded}) {
-            widget.onExpansionChanged?.call(isExpanded);
-          },
-        ),
-      );
+    if (PlatformInfo.isAndroid) {
+      return _buildAndroidExpansionTile(context);
     }
     return _buildMaterialExpansionTile(context);
   }
 
-  bool get _canUseM3E =>
-      widget.title is Text &&
-      (widget.title as Text).data != null &&
-      (widget.title as Text).textAlign == null &&
-      (widget.title as Text).maxLines == null &&
-      (widget.title as Text).overflow == null &&
-      (widget.title as Text).semanticsLabel == null &&
-      (widget.subtitle == null ||
-          (widget.subtitle is Text &&
-              (widget.subtitle as Text).data != null &&
-              (widget.subtitle as Text).textAlign == null &&
-              (widget.subtitle as Text).overflow == null &&
-              (widget.subtitle as Text).semanticsLabel == null)) &&
-      widget.enabled &&
-      !widget.maintainState &&
-      widget.tilePadding == null &&
-      widget.childrenPadding == null &&
-      widget.backgroundColor == null &&
-      widget.collapsedBackgroundColor == null &&
-      widget.textColor == null &&
-      widget.collapsedTextColor == null &&
-      widget.iconColor == null &&
-      widget.collapsedIconColor == null &&
-      widget.shape == null &&
-      widget.collapsedShape == null &&
-      widget.clipBehavior == Clip.none &&
-      widget.expandedAlignment == null &&
-      widget.expandedCrossAxisAlignment == null;
+  Widget _buildAndroidExpansionTile(BuildContext context) {
+    String text(Widget value, String field) {
+      if (value is Text && value.data != null) return value.data!;
+      throw FlutterError(
+        'Android native expansion tiles require $field to be plain Text.',
+      );
+    }
+
+    String? iconName(Widget? value, String field) {
+      if (value == null) return null;
+      if (value is Icon && value.icon != null) {
+        return resolveAndroidM3EIcon(
+          child: value,
+          nativeIcon: null,
+          parameterName: field,
+        );
+      }
+      throw FlutterError(
+        'Android native expansion tiles require $field to be an Icon.',
+      );
+    }
+
+    final theme = Theme.of(context);
+    final titleText = widget.title as Text?;
+    final subtitleText = widget.subtitle as Text?;
+    final headerHeight = widget.subtitle == null ? 64.0 : 80.0;
+    final header = AndroidM3EPlatformView(
+      component: 'expansionTile',
+      height: headerHeight,
+      properties: {
+        'title': text(widget.title, 'title'),
+        'subtitle': widget.subtitle == null
+            ? null
+            : text(widget.subtitle!, 'subtitle'),
+        'leadingIcon': iconName(widget.leading, 'leading'),
+        'trailingIcon': iconName(widget.trailing, 'trailing'),
+        'expanded': _isExpanded,
+        'enabled': widget.enabled,
+        'primaryColor': theme.colorScheme.primary.toARGB32(),
+        'textColor': (titleText?.style?.color ?? widget.textColor)?.toARGB32(),
+        'subtitleColor': subtitleText?.style?.color?.toARGB32(),
+        'iconColor': (widget.iconColor ?? widget.collapsedIconColor)
+            ?.toARGB32(),
+        'backgroundColor':
+            (widget.backgroundColor ?? widget.collapsedBackgroundColor)
+                ?.toARGB32(),
+      },
+      onEvent: (event, _) {
+        if (event == 'tapped') _handleTap();
+      },
+    );
+    final children = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment:
+          widget.expandedCrossAxisAlignment ?? CrossAxisAlignment.stretch,
+      children: [
+        if (widget.childrenPadding != null)
+          Padding(
+            padding: widget.childrenPadding!,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: widget.children,
+            ),
+          )
+        else
+          ...widget.children,
+      ],
+    );
+    return Padding(
+      padding: widget.tilePadding ?? EdgeInsets.zero,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          header,
+          AnimatedBuilder(
+            animation: _androidExpansionController,
+            child: TickerMode(
+              enabled: _isExpanded || widget.maintainState,
+              child: children,
+            ),
+            builder: (context, child) => ClipRect(
+              child: Align(
+                alignment: Alignment.topCenter,
+                heightFactor: _androidExpansionController.value
+                    .clamp(0.0, double.infinity)
+                    .toDouble(),
+                child: child,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildIOSExpansionTile(BuildContext context) {
     final isDark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;

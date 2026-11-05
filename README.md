@@ -3,7 +3,7 @@
 [![CI](https://github.com/ledexsoft/adaptive_liquid_glass/workflows/CI/badge.svg)](https://github.com/ledexsoft/adaptive_liquid_glass/actions)
 [![Release](https://github.com/ledexsoft/adaptive_liquid_glass/workflows/Release/badge.svg)](https://github.com/ledexsoft/adaptive_liquid_glass/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Flutter](https://img.shields.io/badge/Flutter-%3E%3D3.44.0-blue.svg)](https://flutter.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-%3E%3D3.47.0-blue.svg)](https://flutter.dev)
 
 **Widgets adaptativos por plataforma para Flutter, listos para usar.**
 
@@ -49,32 +49,41 @@ Escribe tu app **una sola vez** y los componentes (botones, menús, alertas, bar
 ## ✅ Requisitos
 
 - Tener **Flutter** instalado (`flutter --version` en una terminal debe responder).
-- Flutter **3.44.0 o superior** y Dart **3.12.0 o superior**.
+- Flutter **3.47.0 o superior** y Dart **3.12.0 o superior**.
 - Saber crear un proyecto (`flutter create mi_app`).
 - Nada más. No necesitas saber nada de Swift, Kotlin ni UIKit.
 
 ### Material 3 Expressive en Android
 
-Los controles adaptativos Android con equivalencia segura (`AdaptiveButton` de texto, `AdaptiveSwitch`, `AdaptiveCheckbox`, `AdaptiveRadio` y `AdaptiveSlider`) se dibujan con vistas nativas Jetpack Compose y Material 3 estable 1.4; las opciones personalizadas que Compose no puede representar conservan la ruta Flutter. Otras adaptaciones usan el catálogo Flutter `material_3_expressive` cuando existe una equivalencia. iOS conserva sus rutas Liquid Glass/Cupertino. El paquete reexporta el catálogo M3E Flutter, así que la app no necesita añadir ni importar otra dependencia. `AdaptiveApp` instala automáticamente el tema y las localizaciones que requieren esos componentes. La integración conserva Flutter 3.44/Dart 3.12 y Android API 21.
+Los controles Android del paquete se implementan con Jetpack Compose y **Material 3 Expressive nativo**: botones, selecciones, sliders, FABs, menús, rail, toolbar, pestañas, carrusel, listas, campos de texto, diálogos, selectores, snackbars, tooltips e indicadores. La capa Compose usa `MaterialExpressiveTheme`; el paquete ya no depende ni reexporta widgets Flutter de `material_3_expressive`. iOS mantiene sus rutas Liquid Glass/Cupertino.
 
-La integración nativa usa `MaterialTheme` estable con tokens de color dinámicos y formas expresivas. `MaterialExpressiveTheme`, la API oficial nueva para el tema expresivo nativo, aún pertenece a la línea Material 3 1.5 prerelease y no se incluye en esta configuración estable.
+La ruta nativa requiere Flutter 3.47+, Android `minSdk 24`, `compileSdk 37`, JDK 17+, AGP 9.1.1, Gradle 9.3.1 y Kotlin 2.4.20. El plugin integra Material 3 Compose 1.5.0-rc01, que aporta `MaterialExpressiveTheme` y los componentes expresivos usados aquí.
 
-Para un componente M3E sin wrapper adaptativo propio, usa `AdaptiveMaterialExpressive` y ofrece una alternativa para las demás plataformas:
+En Android, `AdaptiveBlurView` no dibuja un blur de Flutter para imitar Liquid Glass: pasa el contenido sin modificar porque esa API no puede desenfocar nativamente el contenido Flutter que queda detrás. `AdaptiveCard.glass` ofrece una superficie Material nativa.
+
+`AdaptiveCarousel` usa los carruseles oficiales de Compose en Android. Declara `androidItems` con datos e iconos `AndroidM3EIcon`; los `Widget` de Flutter no se pueden insertar en un árbol Compose nativo. `AdaptiveSplitButton` recibe `AdaptiveSplitButtonItem`, `AdaptiveToolbar` recibe `AdaptiveToolbarAction` y `AdaptiveButtonGroup` recibe `AdaptiveButtonGroupAction` con iconos serializables. Los menús popup con hijo personalizado mantienen el hijo Flutter como ancla y dibujan el menú en Compose.
+
+Para un drawer Android nativo, usa `AdaptiveNavigationDrawer` en `AdaptiveScaffold.drawer` o `endDrawer`, con destinos e iconos serializables. Flutter conserva compatibilidad con `ScaffoldState.openDrawer()` y el gesto de borde; Compose dibuja la hoja, el scrim y la animación del drawer.
 
 ```dart
-AdaptiveMaterialExpressive(
-  androidBuilder: (_) => M3EChip(
-    label: 'Filtrar',
-    onPressed: () {},
+AdaptiveScaffold(
+  drawer: AdaptiveNavigationDrawer(
+    selectedIndex: selectedIndex,
+    onDestinationSelected: selectDestination,
+    destinations: const [
+      AdaptiveNavigationDrawerDestination(
+        label: 'Inicio',
+        icon: AndroidM3EIcon.home,
+      ),
+    ],
   ),
-  fallbackBuilder: (_) => CupertinoButton(
-    onPressed: () {},
-    child: const Text('Filtrar'),
-  ),
+  body: const HomePage(),
 )
 ```
 
-Si tu aplicación usa un `MaterialApp` propio, envuelve su `builder` con `AdaptiveMaterialExpressiveTheme` para habilitar también diálogos, selectores, menús y otros componentes M3E que usan el overlay del `Navigator`.
+Los FABs e iconos Android aceptan los iconos Material comunes como `Icon(Icons.add)`. Para otros iconos o hijos personalizados, pasa un `AndroidM3EIcon` mediante `nativeIcon` (y `nativeSelectedIcon` cuando corresponda); Compose no puede dibujar un árbol `Widget` de Flutter dentro de una vista nativa.
+
+Si tu aplicación usa un `MaterialApp` propio, puedes envolver su `builder` con `AdaptiveMaterialExpressiveTheme` para propagar tema, brillo y color semilla a las vistas Compose del paquete. Android 12+ usa por defecto la paleta dinámica del fondo de pantalla; configura `dynamicColoring: false` para conservar el color semilla de la app.
 
 ```dart
 MaterialApp(
@@ -84,9 +93,7 @@ MaterialApp(
 )
 ```
 
-Los wrappers con equivalencia M3E ya adaptan, entre otros, botones y FAB, scaffold y navegación, pestañas, controles de selección, tarjetas y listas, campos de texto y búsqueda, menús, diálogos, selectores de fecha/hora, hojas inferiores, progreso, badges, tooltips y divisores. Si un argumento personalizado no tiene una equivalencia M3E segura, el wrapper conserva el componente Material de Flutter para respetar esa configuración.
-
-Componentes que no tenían un wrapper adaptativo —por ejemplo chips, carruseles, FAB menus, split buttons, navigation rail/drawer y refresh indicator— están disponibles con sus nombres `M3E*` desde este mismo import y se pueden seleccionar por plataforma con `AdaptiveMaterialExpressive`.
+Las opciones de Android deben poder representarse como datos simples o iconos serializables. Para títulos, prefijos o acciones con árboles arbitrarios de Flutter, el paquete conserva contenido Flutter cuando la API lo permite; una vista Compose no puede ejecutar widgets Flutter dentro de su árbol nativo. Consulta [la matriz de cobertura Android](docs/android-m3e-native-coverage.md) para ver las rutas híbridas y los límites de serialización.
 
 ---
 

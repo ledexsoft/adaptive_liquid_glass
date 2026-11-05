@@ -1,9 +1,10 @@
+import 'dart:async';
+
 import 'adaptive_blur_view.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_overlay.dart';
 
 /// Snackbar type for different visual styles
 enum AdaptiveSnackBarType {
@@ -23,8 +24,7 @@ enum AdaptiveSnackBarType {
 /// An adaptive snackbar that shows platform-appropriate notifications
 ///
 /// - iOS: Shows a banner-style notification at the top
-/// - Android: Uses M3E styling for neutral notices when the app theme is
-///   installed above the root Navigator; otherwise uses a Material SnackBar.
+/// - Android: Uses a native Compose Material 3 Snackbar.
 class AdaptiveSnackBar {
   /// Shows an adaptive snackbar
   ///
@@ -42,18 +42,28 @@ class AdaptiveSnackBar {
     String? action,
     VoidCallback? onActionPressed,
   }) {
-    if (PlatformInfo.isAndroid &&
-        type == AdaptiveSnackBarType.info &&
-        hasAdaptiveMaterialExpressiveNavigatorTheme(
-          context,
+    if (PlatformInfo.isAndroid) {
+      unawaited(
+        showAndroidM3EOverlay(
+          context: context,
+          component: 'snackbar',
           rootNavigator: true,
-        )) {
-      m3e.M3ESnackbar.show(
-        context,
-        message: message,
-        actionLabel: action,
-        onAction: onActionPressed,
-        duration: duration,
+          terminalEvents: const {'dismissed', 'actionPressed'},
+          properties: {
+            'message': message,
+            'action': action,
+            'durationMs': duration.inMilliseconds,
+            'type': type.name,
+            'backgroundColor': _getAndroidBackgroundColor(
+              context,
+              type,
+            ).toARGB32(),
+            'contentColor': _getAndroidTextColor(type).toARGB32(),
+          },
+          onEvent: (event, _) {
+            if (event == 'actionPressed') onActionPressed?.call();
+          },
+        ),
       );
       return;
     }

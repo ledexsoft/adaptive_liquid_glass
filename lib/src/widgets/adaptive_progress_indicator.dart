@@ -1,13 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// An adaptive progress indicator that renders platform-specific styles.
 ///
 /// On iOS & macOS: Uses [CupertinoActivityIndicator] with native spin or partial reveal.
-/// On Android: Uses Material 3 [CircularProgressIndicator].
+/// On Android: Uses native Compose Material 3 Expressive progress indicators.
 ///
 /// For linear progress, use [AdaptiveProgressIndicator.linear].
 ///
@@ -102,14 +101,18 @@ class AdaptiveProgressIndicator extends StatelessWidget {
 
     // Android & other platforms
     if (PlatformInfo.isAndroid) {
-      return withAdaptiveMaterialExpressiveTheme(
-        context,
-        m3e.M3EProgressIndicator.circularWavy(
-          value: value,
-          size: radius * 2,
-          strokeWidth: strokeWidth,
-          color: color,
-        ),
+      return AndroidM3EPlatformView(
+        component: 'progressIndicator',
+        width: radius * 2,
+        height: radius * 2,
+        properties: {
+          'linear': false,
+          'value': value,
+          'size': radius * 2,
+          'strokeWidth': strokeWidth,
+          'color': color?.toARGB32(),
+        },
+        onEvent: (_, __) {},
       );
     }
     return CircularProgressIndicator(
@@ -157,16 +160,24 @@ class AdaptiveProgressIndicator extends StatelessWidget {
       );
     }
 
-    // Android & other platforms - Material 3 LinearProgressIndicator
-    if (PlatformInfo.isAndroid && borderRadius == null) {
-      return withAdaptiveMaterialExpressiveTheme(
-        context,
-        m3e.M3EProgressIndicator.linearWavy(
-          value: value,
-          strokeWidth: minHeight,
-          color: color,
-          trackColor: backgroundColor,
-        ),
+    // Android uses a native Compose Material 3 Expressive progress indicator.
+    if (PlatformInfo.isAndroid) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          return AndroidM3EPlatformView(
+            component: 'progressIndicator',
+            width: constraints.maxWidth.isFinite ? constraints.maxWidth : 240,
+            height: minHeight ?? 4.0,
+            properties: {
+              'linear': true,
+              'value': value,
+              'color': color?.toARGB32(),
+              'trackColor': backgroundColor?.toARGB32(),
+              'borderRadius': borderRadius?.topLeft.x,
+            },
+            onEvent: (_, __) {},
+          );
+        },
       );
     }
     return LinearProgressIndicator(

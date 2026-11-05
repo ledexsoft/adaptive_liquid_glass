@@ -86,35 +86,23 @@ class AdaptiveCheckbox extends StatelessWidget {
 
     // Android - Use Material Design Checkbox
     if (PlatformInfo.isAndroid) {
-      if (focusColor == null && hoverColor == null) {
-        return AndroidM3EPlatformView(
-          component: 'checkbox',
-          width: 48,
-          height: 48,
-          properties: {
-            'value': value,
-            'tristate': tristate,
-            'enabled': onChanged != null,
-            'hasCallback': onChanged != null,
-            'activeColor': activeColor?.toARGB32(),
-            'checkColor': checkColor?.toARGB32(),
-          },
-          onEvent: (event, nextValue) {
-            if (event == 'changed' &&
-                (nextValue == null || nextValue is bool)) {
-              onChanged?.call(nextValue as bool?);
-            }
-          },
-        );
-      }
-      return Checkbox(
-        value: value,
-        tristate: tristate,
-        onChanged: onChanged,
-        activeColor: activeColor,
-        checkColor: checkColor,
-        focusColor: focusColor,
-        hoverColor: hoverColor,
+      return AndroidM3EPlatformView(
+        component: 'checkbox',
+        width: 48,
+        height: 48,
+        properties: {
+          'value': value,
+          'tristate': tristate,
+          'enabled': onChanged != null,
+          'hasCallback': onChanged != null,
+          'activeColor': activeColor?.toARGB32(),
+          'checkColor': checkColor?.toARGB32(),
+        },
+        onEvent: (event, nextValue) {
+          if (event == 'changed' && (nextValue == null || nextValue is bool)) {
+            onChanged?.call(nextValue as bool?);
+          }
+        },
       );
     }
 

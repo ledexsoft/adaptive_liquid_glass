@@ -102,6 +102,7 @@ class AdaptiveBottomNavigationBar {
     Widget? bottomNavigationBar,
     Color? selectedItemColor,
     Color? unselectedItemColor,
+    bool? hideLabels,
   }) {
     return AdaptiveBottomNavigationBar(
       items: items ?? this.items,
@@ -112,6 +113,7 @@ class AdaptiveBottomNavigationBar {
       bottomNavigationBar: bottomNavigationBar ?? this.bottomNavigationBar,
       selectedItemColor: selectedItemColor ?? this.selectedItemColor,
       unselectedItemColor: unselectedItemColor ?? this.unselectedItemColor,
+      hideLabels: hideLabels ?? this.hideLabels,
     );
   }
 }

@@ -1,8 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_overlay.dart';
 import 'minute_interval.dart';
 
 /// An adaptive time picker that renders platform-specific styles
@@ -27,28 +26,40 @@ class AdaptiveTimePicker {
     bool use24HourFormat = false,
     int minuteInterval = 1,
   }) async {
-    if (PlatformInfo.isAndroid &&
-        minuteInterval == 1 &&
-        hasAdaptiveMaterialExpressiveNavigatorTheme(context)) {
-      final picked = await m3e.M3ETimePicker.show(
-        context,
-        initialTime: m3e.M3ETime(
-          hour: initialTime.hour,
-          minute: initialTime.minute,
-        ),
-        alwaysUse24HourFormat: use24HourFormat,
-      );
-      return picked == null
-          ? null
-          : TimeOfDay(hour: picked.hour, minute: picked.minute);
-    }
-
     if (PlatformInfo.isIOS) {
       return _showCupertinoTimePicker(
         context: context,
         initialTime: initialTime,
         use24HourFormat: use24HourFormat,
         minuteInterval: minuteInterval,
+      );
+    }
+
+    if (PlatformInfo.isAndroid) {
+      final result = await showAndroidM3EOverlay(
+        context: context,
+        rootNavigator: true,
+        component: 'timePicker',
+        properties: {
+          'initialHour': initialTime.hour,
+          'initialMinute': initialTime.minute,
+          'use24HourFormat': use24HourFormat,
+          'minuteInterval': minuteInterval,
+        },
+      );
+      if (result is! AndroidM3EOverlayResult ||
+          result.event != 'submitted' ||
+          result.value is! List ||
+          (result.value! as List).length < 2) {
+        return null;
+      }
+      final values = result.value! as List;
+      final hour = values[0];
+      final minute = values[1];
+      if (hour is! int || minute is! int) return null;
+      return alignTimeOfDayToInterval(
+        TimeOfDay(hour: hour, minute: minute),
+        minuteInterval,
       );
     }
 

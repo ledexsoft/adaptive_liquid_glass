@@ -1,8 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// An adaptive divider that renders platform-specific styles.
 ///
@@ -62,16 +61,18 @@ class AdaptiveDivider extends StatelessWidget {
       );
     }
 
-    // Android & other platforms - Material 3 Divider
-    if (PlatformInfo.isAndroid && height == null) {
-      return withAdaptiveMaterialExpressiveTheme(
-        context,
-        m3e.M3EDivider(
-          thickness: thickness ?? 1,
-          indent: indent ?? 0,
-          endIndent: endIndent ?? 0,
-          color: color,
-        ),
+    // Android - native Compose Material 3 divider.
+    if (PlatformInfo.isAndroid) {
+      return AndroidM3EPlatformView(
+        component: 'divider',
+        height: height ?? (thickness ?? 1),
+        properties: {
+          'thickness': thickness ?? 1,
+          'indent': indent ?? 0,
+          'endIndent': endIndent ?? 0,
+          'color': color?.toARGB32(),
+        },
+        onEvent: (_, __) {},
       );
     }
     return Divider(

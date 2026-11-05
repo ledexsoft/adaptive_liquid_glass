@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_native_icon.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// An adaptive floating action button that renders platform-specific styles
 ///
@@ -31,6 +31,7 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
     this.mini = false,
     this.tooltip,
     this.heroTag,
+    this.nativeIcon,
   });
 
   /// The callback that is called when the button is tapped
@@ -66,6 +67,9 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
   /// Hero tag for page transitions
   final Object? heroTag;
 
+  /// Native Material icon for Android when [child] is not a standard [Icon].
+  final AndroidM3EIcon? nativeIcon;
+
   @override
   Widget build(BuildContext context) {
     // iOS implementation
@@ -73,33 +77,28 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
       return _buildIOSButton(context);
     }
 
-    // Android - Use Material FloatingActionButton
+    // Android - use the official Compose Material 3 Expressive FAB.
     if (PlatformInfo.isAndroid) {
-      final iconWidget = foregroundColor == null
-          ? child
-          : IconTheme(
-              data: IconThemeData(color: foregroundColor),
-              child: child,
-            );
-      Widget fab = withAdaptiveMaterialExpressiveTheme(
-        context,
-        m3e.M3EFab(
-          icon: iconWidget,
-          onPressed: onPressed,
-          size: mini ? m3e.M3EFabSize.small : m3e.M3EFabSize.medium,
-          elevation: elevation,
-          tooltip: tooltip,
-          decoration: backgroundColor == null && foregroundColor == null
-              ? null
-              : m3e.M3EFabDecoration(
-                  backgroundColor: backgroundColor == null
-                      ? null
-                      : WidgetStatePropertyAll(backgroundColor),
-                  foregroundColor: foregroundColor == null
-                      ? null
-                      : WidgetStatePropertyAll(foregroundColor),
-                ),
-        ),
+      Widget fab = AndroidM3EPlatformView(
+        component: 'fab',
+        width: mini ? 40 : 56,
+        height: mini ? 40 : 56,
+        properties: {
+          'icon': resolveAndroidM3EIcon(
+            child: child,
+            nativeIcon: nativeIcon,
+            parameterName: 'nativeIcon',
+          ),
+          'size': mini ? 'small' : 'medium',
+          'backgroundColor': backgroundColor?.toARGB32(),
+          'foregroundColor': foregroundColor?.toARGB32(),
+          'elevation': elevation,
+          'tooltip': tooltip,
+          'enabled': onPressed != null,
+        },
+        onEvent: (event, _) {
+          if (event == 'pressed') onPressed?.call();
+        },
       );
       if (heroTag != null) fab = Hero(tag: heroTag!, child: fab);
       return fab;

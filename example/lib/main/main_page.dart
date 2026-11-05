@@ -58,7 +58,7 @@ class _MainPageState extends State<MainPage> {
                     ),
 
                     const AdaptiveNavigationDestination(
-                      icon: NetworkImage('https://i.pravatar.cc/100'),
+                      icon: AndroidM3EIcon.person,
                       label: 'Profile',
                     ),
                     AdaptiveNavigationDestination(

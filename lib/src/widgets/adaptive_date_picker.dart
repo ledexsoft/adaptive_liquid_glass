@@ -1,8 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_overlay.dart';
 import 'adaptive_time_picker.dart';
 import 'minute_interval.dart';
 
@@ -30,21 +29,6 @@ class AdaptiveDatePicker {
     final effectiveFirstDate = firstDate ?? DateTime(1900);
     final effectiveLastDate = lastDate ?? DateTime(2100);
 
-    if (PlatformInfo.isAndroid &&
-        mode == CupertinoDatePickerMode.date &&
-        minuteInterval == 1 &&
-        hasAdaptiveMaterialExpressiveNavigatorTheme(context)) {
-      return m3e.M3EDatePicker.show(
-        context,
-        initialDate: initialDate,
-        firstDate: effectiveFirstDate,
-        lastDate: effectiveLastDate,
-        initialCalendarMode: initialDatePickerMode == DatePickerMode.year
-            ? m3e.M3EDatePickerMode.year
-            : m3e.M3EDatePickerMode.day,
-      );
-    }
-
     if (PlatformInfo.isIOS) {
       return _showCupertinoDatePicker(
         context: context,
@@ -55,6 +39,67 @@ class AdaptiveDatePicker {
         use24HourFormat: use24HourFormat,
         minuteInterval: minuteInterval,
       );
+    }
+
+    if (PlatformInfo.isAndroid) {
+      if (mode == CupertinoDatePickerMode.time) {
+        final time = await AdaptiveTimePicker.show(
+          context: context,
+          initialTime: TimeOfDay.fromDateTime(initialDate),
+          use24HourFormat: use24HourFormat,
+          minuteInterval: minuteInterval,
+        );
+        return time == null
+            ? null
+            : DateTime(
+                initialDate.year,
+                initialDate.month,
+                initialDate.day,
+                time.hour,
+                time.minute,
+              );
+      }
+      final result = await showAndroidM3EOverlay(
+        context: context,
+        rootNavigator: true,
+        component: 'datePicker',
+        properties: {
+          'initialDateMillis': _utcMillis(initialDate),
+          'firstDateMillis': _utcMillis(effectiveFirstDate),
+          'lastDateMillis': _utcMillis(effectiveLastDate),
+          'initialYearMode': initialDatePickerMode == DatePickerMode.year,
+        },
+      );
+      if (result is! AndroidM3EOverlayResult ||
+          result.event != 'submitted' ||
+          result.value is! int) {
+        return null;
+      }
+      final selected = DateTime.fromMillisecondsSinceEpoch(
+        result.value! as int,
+        isUtc: true,
+      );
+      var date = mode == CupertinoDatePickerMode.monthYear
+          ? DateTime(selected.year, selected.month, 1)
+          : DateTime(selected.year, selected.month, selected.day);
+      if (mode == CupertinoDatePickerMode.dateAndTime) {
+        if (!context.mounted) return null;
+        final time = await AdaptiveTimePicker.show(
+          context: context,
+          initialTime: TimeOfDay.fromDateTime(initialDate),
+          use24HourFormat: use24HourFormat,
+          minuteInterval: minuteInterval,
+        );
+        if (time == null) return null;
+        date = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          time.hour,
+          time.minute,
+        );
+      }
+      return date;
     }
 
     return _showMaterialDatePicker(
@@ -68,6 +113,9 @@ class AdaptiveDatePicker {
       minuteInterval: minuteInterval,
     );
   }
+
+  static int _utcMillis(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch;
 
   static Future<DateTime?> _showCupertinoDatePicker({
     required BuildContext context,

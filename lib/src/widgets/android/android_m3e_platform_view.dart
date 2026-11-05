@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
+import '../../theme/adaptive_material_expressive_theme.dart';
+
 /// Hosts a package-owned Android Compose widget and forwards its events to Dart.
 ///
 /// The native side only receives primitive values so this bridge remains
@@ -17,12 +19,14 @@ class AndroidM3EPlatformView extends StatefulWidget {
     required this.onEvent,
     this.width,
     this.height,
+    this.hitTestBehavior = PlatformViewHitTestBehavior.opaque,
   });
 
   final String component;
   final Map<String, Object?> properties;
   final double? width;
   final double? height;
+  final PlatformViewHitTestBehavior hitTestBehavior;
   final void Function(String event, Object? value) onEvent;
 
   @override
@@ -40,6 +44,7 @@ class _AndroidM3EPlatformViewState extends State<AndroidM3EPlatformView> {
       'component': widget.component,
       'primaryColor': Theme.of(context).colorScheme.primary.toARGB32(),
       'isDark': Theme.of(context).brightness == Brightness.dark,
+      'dynamicColoring': adaptiveMaterialExpressiveDynamicColoringOf(context),
     };
   }
 
@@ -55,7 +60,7 @@ class _AndroidM3EPlatformViewState extends State<AndroidM3EPlatformView> {
         viewType: 'adaptive_liquid_glass/m3e_android',
         creationParams: _latestProperties,
         creationParamsCodec: const StandardMessageCodec(),
-        hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+        hitTestBehavior: widget.hitTestBehavior,
         onPlatformViewCreated: _onPlatformViewCreated,
       ),
     );

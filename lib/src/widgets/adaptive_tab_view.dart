@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
+import 'package:flutter/scheduler.dart';
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import '../utils/animation.dart';
 import 'adaptive_segmented_control.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// An adaptive tab bar view (horizontal swipeable tabs)
 ///
@@ -63,35 +64,29 @@ class AdaptiveTabBarView extends StatefulWidget {
   State<AdaptiveTabBarView> createState() => _AdaptiveTabBarViewState();
 }
 
-class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView>
-    with SingleTickerProviderStateMixin {
+class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView> {
   late PageController _pageController;
-  late TabController _materialController;
+  late _ExpressivePageTarget _expressivePageTarget;
+  late _MaterialExpressivePageScrollPhysics _expressivePagePhysics;
   int _currentIndex = 0;
+  Duration? _lastPageScrollSampleTime;
+  double? _lastPageScrollSamplePixels;
+  double _pageScrollVelocity = 0;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
-    _materialController = TabController(
-      length: widget.tabs.length,
-      vsync: this,
+    _expressivePageTarget = _ExpressivePageTarget();
+    _expressivePagePhysics = _MaterialExpressivePageScrollPhysics(
+      target: _expressivePageTarget,
     );
-    _materialController.addListener(_handleMaterialTabChanged);
   }
 
   @override
   void dispose() {
     _pageController.dispose();
-    _materialController.removeListener(_handleMaterialTabChanged);
-    _materialController.dispose();
     super.dispose();
-  }
-
-  void _handleMaterialTabChanged() {
-    if (_materialController.indexIsChanging) {
-      widget.onTabChanged?.call(_materialController.index);
-    }
   }
 
   void _onPageChanged(int index) {
@@ -101,7 +96,19 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView>
     widget.onTabChanged?.call(index);
   }
 
-  void _onSegmentChanged(int index) {
+  void _onSegmentChanged(int index, {bool expressiveMotion = false}) {
+    if (expressiveMotion) {
+      if (MediaQuery.of(context).disableAnimations) {
+        _pageController.jumpToPage(index);
+        return;
+      }
+      if (!_pageController.hasClients) return;
+      final position =
+          _pageController.position as ScrollPositionWithSingleContext;
+      _expressivePageTarget.page = index;
+      position.goBallistic(_currentPageScrollVelocity());
+      return;
+    }
     if (index != _currentIndex) {
       _pageController.animateToPage(
         index,
@@ -109,6 +116,41 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView>
         curve: Curves.easeInOut,
       );
     }
+  }
+
+  bool _recordPageScrollVelocity(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.horizontal) return false;
+    final now = SchedulerBinding.instance.currentFrameTimeStamp;
+    if (notification is ScrollEndNotification) {
+      _pageScrollVelocity = 0;
+      _lastPageScrollSampleTime = null;
+      _lastPageScrollSamplePixels = null;
+      return false;
+    }
+
+    final previousTime = _lastPageScrollSampleTime;
+    final previousPixels = _lastPageScrollSamplePixels;
+    if (previousTime != null && previousPixels != null) {
+      final elapsed = (now - previousTime).inMicroseconds / 1000000;
+      _pageScrollVelocity = elapsed > 0 && elapsed <= 0.1
+          ? (notification.metrics.pixels - previousPixels) / elapsed
+          : 0;
+    } else {
+      _pageScrollVelocity = 0;
+    }
+    _lastPageScrollSampleTime = now;
+    _lastPageScrollSamplePixels = notification.metrics.pixels;
+    return false;
+  }
+
+  double _currentPageScrollVelocity() {
+    final sampleTime = _lastPageScrollSampleTime;
+    if (sampleTime == null) return 0;
+    final sampleAge =
+        SchedulerBinding.instance.currentFrameTimeStamp - sampleTime;
+    return sampleAge <= const Duration(milliseconds: 100)
+        ? _pageScrollVelocity
+        : 0;
   }
 
   @override
@@ -145,55 +187,35 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView>
 
     // Android - Material Design implementation
     if (PlatformInfo.isAndroid) {
-      if (widget.tabs.length >= 2 &&
-          widget.backgroundColor == null &&
-          widget.selectedColor == null &&
-          widget.unselectedColor == null) {
-        return withAdaptiveMaterialExpressiveTheme(
-          context,
-          Column(
-            children: [
-              m3e.M3ETabs(
-                tabs: widget.tabs
-                    .map((label) => m3e.M3ETab(label: label))
-                    .toList(),
-                selectedIndex: _currentIndex,
-                onTabSelected: _onSegmentChanged,
-              ),
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  onPageChanged: _onPageChanged,
-                  children: widget.children,
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-
-      final defaultBackgroundColor =
-          widget.backgroundColor ?? Theme.of(context).primaryColor;
-      final defaultSelectedColor = widget.selectedColor ?? Colors.white;
-      final defaultUnselectedColor =
-          widget.unselectedColor ?? Colors.white.withValues(alpha: 0.7);
-
       return Column(
         children: [
-          Material(
-            color: defaultBackgroundColor,
-            child: TabBar(
-              controller: _materialController,
-              tabs: widget.tabs.map((label) => Tab(text: label)).toList(),
-              indicatorColor: defaultSelectedColor,
-              labelColor: defaultSelectedColor,
-              unselectedLabelColor: defaultUnselectedColor,
+          SizedBox(
+            height: 64,
+            child: AndroidM3EPlatformView(
+              component: 'tabs',
+              properties: {
+                'labels': widget.tabs,
+                'selectedIndex': _currentIndex,
+                'backgroundColor': widget.backgroundColor?.toARGB32(),
+                'selectedColor': widget.selectedColor?.toARGB32(),
+                'unselectedColor': widget.unselectedColor?.toARGB32(),
+              },
+              onEvent: (event, value) {
+                if (event == 'selected' && value is int) {
+                  _onSegmentChanged(value, expressiveMotion: true);
+                }
+              },
             ),
           ),
           Expanded(
-            child: TabBarView(
-              controller: _materialController,
-              children: widget.children,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _recordPageScrollVelocity,
+              child: PageView(
+                controller: _pageController,
+                physics: _expressivePagePhysics,
+                onPageChanged: _onPageChanged,
+                children: widget.children,
+              ),
             ),
           ),
         ],
@@ -223,5 +245,61 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView>
         ),
       ],
     );
+  }
+}
+
+class _MaterialExpressivePageScrollPhysics extends PageScrollPhysics {
+  const _MaterialExpressivePageScrollPhysics({
+    required this.target,
+    super.parent,
+  });
+
+  final _ExpressivePageTarget target;
+
+  @override
+  SpringDescription get spring => materialExpressiveSlowSpatialSpring();
+
+  @override
+  Simulation? createBallisticSimulation(
+    ScrollMetrics position,
+    double velocity,
+  ) {
+    final targetPage = target.takePage();
+    if (targetPage != null && position.viewportDimension > 0) {
+      final requestedPixels = targetPage * position.viewportDimension;
+      final targetPixels = requestedPixels
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      final tolerance = toleranceFor(position);
+      if ((targetPixels - position.pixels).abs() <= tolerance.distance &&
+          velocity.abs() <= tolerance.velocity) {
+        return null;
+      }
+      return ScrollSpringSimulation(
+        spring,
+        position.pixels,
+        targetPixels,
+        velocity,
+        tolerance: tolerance,
+      );
+    }
+    return super.createBallisticSimulation(position, velocity);
+  }
+
+  @override
+  _MaterialExpressivePageScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      _MaterialExpressivePageScrollPhysics(
+        target: target,
+        parent: buildParent(ancestor),
+      );
+}
+
+class _ExpressivePageTarget {
+  int? page;
+
+  int? takePage() {
+    final requestedPage = page;
+    page = null;
+    return requestedPage;
   }
 }

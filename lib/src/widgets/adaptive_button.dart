@@ -2,18 +2,17 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
 import '../style/sf_symbol.dart';
+import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
 import 'ios26/ios26_button.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive button that renders platform-specific button styles
 ///
 /// On iOS 26+: Uses native iOS 26 button design with modern styling
 /// On iOS <26 (iOS 18 and below): Uses CupertinoButton with traditional iOS styling
-/// On Android: Uses Material Design button (ElevatedButton or TextButton)
+/// On Android: Uses native Compose Material 3 Expressive buttons.
 ///
 /// Example:
 /// ```dart
@@ -158,7 +157,7 @@ class AdaptiveButton extends StatelessWidget {
   /// Whether to use native iOS 26+ button (default: true)
   /// When true, uses native iOS 26 button on iOS 26+
   /// When false, uses Cupertino button for iOS regardless of version
-  /// Android always uses Material button regardless of this setting
+  /// Android always uses the package's native Compose Material 3 Expressive button.
   final bool useNative;
 
   @override
@@ -202,9 +201,8 @@ class AdaptiveButton extends StatelessWidget {
       return _buildCupertinoButton(context);
     }
 
-    // Android - Use Material Design button
+    // Android - Use the native Compose Material 3 Expressive button.
     if (PlatformInfo.isAndroid) {
-      if (!useNative) return _buildMaterialButton(context);
       return _buildAndroidExpressiveButton(context);
     }
 
@@ -600,100 +598,52 @@ class AdaptiveButton extends StatelessWidget {
   }
 
   Widget _buildAndroidExpressiveButton(BuildContext context) {
-    if (label != null &&
-        child == null &&
-        icon == null &&
-        sfSymbol == null &&
-        padding == null &&
-        borderRadius == null &&
-        minSize == null) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final textStyle = Theme.of(context).textTheme.labelLarge;
-          final painter =
-              TextPainter(
-                text: TextSpan(text: label ?? '', style: textStyle),
-                maxLines: 1,
-                textDirection: Directionality.of(context),
-              )..layout(
-                maxWidth: constraints.maxWidth.isFinite
-                    ? (constraints.maxWidth - 48).clamp(0, double.infinity)
-                    : double.infinity,
-              );
-          final desiredWidth = math.max(64.0, painter.width + 48);
-          final width = constraints.maxWidth.isFinite
-              ? math.min(desiredWidth, constraints.maxWidth)
-              : desiredWidth;
-          final backgroundColor = switch (this.style) {
-            AdaptiveButtonStyle.filled ||
-            AdaptiveButtonStyle.prominentGlass => color,
-            AdaptiveButtonStyle.tinted => color?.withValues(alpha: 0.15),
-            AdaptiveButtonStyle.gray => color,
-            AdaptiveButtonStyle.bordered ||
-            AdaptiveButtonStyle.plain ||
-            AdaptiveButtonStyle.glass => null,
-          };
-          final foregroundColor =
-              textColor ??
-              ((this.style == AdaptiveButtonStyle.filled ||
-                          this.style == AdaptiveButtonStyle.gray) &&
-                      color != null
-                  ? (color!.computeLuminance() > 0.5
-                        ? Colors.black
-                        : Colors.white)
-                  : color);
-
-          return AndroidM3EPlatformView(
-            component: 'button',
-            width: width,
-            height: size == AdaptiveButtonSize.large ? 48 : 40,
-            properties: {
-              'label': label,
-              'style': this.style.name,
-              'backgroundColor': backgroundColor?.toARGB32(),
-              'foregroundColor': foregroundColor?.toARGB32(),
-              'enabled': enabled && onPressed != null,
-              'hasCallback': onPressed != null,
-              'minHeight': size == AdaptiveButtonSize.large ? 48.0 : 40.0,
-            },
-            onEvent: (event, _) {
-              if (event == 'pressed' && enabled) onPressed?.call();
-            },
-          );
-        },
-      );
-    }
-
-    Widget buttonChild;
+    String? nativeLabel = label;
+    IconData? nativeIconData = icon;
     if (child != null) {
-      buttonChild = child!;
-    } else if (icon != null) {
-      buttonChild = Icon(icon, color: iconColor);
-    } else if (sfSymbol != null) {
-      buttonChild = Icon(
-        Icons.circle,
-        color: sfSymbol!.color,
-        size: sfSymbol!.size,
-      );
-    } else {
-      buttonChild = Text(label ?? '');
+      nativeLabel = null;
+      nativeIconData = null;
+      if (child is Text && (child as Text).style == null) {
+        nativeLabel = (child as Text).data;
+      } else if (child is Icon && (child as Icon).icon != null) {
+        nativeIconData = (child as Icon).icon;
+      } else if (child is Row) {
+        for (final part in (child as Row).children) {
+          if (part is Icon && part.icon != null && nativeIconData == null) {
+            nativeIconData = part.icon;
+          } else if (part is Text &&
+              part.style == null &&
+              nativeLabel == null) {
+            nativeLabel = part.data;
+          } else if (part is! SizedBox && part is! Padding) {
+            throw FlutterError(
+              'Android AdaptiveButton.child accepts plain Text, Icon, or a '
+              'Row containing those widgets. Pass a serializable native icon '
+              'for other content.',
+            );
+          }
+        }
+      } else {
+        throw FlutterError(
+          'Android AdaptiveButton uses a native Compose button. Its child '
+          'must be plain Text, Icon, or a simple Row of both.',
+        );
+      }
     }
-
-    final style = switch (this.style) {
-      AdaptiveButtonStyle.filled ||
-      AdaptiveButtonStyle.prominentGlass => m3e.M3EButtonStyle.filled,
-      AdaptiveButtonStyle.tinted ||
-      AdaptiveButtonStyle.gray ||
-      AdaptiveButtonStyle.glass => m3e.M3EButtonStyle.tonal,
-      AdaptiveButtonStyle.bordered => m3e.M3EButtonStyle.outlined,
-      AdaptiveButtonStyle.plain => m3e.M3EButtonStyle.text,
-    };
-    final buttonSize = switch (size) {
-      AdaptiveButtonSize.small => m3e.M3EButtonSize.xs,
-      AdaptiveButtonSize.medium => m3e.M3EButtonSize.sm,
-      AdaptiveButtonSize.large => m3e.M3EButtonSize.md,
-    };
-    final backgroundColor = switch (this.style) {
+    if (sfSymbol != null) {
+      throw FlutterError(
+        'SF Symbols are only available on Apple platforms. Use an Android '
+        'Material Icon in AdaptiveButton.icon on Android.',
+      );
+    }
+    final nativeIcon = nativeIconData == null
+        ? null
+        : resolveAndroidM3EIcon(
+            child: Icon(nativeIconData),
+            nativeIcon: null,
+            parameterName: 'icon',
+          );
+    final backgroundColor = switch (style) {
       AdaptiveButtonStyle.filled || AdaptiveButtonStyle.prominentGlass => color,
       AdaptiveButtonStyle.tinted => color?.withValues(alpha: 0.15),
       AdaptiveButtonStyle.gray => color,
@@ -704,32 +654,66 @@ class AdaptiveButton extends StatelessWidget {
     final foregroundColor =
         textColor ??
         iconColor ??
-        ((this.style == AdaptiveButtonStyle.filled ||
-                    this.style == AdaptiveButtonStyle.gray) &&
+        ((style == AdaptiveButtonStyle.filled ||
+                    style == AdaptiveButtonStyle.gray) &&
                 color != null
             ? (color!.computeLuminance() > 0.5 ? Colors.black : Colors.white)
             : color);
-    final decoration = m3e.M3EButtonDecoration.styleFrom(
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
-      side: this.style == AdaptiveButtonStyle.bordered && color != null
-          ? BorderSide(color: color!)
-          : null,
-      padding: padding,
-      minimumSize: minSize,
-      borderRadius: borderRadius?.topLeft.x,
-    );
-    return withAdaptiveMaterialExpressiveTheme(
-      context,
-      m3e.M3EButton(
-        onPressed: enabled ? onPressed : null,
-        enabled: enabled,
-        style: style,
-        size: buttonSize,
-        shape: m3e.M3EButtonShape.round,
-        decoration: decoration,
-        child: buttonChild,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textStyle = Theme.of(context).textTheme.labelLarge;
+        final painter = TextPainter(
+          text: TextSpan(text: nativeLabel ?? '', style: textStyle),
+          maxLines: 1,
+          textDirection: Directionality.of(context),
+        )..layout();
+        final minHeight =
+            minSize?.height ??
+            switch (size) {
+              AdaptiveButtonSize.small => 40.0,
+              AdaptiveButtonSize.medium => 44.0,
+              AdaptiveButtonSize.large => 48.0,
+            };
+        final iconOnly = nativeLabel == null && nativeIcon != null;
+        final horizontalPadding =
+            padding?.horizontal ?? (iconOnly ? 8.0 : 24.0);
+        final iconSpace = nativeIcon == null
+            ? 0.0
+            : (nativeLabel == null ? minHeight : 24.0);
+        final desiredWidth = iconOnly
+            ? minHeight
+            : math.max(
+                minHeight,
+                painter.width +
+                    horizontalPadding +
+                    iconSpace +
+                    (nativeIcon == null ? 0 : 8),
+              );
+        final width = constraints.maxWidth.isFinite
+            ? math.min(desiredWidth, constraints.maxWidth)
+            : desiredWidth;
+        return AndroidM3EPlatformView(
+          component: 'button',
+          width: width,
+          height: minHeight,
+          properties: {
+            'label': nativeLabel ?? '',
+            'icon': nativeIcon,
+            'iconOnly': iconOnly,
+            'style': style.name,
+            'backgroundColor': backgroundColor?.toARGB32(),
+            'foregroundColor': foregroundColor?.toARGB32(),
+            'enabled': enabled && onPressed != null,
+            'hasCallback': onPressed != null,
+            'minHeight': minHeight,
+            'horizontalPadding': horizontalPadding,
+            'borderRadius': borderRadius?.topLeft.x,
+          },
+          onEvent: (event, _) {
+            if (event == 'pressed' && enabled) onPressed?.call();
+          },
+        );
+      },
     );
   }
 

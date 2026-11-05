@@ -1,4 +1,28 @@
-# [0.1.146]
+## [0.2.0]
+* **BREAKING**: Removed the Flutter `material_3_expressive` dependency, its catalog re-export, and the Flutter-builder `AdaptiveMaterialExpressive` selector. Android adaptive controls now use package-owned Jetpack Compose implementations.
+* **BREAKING**: `AdaptiveMaterialExpressiveTheme.lightTheme` and `darkTheme` now accept Flutter `ThemeData`; custom M3E catalog/theme types are no longer part of this package's public API.
+* **BREAKING**: Android native widgets now use Jetpack Compose Material 3 Expressive `1.5.0-rc01` and `MaterialExpressiveTheme`.
+* **BREAKING**: Android builds require `minSdk 24`, `compileSdk 37`, JDK 17+, AGP 9.1.1, Gradle 9.3.1, Kotlin 2.4.20, and Flutter 3.47+ (Dart 3.12+).
+* **UPDATE**: `AdaptiveBlurView` no longer draws a Flutter blur on Android; it leaves Flutter content unchanged because Android cannot natively blur Flutter-rendered content behind a platform view. Use `AdaptiveCard.glass` for a native Material surface.
+* **BREAKING**: FAB, icon-button, and navigation-rail Android inputs now use serializable `AndroidM3EIcon` and data models; arbitrary Flutter widget children cannot cross into Compose.
+* **BREAKING**: Android `AdaptiveCarousel` now requires serializable `androidItems` and uses official Compose Material 3 carousel layouts; Flutter `children` remain for non-Android platforms.
+* **BREAKING**: `AdaptiveSplitButton` now uses package-owned serializable `AdaptiveSplitButtonItem` values instead of the Flutter M3E item type.
+* **BREAKING**: `AdaptiveToolbar` now uses package-owned `AdaptiveToolbarAction` data and serializable Android icon identifiers instead of Flutter M3E toolbar item/widget types.
+* **BREAKING**: `AdaptiveButtonGroup` now uses serializable `AdaptiveButtonGroupAction` data and `AndroidM3EIcon` identifiers.
+* **UPDATE**: Android button groups, tabs, segmented controls, badges, split buttons, toolbars, scaffold app bars, and bottom navigation now route through native Compose Material 3 Expressive components.
+* **UPDATE**: Native Compose button, switch, checkbox, radio, supported slider, FABs, FAB menu, icon button, navigation rail, both loading-indicator variants, divider, and circular/linear progress indicators now render in Android Compose.
+* **UPDATE**: Android text/icon popup menus, search bar, list tiles, and switch list tile now render with native Compose Material 3 APIs. Android tile titles/subtitles must be plain `Text`; leading/trailing icons use `AndroidM3EIcon` or a mapped Material icon.
+* **UPDATE**: Android alert/input dialogs, action sheets, context menus, date/time pickers, text/form fields, snackbars, tooltips, form section surfaces, and expansion headers now use Compose. Text form validation remains integrated with Flutter `FormField`.
+* **UPDATE**: Android refresh uses the Flutter scroll notification/refresh gesture with the native Compose M3 Expressive loading indicator; arbitrary Flutter content in tabs, cards, forms, and expanded sections remains Flutter-rendered.
+* **UPDATE**: Android popup menus with custom Flutter anchors now draw their menu rows in Compose. Added `AdaptiveNavigationDrawer` with native Compose drawer sheet and destinations.
+* **UPDATE**: Android Compose explicitly uses `MotionScheme.expressive()`; hybrid tab-page and expansion-content transitions use Flutter spring simulations with the corresponding Material spatial spring tokens.
+
+# [0.1.147]
+* **NEW**: Added adaptive wrappers for M3E button groups, FAB menus, loading indicators, split buttons, toolbars, carousels, extended FABs, icon buttons, navigation rails, and refresh indicators.
+* **UPDATE**: Indeterminate Android `AdaptiveProgressIndicator` now uses the M3E morphing loading indicator; linear progress continues to use the wavy expressive indicator.
+* **DOCS**: Clarified which Android components render with native Compose and which use Flutter-rendered M3E components.
+
+## [0.1.146]
 * **NEW**: Android adaptive widgets now use Material 3 Expressive components and theme tokens when a matching implementation is available; iOS Liquid Glass and Cupertino paths remain unchanged.
 * **NEW**: Re-exported the M3E component catalog through `adaptive_liquid_glass` and added `AdaptiveMaterialExpressive` for M3E-only components with platform fallbacks.
 * **NEW**: Android popup/context menus, action sheets, expandable tiles, tab views, and supported text form fields now use M3E components; standard and input alert dialogs use expressive dialogs.

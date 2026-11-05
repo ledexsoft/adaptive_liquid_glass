@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
+import 'package:flutter/rendering.dart';
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
 import 'adaptive_blur_view.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// An adaptive card that renders platform-specific card styles.
 ///
@@ -105,6 +105,9 @@ class AdaptiveCard extends StatelessWidget {
         : child;
 
     if (isGlass) {
+      if (PlatformInfo.isAndroid) {
+        return _buildAndroidNativeCard(context, content, glass: true);
+      }
       return _buildGlassCard(context, content);
     }
 
@@ -121,28 +124,17 @@ class AdaptiveCard extends StatelessWidget {
       );
     }
 
-    // Android & other platforms - Use Material Design Card
-    final cardRadius = borderRadius ?? BorderRadius.circular(12);
-    if (PlatformInfo.isAndroid &&
-        shape == null &&
-        borderOnForeground &&
-        semanticContainer) {
-      return Padding(
-        padding: margin ?? const EdgeInsets.all(4),
-        child: withAdaptiveMaterialExpressiveTheme(
-          context,
-          m3e.M3ECard(
-            padding: EdgeInsets.zero,
-            color: color,
-            elevation: elevation,
-            borderRadius: cardRadius,
-            clipBehavior: clipBehavior ?? Clip.antiAlias,
-            onPressed: onTap,
-            child: content,
-          ),
-        ),
-      );
+    if (PlatformInfo.isAndroid) {
+      if (shape != null && shape is! RoundedRectangleBorder) {
+        throw FlutterError(
+          'Android AdaptiveCard supports RoundedRectangleBorder only in its native Compose path.',
+        );
+      }
+      return _buildAndroidNativeCard(context, content);
     }
+
+    // Other platforms - Use Material Design Card
+    final cardRadius = borderRadius ?? BorderRadius.circular(12);
     Widget card = Card(
       color: color,
       elevation: elevation,
@@ -157,6 +149,65 @@ class AdaptiveCard extends StatelessWidget {
     );
 
     return card;
+  }
+
+  Widget _buildAndroidNativeCard(
+    BuildContext context,
+    Widget content, {
+    bool glass = false,
+  }) {
+    final shapeRadius = shape is RoundedRectangleBorder
+        ? (shape as RoundedRectangleBorder).borderRadius.resolve(
+            Directionality.of(context),
+          )
+        : null;
+    final effectiveRadius =
+        shapeRadius ?? borderRadius ?? BorderRadius.circular(glass ? 16 : 12);
+    final theme = Theme.of(context);
+    final background =
+        color ??
+        (glass
+            ? theme.colorScheme.surfaceContainerHigh
+            : theme.colorScheme.surfaceContainerLow);
+    Widget cardContent = GestureDetector(
+      onTap: onTap,
+      behavior: onTap == null
+          ? HitTestBehavior.deferToChild
+          : HitTestBehavior.opaque,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: AndroidM3EPlatformView(
+              component: 'cardSurface',
+              hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+              properties: {
+                'color': background.toARGB32(),
+                'elevation': elevation ?? (glass ? 1.0 : 1.0),
+                'radius': effectiveRadius.topLeft.x,
+                'clip': (clipBehavior ?? Clip.antiAlias) != Clip.none,
+              },
+              onEvent: (_, __) {},
+            ),
+          ),
+          content,
+        ],
+      ),
+    );
+    if ((clipBehavior ?? Clip.antiAlias) != Clip.none) {
+      cardContent = ClipRRect(
+        borderRadius: effectiveRadius,
+        clipBehavior: clipBehavior ?? Clip.antiAlias,
+        child: cardContent,
+      );
+    }
+    final withMargin = Padding(
+      padding: margin ?? const EdgeInsets.all(4),
+      child: cardContent,
+    );
+    return semanticContainer
+        ? Semantics(container: true, child: withMargin)
+        : withMargin;
   }
 
   Widget _buildGlassCard(BuildContext context, Widget content) {

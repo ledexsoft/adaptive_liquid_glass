@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_native_icon.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// An adaptive list tile that renders platform-specific styles
 ///
@@ -24,6 +24,8 @@ class AdaptiveListTile extends StatelessWidget {
     this.backgroundColor,
     this.separatorColor,
     this.padding,
+    this.androidLeadingIcon,
+    this.androidTrailingIcon,
   });
 
   /// A widget to display before the title.
@@ -66,14 +68,92 @@ class AdaptiveListTile extends StatelessWidget {
   /// The tile's internal padding.
   final EdgeInsetsGeometry? padding;
 
+  /// Serializable icon used in the native Android Compose list item.
+  final AndroidM3EIcon? androidLeadingIcon;
+
+  /// Serializable trailing icon used by the native Android Compose list item.
+  final AndroidM3EIcon? androidTrailingIcon;
+
   @override
   Widget build(BuildContext context) {
     if (PlatformInfo.isIOS) {
       return _buildCupertinoListTile(context);
     }
 
-    // Android - Use Material ListTile
+    if (PlatformInfo.isAndroid) return _buildAndroidNativeListItem(context);
+
+    // Other platforms - Use Material ListTile
     return _buildMaterialListTile(context);
+  }
+
+  Widget _buildAndroidNativeListItem(BuildContext context) {
+    final titleText = title is Text ? title as Text : null;
+    final subtitleText = subtitle is Text ? subtitle as Text : null;
+    if (title != null &&
+        (titleText?.data == null || titleText!.style != null)) {
+      throw FlutterError(
+        'Android AdaptiveListTile uses a native Compose ListItem. '
+        'Pass a plain Text title.',
+      );
+    }
+    if (subtitle != null &&
+        (subtitleText?.data == null || subtitleText!.style != null)) {
+      throw FlutterError(
+        'Android AdaptiveListTile requires subtitle to be a plain Text.',
+      );
+    }
+    String? iconName(Widget? widget, AndroidM3EIcon? native, String parameter) {
+      if (native != null) return native.name;
+      if (widget == null) return null;
+      if (widget is Icon && widget.icon != null) {
+        return resolveAndroidM3EIcon(
+          child: widget,
+          nativeIcon: null,
+          parameterName: parameter,
+        );
+      }
+      throw FlutterError(
+        'Android AdaptiveListTile requires a serializable $parameter. '
+        'Pass AndroidM3EIcon.<value>.',
+      );
+    }
+
+    final nativePadding = padding?.resolve(Directionality.of(context));
+    return AndroidM3EPlatformView(
+      component: 'listTile',
+      height: subtitleText == null ? 72 : 88,
+      properties: {
+        'title': titleText?.data ?? '',
+        'subtitle': subtitleText?.data,
+        'leadingIcon': iconName(
+          leading,
+          androidLeadingIcon,
+          'androidLeadingIcon',
+        ),
+        'trailingIcon': iconName(
+          trailing,
+          androidTrailingIcon,
+          'androidTrailingIcon',
+        ),
+        'enabled': enabled,
+        'selected': selected,
+        'backgroundColor': backgroundColor?.toARGB32(),
+        'padding': nativePadding == null
+            ? null
+            : [
+                nativePadding.left,
+                nativePadding.top,
+                nativePadding.right,
+                nativePadding.bottom,
+              ],
+        'hasOnTap': onTap != null,
+        'hasOnLongPress': onLongPress != null,
+      },
+      onEvent: (event, _) {
+        if (event == 'tapped') onTap?.call();
+        if (event == 'longPressed') onLongPress?.call();
+      },
+    );
   }
 
   Widget _buildCupertinoListTile(BuildContext context) {
@@ -161,26 +241,6 @@ class AdaptiveListTile extends StatelessWidget {
   }
 
   Widget _buildMaterialListTile(BuildContext context) {
-    final titleText = title is Text ? title as Text : null;
-    final subtitleText = subtitle is Text ? subtitle as Text : null;
-    if (PlatformInfo.isAndroid &&
-        _isM3EText(titleText) &&
-        (subtitle == null || _isM3EText(subtitleText)) &&
-        onLongPress == null &&
-        backgroundColor == null &&
-        padding == null) {
-      return withAdaptiveMaterialExpressiveTheme(
-        context,
-        m3e.M3EListItem(
-          headline: titleText!.data!,
-          supportingText: subtitleText?.data,
-          leading: leading,
-          trailing: trailing,
-          onTap: enabled ? onTap : null,
-          selected: selected,
-        ),
-      );
-    }
     return Material(
       type: MaterialType.transparency,
       child: ListTile(
@@ -198,13 +258,4 @@ class AdaptiveListTile extends StatelessWidget {
       ),
     );
   }
-
-  bool _isM3EText(Text? text) =>
-      text != null &&
-      text.data != null &&
-      text.style == null &&
-      text.textAlign == null &&
-      text.maxLines == null &&
-      text.overflow == null &&
-      text.semanticsLabel == null;
 }

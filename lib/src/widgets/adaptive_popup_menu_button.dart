@@ -1,8 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_native_icon.dart';
+import 'android/android_m3e_overlay.dart';
+import 'android/android_m3e_platform_view.dart';
 import 'ios26/ios26_popup_menu_button.dart';
 
 export 'ios26/ios26_popup_menu_button.dart'
@@ -41,44 +42,27 @@ class AdaptivePopupMenuButton<T> {
       );
     }
 
-    // Android - Use Material PopupMenuButton
+    // Android uses a native Compose anchor and DropdownMenu.
     if (PlatformInfo.isAndroid) {
-      return Builder(
-        builder: (context) {
-          if (hasAdaptiveMaterialExpressiveNavigatorTheme(
-            context,
-            rootNavigator: true,
-          )) {
-            return _buildM3EMenu<T>(
-              context: context,
-              items: items,
-              onSelected: onSelected,
-              anchorBuilder: (context, open) => m3e.M3EButton(
-                onPressed: open,
-                style: _mapM3EButtonStyle(buttonStyle),
-                decoration: m3e.M3EButtonDecoration.styleFrom(
-                  foregroundColor: tint,
-                ),
-                child: Text(label),
-              ),
-              key: key,
-            );
+      return AndroidM3EPlatformView(
+        key: key,
+        component: 'popupMenuButton',
+        height: height,
+        properties: {
+          'anchorType': 'text',
+          'label': label,
+          'style': _nativeMenuButtonStyle(buttonStyle),
+          'tint': tint?.toARGB32(),
+          'items': _nativeMenuItems<T>(items),
+        },
+        onEvent: (event, value) {
+          if (event == 'selected' &&
+              value is int &&
+              value >= 0 &&
+              value < items.length) {
+            final entry = items[value];
+            if (entry is AdaptivePopupMenuItem<T>) onSelected(value, entry);
           }
-          return _buildMaterialPopupMenu<T>(
-            context: context,
-            items: items,
-            onSelected: onSelected,
-            height: height,
-            key: key,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(label),
-                const SizedBox(width: 4),
-                const Icon(Icons.arrow_drop_down, size: 20),
-              ],
-            ),
-          );
         },
       );
     }
@@ -126,34 +110,15 @@ class AdaptivePopupMenuButton<T> {
       );
     }
 
-    // Android - Use Material PopupMenuButton with custom child
+    // Keep the arbitrary Flutter child as an anchor and render the menu in Compose.
     if (PlatformInfo.isAndroid) {
-      return Builder(
-        builder: (context) =>
-            hasAdaptiveMaterialExpressiveNavigatorTheme(
-              context,
-              rootNavigator: true,
-            )
-            ? _buildM3EMenu<T>(
-                context: context,
-                items: items,
-                onSelected: onSelected,
-                anchorBuilder: (context, open) => triggerOnLongPress
-                    ? GestureDetector(
-                        onTap: onTap,
-                        onLongPress: open,
-                        child: child,
-                      )
-                    : GestureDetector(onTap: open, child: child),
-                key: key,
-              )
-            : _buildMaterialPopupMenu<T>(
-                context: context,
-                items: items,
-                onSelected: onSelected,
-                child: child,
-                key: key,
-              ),
+      return _AndroidNativePopupMenuAnchor<T>(
+        key: key,
+        items: items,
+        onSelected: onSelected,
+        triggerOnLongPress: triggerOnLongPress,
+        onTap: onTap,
+        child: child,
       );
     }
 
@@ -198,39 +163,28 @@ class AdaptivePopupMenuButton<T> {
       );
     }
 
-    // Android - Use Material IconButton with PopupMenu
+    // Android uses a native Compose icon button and DropdownMenu.
     if (PlatformInfo.isAndroid) {
-      return Builder(
-        builder: (context) {
-          if (hasAdaptiveMaterialExpressiveNavigatorTheme(
-            context,
-            rootNavigator: true,
-          )) {
-            return _buildM3EMenu<T>(
-              context: context,
-              items: items,
-              onSelected: onSelected,
-              anchorBuilder: (context, open) => m3e.M3EIconButton(
-                icon: Icon(
-                  icon is IconData ? icon : Icons.more_horiz,
-                  color: tint,
-                ),
-                onPressed: open,
-                visualSize: Size.square(size),
-                tooltip: 'More options',
-              ),
-              key: key,
-            );
+      return AndroidM3EPlatformView(
+        key: key,
+        component: 'popupMenuButton',
+        width: size,
+        height: size,
+        properties: {
+          'anchorType': 'icon',
+          'icon': _nativeIconName(icon, parameterName: 'icon'),
+          'style': _nativeMenuButtonStyle(buttonStyle),
+          'tint': tint?.toARGB32(),
+          'items': _nativeMenuItems<T>(items),
+        },
+        onEvent: (event, value) {
+          if (event == 'selected' &&
+              value is int &&
+              value >= 0 &&
+              value < items.length) {
+            final entry = items[value];
+            if (entry is AdaptivePopupMenuItem<T>) onSelected(value, entry);
           }
-          return _buildMaterialPopupMenu<T>(
-            context: context,
-            items: items,
-            onSelected: onSelected,
-            icon: icon,
-            tint: tint,
-            size: size,
-            key: key,
-          );
         },
       );
     }
@@ -249,161 +203,50 @@ class AdaptivePopupMenuButton<T> {
     );
   }
 
-  static Widget _buildM3EMenu<T>({
-    required BuildContext context,
-    required List<AdaptivePopupMenuEntry> items,
-    required void Function(int, AdaptivePopupMenuItem<T>) onSelected,
-    required Widget Function(BuildContext, VoidCallback) anchorBuilder,
-    Key? key,
-  }) {
-    final entries = <m3e.M3EMenuNode>[];
-    for (var index = 0; index < items.length; index++) {
-      final entry = items[index];
-      if (entry is AdaptivePopupMenuItem<T>) {
-        final leading = entry.imageBytes != null
-            ? ClipOval(
-                child: Image.memory(
-                  entry.imageBytes!,
-                  width: 24,
-                  height: 24,
-                  fit: BoxFit.cover,
-                ),
-              )
-            : entry.icon is IconData
-            ? Icon(entry.icon as IconData)
-            : null;
-        entries.add(
-          m3e.M3EMenuEntry(
-            label: entry.label,
-            supportingText: entry.subtitle,
-            leading: leading,
-            enabled: entry.enabled,
-            isDestructive: entry.isDestructive,
-            value: index,
-          ),
-        );
-      } else {
-        entries.add(const m3e.M3EMenuDivider());
-      }
-    }
-
-    final menu = m3e.M3EMenu(
-      key: key,
-      anchorBuilder: anchorBuilder,
-      children: entries,
-      onSelected: (value) {
-        if (value is! int || value < 0 || value >= items.length) return;
-        final item = items[value];
-        if (item is AdaptivePopupMenuItem<T>) onSelected(value, item);
-      },
-    );
-    return withAdaptiveMaterialExpressiveTheme(context, menu);
-  }
-
-  static Widget _buildMaterialPopupMenu<T>({
-    required BuildContext context,
-    required List<AdaptivePopupMenuEntry> items,
-    required void Function(int, AdaptivePopupMenuItem<T>) onSelected,
-    Widget? child,
-    dynamic icon,
-    Color? tint,
-    double? height,
-    double? size,
-    Key? key,
-  }) {
-    final menu = PopupMenuButton<int>(
-      key: key,
-      icon: icon == null
-          ? null
-          : Icon(icon is IconData ? icon : Icons.more_vert, color: tint),
-      itemBuilder: (context) => _materialPopupEntries<T>(context, items),
-      onSelected: (index) {
-        if (index < 0 || index >= items.length) return;
-        final item = items[index];
-        if (item is AdaptivePopupMenuItem<T>) onSelected(index, item);
-      },
-      child: child,
-    );
-    if (icon != null) {
-      return SizedBox(width: size, height: size, child: menu);
-    }
-    return height == null ? menu : SizedBox(height: height, child: menu);
-  }
-
-  static List<PopupMenuEntry<int>> _materialPopupEntries<T>(
-    BuildContext context,
+  static List<Map<String, Object?>> _nativeMenuItems<T>(
     List<AdaptivePopupMenuEntry> items,
-  ) {
-    return [
-      for (var index = 0; index < items.length; index++)
-        if (items[index] is AdaptivePopupMenuDivider)
-          const PopupMenuDivider()
-        else if (items[index] is AdaptivePopupMenuItem<T>)
-          _materialPopupItem<T>(context, index, items[index]),
-    ];
-  }
+  ) => [
+    for (final entry in items)
+      if (entry is AdaptivePopupMenuItem<T>)
+        {
+          'label': entry.label,
+          'subtitle': entry.subtitle,
+          'icon': entry.icon == null
+              ? null
+              : _nativeIconName(entry.icon, parameterName: 'item.icon'),
+          'imageBytes': entry.imageBytes,
+          'enabled': entry.enabled,
+          'destructive': entry.isDestructive,
+        }
+      else
+        {'divider': true},
+  ];
 
-  static PopupMenuItem<int> _materialPopupItem<T>(
-    BuildContext context,
-    int index,
-    AdaptivePopupMenuEntry entry,
-  ) {
-    final item = entry as AdaptivePopupMenuItem<T>;
-    final destructiveColor = item.isDestructive
-        ? Theme.of(context).colorScheme.error
-        : null;
-    final leading = item.imageBytes != null
-        ? ClipOval(
-            child: Image.memory(
-              item.imageBytes!,
-              width: 32,
-              height: 32,
-              fit: BoxFit.cover,
-            ),
-          )
-        : item.icon is IconData
-        ? Icon(item.icon as IconData, color: destructiveColor)
-        : null;
-    return PopupMenuItem<int>(
-      value: index,
-      enabled: item.enabled,
-      child: Row(
-        children: [
-          if (leading != null) ...[leading, const SizedBox(width: 12)],
-          Expanded(
-            child: item.subtitle == null || item.subtitle!.isEmpty
-                ? Text(item.label, style: TextStyle(color: destructiveColor))
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        item.label,
-                        style: TextStyle(color: destructiveColor),
-                      ),
-                      Text(
-                        item.subtitle!,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static m3e.M3EButtonStyle _mapM3EButtonStyle(PopupButtonStyle style) =>
+  static String _nativeMenuButtonStyle(PopupButtonStyle style) =>
       switch (style) {
-        PopupButtonStyle.filled ||
-        PopupButtonStyle.prominentGlass => m3e.M3EButtonStyle.filled,
+        PopupButtonStyle.filled || PopupButtonStyle.prominentGlass => 'filled',
         PopupButtonStyle.tinted ||
         PopupButtonStyle.gray ||
-        PopupButtonStyle.glass => m3e.M3EButtonStyle.tonal,
+        PopupButtonStyle.glass => 'tonal',
         PopupButtonStyle.bordered ||
-        PopupButtonStyle.borderedProminent => m3e.M3EButtonStyle.outlined,
-        PopupButtonStyle.plain => m3e.M3EButtonStyle.text,
+        PopupButtonStyle.borderedProminent => 'outlined',
+        PopupButtonStyle.plain => 'text',
       };
+
+  static String _nativeIconName(Object? icon, {required String parameterName}) {
+    if (icon is AndroidM3EIcon) return icon.name;
+    if (icon is IconData) {
+      return resolveAndroidM3EIcon(
+        child: Icon(icon),
+        nativeIcon: null,
+        parameterName: parameterName,
+      );
+    }
+    throw FlutterError(
+      'Android native popup menus require a serializable icon. '
+      'Use AndroidM3EIcon for $parameterName.',
+    );
+  }
 
   static Widget _buildActionSheetContent<T>(AdaptivePopupMenuItem<T> item) {
     final hasImage = item.imageBytes != null;
@@ -491,4 +334,64 @@ class AdaptivePopupMenuButton<T> {
       }
     }
   }
+}
+
+class _AndroidNativePopupMenuAnchor<T> extends StatefulWidget {
+  const _AndroidNativePopupMenuAnchor({
+    super.key,
+    required this.items,
+    required this.onSelected,
+    required this.triggerOnLongPress,
+    required this.onTap,
+    required this.child,
+  });
+
+  final List<AdaptivePopupMenuEntry> items;
+  final void Function(int, AdaptivePopupMenuItem<T>) onSelected;
+  final bool triggerOnLongPress;
+  final VoidCallback? onTap;
+  final Widget child;
+
+  @override
+  State<_AndroidNativePopupMenuAnchor<T>> createState() =>
+      _AndroidNativePopupMenuAnchorState<T>();
+}
+
+class _AndroidNativePopupMenuAnchorState<T>
+    extends State<_AndroidNativePopupMenuAnchor<T>> {
+  final _anchorKey = GlobalKey();
+
+  void _show() {
+    final box = _anchorKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final origin = box.localToGlobal(Offset.zero);
+    showAndroidM3EOverlay(
+      context: context,
+      component: 'anchoredPopupMenu',
+      rootNavigator: true,
+      properties: {
+        'anchorX': origin.dx,
+        'anchorY': origin.dy + box.size.height,
+        'items': AdaptivePopupMenuButton._nativeMenuItems<T>(widget.items),
+      },
+      onEvent: (event, value) {
+        if (event == 'selected' &&
+            value is int &&
+            value >= 0 &&
+            value < widget.items.length) {
+          final item = widget.items[value];
+          if (item is AdaptivePopupMenuItem<T>) widget.onSelected(value, item);
+        }
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    key: _anchorKey,
+    behavior: HitTestBehavior.opaque,
+    onTap: widget.triggerOnLongPress ? widget.onTap : _show,
+    onLongPress: widget.triggerOnLongPress ? _show : null,
+    child: widget.child,
+  );
 }

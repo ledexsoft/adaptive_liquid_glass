@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
-import '../theme/adaptive_material_expressive_theme.dart';
+import 'android/android_m3e_native_icon.dart';
+import 'android/android_m3e_overlay.dart';
 
 /// An action item for [showAdaptiveActionSheet].
 class AdaptiveActionSheetAction {
@@ -13,6 +13,7 @@ class AdaptiveActionSheetAction {
     this.isDefaultAction = false,
     this.isDestructiveAction = false,
     this.icon,
+    this.androidIcon,
   });
 
   /// The widget to display as the action's label (usually a [Text]).
@@ -29,13 +30,15 @@ class AdaptiveActionSheetAction {
 
   /// Optional leading icon displayed on Android / Material sheets.
   final Widget? icon;
+
+  /// Serializable Compose icon for Android when [icon] cannot be mapped.
+  final AndroidM3EIcon? androidIcon;
 }
 
 /// Shows an adaptive action sheet matching the platform design.
 ///
 /// On iOS & macOS: Displays a [CupertinoActionSheet] with native blur and spring animations.
-/// On Android: Displays an M3E bottom sheet when the app theme is installed at
-/// the Navigator; otherwise falls back to a Material 3 bottom sheet.
+/// On Android: Displays a native Compose Material 3 bottom sheet.
 /// Other platforms use the Material bottom sheet fallback.
 ///
 /// Example:
@@ -100,21 +103,42 @@ Future<T?> showAdaptiveActionSheet<T>({
     );
   }
 
-  if (PlatformInfo.isAndroid &&
-      hasAdaptiveMaterialExpressiveNavigatorTheme(context)) {
-    return m3e.M3EBottomSheet.show<T>(
-      context,
-      builder: (sheetContext) => _buildExpressiveSheetContent(
-        context: sheetContext,
-        title: title,
-        message: message,
-        actions: actions,
-        cancelButton: cancelButton,
-      ),
+  if (PlatformInfo.isAndroid) {
+    final allActions = [...actions, if (cancelButton != null) cancelButton];
+    final result = showAndroidM3EOverlay(
+      context: context,
+      component: 'actionSheet',
+      properties: {
+        'title': _plainText(title, 'title'),
+        'message': _plainText(message, 'message'),
+        'actions': [
+          for (var index = 0; index < allActions.length; index++)
+            {
+              'label': _plainText(allActions[index].child, 'action.child'),
+              'icon': _nativeIcon(
+                allActions[index].icon,
+                allActions[index].androidIcon,
+              ),
+              'default': allActions[index].isDefaultAction,
+              'destructive': allActions[index].isDestructiveAction,
+              'cancel': index >= actions.length,
+            },
+        ],
+      },
+      onEvent: (event, value) {
+        if (event != 'selected' ||
+            value is! int ||
+            value < 0 ||
+            value >= allActions.length) {
+          return;
+        }
+        allActions[value].onPressed();
+      },
     );
+    return result.then<T?>((value) => value is T ? value : null);
   }
 
-  // Android & Material bottom sheet
+  // Other platforms use a Flutter Material bottom sheet.
   final theme = Theme.of(context);
   return showModalBottomSheet<T>(
     context: context,
@@ -203,97 +227,27 @@ Future<T?> showAdaptiveActionSheet<T>({
   );
 }
 
-Widget _buildExpressiveSheetContent({
-  required BuildContext context,
-  required Widget? title,
-  required Widget? message,
-  required List<AdaptiveActionSheetAction> actions,
-  required AdaptiveActionSheetAction? cancelButton,
-}) {
-  final theme = m3e.M3ETheme.of(context);
-  return SingleChildScrollView(
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (title != null || message != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (title != null)
-                    DefaultTextStyle(
-                      style: theme.typeScale.titleMedium,
-                      child: title,
-                    ),
-                  if (message != null) ...[
-                    const SizedBox(height: 4),
-                    DefaultTextStyle(
-                      style: theme.typeScale.bodyMedium.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      child: message,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          for (final action in actions) _expressiveAction(context, action),
-          if (cancelButton != null) ...[
-            const SizedBox(height: 8),
-            m3e.M3EButton.text(
-              onPressed: cancelButton.onPressed,
-              child: cancelButton.child,
-            ),
-          ],
-        ],
-      ),
-    ),
+String? _plainText(Widget? widget, String parameter) {
+  if (widget == null) return null;
+  if (widget is Text && widget.data != null && widget.style == null) {
+    return widget.data;
+  }
+  throw FlutterError(
+    'Android native action sheets require $parameter to be a plain Text widget.',
   );
 }
 
-Widget _expressiveAction(
-  BuildContext context,
-  AdaptiveActionSheetAction action,
-) {
-  final text = action.child is Text ? (action.child as Text).data : null;
-  final actionText = action.child is Text ? action.child as Text : null;
-  if (text != null &&
-      actionText?.style == null &&
-      actionText?.textAlign == null &&
-      actionText?.maxLines == null &&
-      actionText?.overflow == null &&
-      !action.isDestructiveAction &&
-      !action.isDefaultAction) {
-    return m3e.M3EListItem(
-      headline: text,
-      leading: action.icon,
-      onTap: action.onPressed,
+String? _nativeIcon(Widget? widget, AndroidM3EIcon? nativeIcon) {
+  if (nativeIcon != null) return nativeIcon.name;
+  if (widget == null) return null;
+  if (widget is! Icon || widget.icon == null) {
+    throw FlutterError(
+      'Android native action sheet icons must be Icon or AndroidM3EIcon.',
     );
   }
-
-  final theme = m3e.M3ETheme.of(context);
-  return m3e.M3ECard(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    onPressed: action.onPressed,
-    child: Row(
-      children: [
-        if (action.icon != null) ...[action.icon!, const SizedBox(width: 12)],
-        Expanded(
-          child: DefaultTextStyle(
-            style: theme.typeScale.bodyLarge.copyWith(
-              color: action.isDestructiveAction
-                  ? theme.colorScheme.error
-                  : theme.colorScheme.onSurface,
-              fontWeight: action.isDefaultAction ? FontWeight.w600 : null,
-            ),
-            child: action.child,
-          ),
-        ),
-      ],
-    ),
+  return resolveAndroidM3EIcon(
+    child: widget,
+    nativeIcon: null,
+    parameterName: 'action.icon',
   );
 }
