@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive list tile with a trailing switch.
 ///
@@ -65,10 +67,7 @@ class AdaptiveSwitchListTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(
               children: [
-                if (leading != null) ...[
-                  leading!,
-                  const SizedBox(width: 12),
-                ],
+                if (leading != null) ...[leading!, const SizedBox(width: 12)],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,12 +93,32 @@ class AdaptiveSwitchListTile extends StatelessWidget {
                 CupertinoSwitch(
                   value: value,
                   onChanged: enabled ? onChanged : null,
-                  activeTrackColor:
-                      activeColor ?? CupertinoColors.systemGreen,
+                  activeTrackColor: activeColor ?? CupertinoColors.systemGreen,
                 ),
               ],
             ),
           ),
+        ),
+      );
+    }
+
+    final Text? titleText = title is Text ? title as Text : null;
+    final Text? subtitleText = subtitle is Text ? subtitle as Text : null;
+    if (PlatformInfo.isAndroid &&
+        activeColor == null &&
+        _isM3EText(titleText) &&
+        (subtitle == null || _isM3EText(subtitleText))) {
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        m3e.M3EListItem(
+          headline: titleText!.data!,
+          supportingText: subtitleText?.data,
+          leading: leading,
+          trailing: m3e.M3ESwitch(
+            value: value,
+            onChanged: enabled ? onChanged : null,
+          ),
+          onTap: enabled ? onTap : null,
         ),
       );
     }
@@ -123,4 +142,13 @@ class AdaptiveSwitchListTile extends StatelessWidget {
     if (widget is Text) return widget.data;
     return null;
   }
+
+  bool _isM3EText(Text? text) =>
+      text != null &&
+      text.data != null &&
+      text.style == null &&
+      text.textAlign == null &&
+      text.maxLines == null &&
+      text.overflow == null &&
+      text.semanticsLabel == null;
 }

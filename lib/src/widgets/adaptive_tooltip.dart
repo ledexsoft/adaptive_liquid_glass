@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive tooltip that renders platform-specific tooltip styles
 ///
@@ -84,6 +86,22 @@ class AdaptiveTooltip extends StatelessWidget {
         waitDuration: waitDuration,
         showDuration: showDuration,
         child: child,
+      );
+    }
+
+    if (PlatformInfo.isAndroid &&
+        preferBelow &&
+        verticalOffset == null &&
+        padding == null &&
+        margin == null &&
+        waitDuration == null &&
+        showDuration == null &&
+        decoration == null &&
+        textStyle == null &&
+        height == null) {
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        m3e.M3ETooltip(message: message, child: child),
       );
     }
 

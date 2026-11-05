@@ -1,7 +1,9 @@
 import 'adaptive_blur_view.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// Snackbar type for different visual styles
 enum AdaptiveSnackBarType {
@@ -21,7 +23,8 @@ enum AdaptiveSnackBarType {
 /// An adaptive snackbar that shows platform-appropriate notifications
 ///
 /// - iOS: Shows a banner-style notification at the top
-/// - Android: Shows a Material SnackBar at the bottom
+/// - Android: Uses M3E styling for neutral notices when the app theme is
+///   installed above the root Navigator; otherwise uses a Material SnackBar.
 class AdaptiveSnackBar {
   /// Shows an adaptive snackbar
   ///
@@ -39,6 +42,22 @@ class AdaptiveSnackBar {
     String? action,
     VoidCallback? onActionPressed,
   }) {
+    if (PlatformInfo.isAndroid &&
+        type == AdaptiveSnackBarType.info &&
+        hasAdaptiveMaterialExpressiveNavigatorTheme(
+          context,
+          rootNavigator: true,
+        )) {
+      m3e.M3ESnackbar.show(
+        context,
+        message: message,
+        actionLabel: action,
+        onAction: onActionPressed,
+        duration: duration,
+      );
+      return;
+    }
+
     if (PlatformInfo.isIOS) {
       _showIOSSnackBar(
         context,

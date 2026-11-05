@@ -5,8 +5,10 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 /** AdaptivePlatformUiPlugin */
 class AdaptivePlatformUiPlugin: FlutterPlugin {
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-    // Android uses Material Design widgets directly in Dart
-    // No platform views needed for Android
+    flutterPluginBinding.platformViewRegistry.registerViewFactory(
+      M3EPlatformViewFactory.VIEW_TYPE,
+      M3EPlatformViewFactory(flutterPluginBinding.binaryMessenger),
+    )
   }
 
   override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {

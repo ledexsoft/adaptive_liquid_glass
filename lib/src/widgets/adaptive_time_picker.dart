@@ -1,12 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 import 'minute_interval.dart';
 
 /// An adaptive time picker that renders platform-specific styles
 ///
 /// On iOS: Shows CupertinoTimerPicker in a modal bottom sheet
-/// On Android: Shows Material TimePickerDialog
+/// On Android: Shows the M3E time picker when the app theme is installed above
+/// the Navigator, and a Flutter Material time picker otherwise.
 class AdaptiveTimePicker {
   AdaptiveTimePicker._();
 
@@ -24,6 +27,22 @@ class AdaptiveTimePicker {
     bool use24HourFormat = false,
     int minuteInterval = 1,
   }) async {
+    if (PlatformInfo.isAndroid &&
+        minuteInterval == 1 &&
+        hasAdaptiveMaterialExpressiveNavigatorTheme(context)) {
+      final picked = await m3e.M3ETimePicker.show(
+        context,
+        initialTime: m3e.M3ETime(
+          hour: initialTime.hour,
+          minute: initialTime.minute,
+        ),
+        alwaysUse24HourFormat: use24HourFormat,
+      );
+      return picked == null
+          ? null
+          : TimeOfDay(hour: picked.hour, minute: picked.minute);
+    }
+
     if (PlatformInfo.isIOS) {
       return _showCupertinoTimePicker(
         context: context,
@@ -52,7 +71,13 @@ class AdaptiveTimePicker {
     // grid first, as the picker asserts the initial value is a valid interval.
     final now = DateTime.now();
     DateTime selectedDateTime = alignDateTimeToInterval(
-      DateTime(now.year, now.month, now.day, initialTime.hour, initialTime.minute),
+      DateTime(
+        now.year,
+        now.month,
+        now.day,
+        initialTime.hour,
+        initialTime.minute,
+      ),
       minuteInterval,
     );
 
@@ -85,9 +110,9 @@ class AdaptiveTimePicker {
   }) async {
     final builder = use24HourFormat
         ? (BuildContext ctx, Widget? child) => MediaQuery(
-              data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
-              child: child!,
-            )
+            data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
+            child: child!,
+          )
         : null;
 
     // Material has no native minute stepping; snap the picked value onto the

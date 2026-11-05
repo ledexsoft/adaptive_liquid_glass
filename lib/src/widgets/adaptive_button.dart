@@ -1,8 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
 import '../style/sf_symbol.dart';
+import 'android/android_m3e_platform_view.dart';
 import 'ios26/ios26_button.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive button that renders platform-specific button styles
 ///
@@ -199,7 +204,8 @@ class AdaptiveButton extends StatelessWidget {
 
     // Android - Use Material Design button
     if (PlatformInfo.isAndroid) {
-      return _buildMaterialButton(context);
+      if (!useNative) return _buildMaterialButton(context);
+      return _buildAndroidExpressiveButton(context);
     }
 
     // Fallback for other platforms (web, desktop, etc.)
@@ -482,7 +488,8 @@ class AdaptiveButton extends StatelessWidget {
         // texto sale del MISMO color que el fondo → invisible en Android.
         // Derivar el foreground por luminancia del fondo (blanco/negro).
         final filledColor = color ?? Theme.of(context).colorScheme.primary;
-        final filledTextColor = textColor ??
+        final filledTextColor =
+            textColor ??
             (filledColor.computeLuminance() > 0.5
                 ? Colors.black
                 : Colors.white);
@@ -590,6 +597,140 @@ class AdaptiveButton extends StatelessWidget {
           child: buttonChild,
         );
     }
+  }
+
+  Widget _buildAndroidExpressiveButton(BuildContext context) {
+    if (label != null &&
+        child == null &&
+        icon == null &&
+        sfSymbol == null &&
+        padding == null &&
+        borderRadius == null &&
+        minSize == null) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final textStyle = Theme.of(context).textTheme.labelLarge;
+          final painter =
+              TextPainter(
+                text: TextSpan(text: label ?? '', style: textStyle),
+                maxLines: 1,
+                textDirection: Directionality.of(context),
+              )..layout(
+                maxWidth: constraints.maxWidth.isFinite
+                    ? (constraints.maxWidth - 48).clamp(0, double.infinity)
+                    : double.infinity,
+              );
+          final desiredWidth = math.max(64.0, painter.width + 48);
+          final width = constraints.maxWidth.isFinite
+              ? math.min(desiredWidth, constraints.maxWidth)
+              : desiredWidth;
+          final backgroundColor = switch (this.style) {
+            AdaptiveButtonStyle.filled ||
+            AdaptiveButtonStyle.prominentGlass => color,
+            AdaptiveButtonStyle.tinted => color?.withValues(alpha: 0.15),
+            AdaptiveButtonStyle.gray => color,
+            AdaptiveButtonStyle.bordered ||
+            AdaptiveButtonStyle.plain ||
+            AdaptiveButtonStyle.glass => null,
+          };
+          final foregroundColor =
+              textColor ??
+              ((this.style == AdaptiveButtonStyle.filled ||
+                          this.style == AdaptiveButtonStyle.gray) &&
+                      color != null
+                  ? (color!.computeLuminance() > 0.5
+                        ? Colors.black
+                        : Colors.white)
+                  : color);
+
+          return AndroidM3EPlatformView(
+            component: 'button',
+            width: width,
+            height: size == AdaptiveButtonSize.large ? 48 : 40,
+            properties: {
+              'label': label,
+              'style': this.style.name,
+              'backgroundColor': backgroundColor?.toARGB32(),
+              'foregroundColor': foregroundColor?.toARGB32(),
+              'enabled': enabled && onPressed != null,
+              'hasCallback': onPressed != null,
+              'minHeight': size == AdaptiveButtonSize.large ? 48.0 : 40.0,
+            },
+            onEvent: (event, _) {
+              if (event == 'pressed' && enabled) onPressed?.call();
+            },
+          );
+        },
+      );
+    }
+
+    Widget buttonChild;
+    if (child != null) {
+      buttonChild = child!;
+    } else if (icon != null) {
+      buttonChild = Icon(icon, color: iconColor);
+    } else if (sfSymbol != null) {
+      buttonChild = Icon(
+        Icons.circle,
+        color: sfSymbol!.color,
+        size: sfSymbol!.size,
+      );
+    } else {
+      buttonChild = Text(label ?? '');
+    }
+
+    final style = switch (this.style) {
+      AdaptiveButtonStyle.filled ||
+      AdaptiveButtonStyle.prominentGlass => m3e.M3EButtonStyle.filled,
+      AdaptiveButtonStyle.tinted ||
+      AdaptiveButtonStyle.gray ||
+      AdaptiveButtonStyle.glass => m3e.M3EButtonStyle.tonal,
+      AdaptiveButtonStyle.bordered => m3e.M3EButtonStyle.outlined,
+      AdaptiveButtonStyle.plain => m3e.M3EButtonStyle.text,
+    };
+    final buttonSize = switch (size) {
+      AdaptiveButtonSize.small => m3e.M3EButtonSize.xs,
+      AdaptiveButtonSize.medium => m3e.M3EButtonSize.sm,
+      AdaptiveButtonSize.large => m3e.M3EButtonSize.md,
+    };
+    final backgroundColor = switch (this.style) {
+      AdaptiveButtonStyle.filled || AdaptiveButtonStyle.prominentGlass => color,
+      AdaptiveButtonStyle.tinted => color?.withValues(alpha: 0.15),
+      AdaptiveButtonStyle.gray => color,
+      AdaptiveButtonStyle.bordered ||
+      AdaptiveButtonStyle.plain ||
+      AdaptiveButtonStyle.glass => null,
+    };
+    final foregroundColor =
+        textColor ??
+        iconColor ??
+        ((this.style == AdaptiveButtonStyle.filled ||
+                    this.style == AdaptiveButtonStyle.gray) &&
+                color != null
+            ? (color!.computeLuminance() > 0.5 ? Colors.black : Colors.white)
+            : color);
+    final decoration = m3e.M3EButtonDecoration.styleFrom(
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
+      side: this.style == AdaptiveButtonStyle.bordered && color != null
+          ? BorderSide(color: color!)
+          : null,
+      padding: padding,
+      minimumSize: minSize,
+      borderRadius: borderRadius?.topLeft.x,
+    );
+    return withAdaptiveMaterialExpressiveTheme(
+      context,
+      m3e.M3EButton(
+        onPressed: enabled ? onPressed : null,
+        enabled: enabled,
+        style: style,
+        size: buttonSize,
+        shape: m3e.M3EButtonShape.round,
+        decoration: decoration,
+        child: buttonChild,
+      ),
+    );
   }
 
   /// 09/09 (v0.1.125): restaurado el mapeo de v0.1.121 (el que Carlos

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// An adaptive checkbox that renders platform-specific checkbox styles
 ///
@@ -85,6 +86,27 @@ class AdaptiveCheckbox extends StatelessWidget {
 
     // Android - Use Material Design Checkbox
     if (PlatformInfo.isAndroid) {
+      if (focusColor == null && hoverColor == null) {
+        return AndroidM3EPlatformView(
+          component: 'checkbox',
+          width: 48,
+          height: 48,
+          properties: {
+            'value': value,
+            'tristate': tristate,
+            'enabled': onChanged != null,
+            'hasCallback': onChanged != null,
+            'activeColor': activeColor?.toARGB32(),
+            'checkColor': checkColor?.toARGB32(),
+          },
+          onEvent: (event, nextValue) {
+            if (event == 'changed' &&
+                (nextValue == null || nextValue is bool)) {
+              onChanged?.call(nextValue as bool?);
+            }
+          },
+        );
+      }
       return Checkbox(
         value: value,
         tristate: tristate,

@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An action item for [showAdaptiveActionSheet].
 class AdaptiveActionSheetAction {
@@ -32,7 +34,9 @@ class AdaptiveActionSheetAction {
 /// Shows an adaptive action sheet matching the platform design.
 ///
 /// On iOS & macOS: Displays a [CupertinoActionSheet] with native blur and spring animations.
-/// On Android & other platforms: Displays a Material 3 bottom sheet with drag handle and options.
+/// On Android: Displays an M3E bottom sheet when the app theme is installed at
+/// the Navigator; otherwise falls back to a Material 3 bottom sheet.
+/// Other platforms use the Material bottom sheet fallback.
 ///
 /// Example:
 /// ```dart
@@ -96,6 +100,20 @@ Future<T?> showAdaptiveActionSheet<T>({
     );
   }
 
+  if (PlatformInfo.isAndroid &&
+      hasAdaptiveMaterialExpressiveNavigatorTheme(context)) {
+    return m3e.M3EBottomSheet.show<T>(
+      context,
+      builder: (sheetContext) => _buildExpressiveSheetContent(
+        context: sheetContext,
+        title: title,
+        message: message,
+        actions: actions,
+        cancelButton: cancelButton,
+      ),
+    );
+  }
+
   // Android & Material bottom sheet
   final theme = Theme.of(context);
   return showModalBottomSheet<T>(
@@ -115,8 +133,10 @@ Future<T?> showAdaptiveActionSheet<T>({
             children: [
               if (title != null || message != null)
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -149,8 +169,8 @@ Future<T?> showAdaptiveActionSheet<T>({
                       color: action.isDestructiveAction
                           ? theme.colorScheme.error
                           : (action.isDefaultAction
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.onSurface),
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurface),
                       fontWeight: action.isDefaultAction
                           ? FontWeight.bold
                           : FontWeight.normal,
@@ -180,5 +200,100 @@ Future<T?> showAdaptiveActionSheet<T>({
         ),
       );
     },
+  );
+}
+
+Widget _buildExpressiveSheetContent({
+  required BuildContext context,
+  required Widget? title,
+  required Widget? message,
+  required List<AdaptiveActionSheetAction> actions,
+  required AdaptiveActionSheetAction? cancelButton,
+}) {
+  final theme = m3e.M3ETheme.of(context);
+  return SingleChildScrollView(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (title != null || message != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (title != null)
+                    DefaultTextStyle(
+                      style: theme.typeScale.titleMedium,
+                      child: title,
+                    ),
+                  if (message != null) ...[
+                    const SizedBox(height: 4),
+                    DefaultTextStyle(
+                      style: theme.typeScale.bodyMedium.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      child: message,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          for (final action in actions) _expressiveAction(context, action),
+          if (cancelButton != null) ...[
+            const SizedBox(height: 8),
+            m3e.M3EButton.text(
+              onPressed: cancelButton.onPressed,
+              child: cancelButton.child,
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _expressiveAction(
+  BuildContext context,
+  AdaptiveActionSheetAction action,
+) {
+  final text = action.child is Text ? (action.child as Text).data : null;
+  final actionText = action.child is Text ? action.child as Text : null;
+  if (text != null &&
+      actionText?.style == null &&
+      actionText?.textAlign == null &&
+      actionText?.maxLines == null &&
+      actionText?.overflow == null &&
+      !action.isDestructiveAction &&
+      !action.isDefaultAction) {
+    return m3e.M3EListItem(
+      headline: text,
+      leading: action.icon,
+      onTap: action.onPressed,
+    );
+  }
+
+  final theme = m3e.M3ETheme.of(context);
+  return m3e.M3ECard(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    onPressed: action.onPressed,
+    child: Row(
+      children: [
+        if (action.icon != null) ...[action.icon!, const SizedBox(width: 12)],
+        Expanded(
+          child: DefaultTextStyle(
+            style: theme.typeScale.bodyLarge.copyWith(
+              color: action.isDestructiveAction
+                  ? theme.colorScheme.error
+                  : theme.colorScheme.onSurface,
+              fontWeight: action.isDefaultAction ? FontWeight.w600 : null,
+            ),
+            child: action.child,
+          ),
+        ),
+      ],
+    ),
   );
 }

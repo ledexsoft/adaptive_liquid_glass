@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// A context menu action item
 class AdaptiveContextMenuAction {
@@ -33,7 +35,8 @@ class AdaptiveContextMenuAction {
 ///
 /// On iOS 26+: Uses native UIContextMenu with Liquid Glass effects
 /// On iOS <26: Uses CupertinoContextMenu
-/// On Android: Uses PopupMenuButton with Material Design
+/// On Android: Uses an M3E anchored menu when the app theme is installed above
+/// the root Navigator; otherwise uses a Material popup menu.
 class AdaptiveContextMenu extends StatelessWidget {
   /// Creates an adaptive context menu
   const AdaptiveContextMenu({
@@ -65,7 +68,7 @@ class AdaptiveContextMenu extends StatelessWidget {
       return _buildCupertinoContextMenu(context);
     }
 
-    // Android - Use PopupMenuButton
+    // Android - Use the expressive anchored menu.
     return _buildAndroidContextMenu(context);
   }
 
@@ -91,64 +94,75 @@ class AdaptiveContextMenu extends StatelessWidget {
   }
 
   Widget _buildAndroidContextMenu(BuildContext context) {
-    return GestureDetector(
-      onLongPress: () {
-        _showAndroidMenu(context);
-      },
-      child: child,
+    if (!hasAdaptiveMaterialExpressiveNavigatorTheme(
+      context,
+      rootNavigator: true,
+    )) {
+      return GestureDetector(
+        onLongPressStart: (details) =>
+            _showAndroidMenu(context, details.globalPosition),
+        child: child,
+      );
+    }
+
+    return m3e.M3EMenu.entries(
+      anchorBuilder: (context, open) =>
+          GestureDetector(onLongPress: open, child: child),
+      entries: [
+        for (final action in actions)
+          m3e.M3EMenuEntry(
+            label: action.title,
+            leading: action.icon is IconData
+                ? Icon(action.icon as IconData)
+                : null,
+            enabled: !action.isDisabled,
+            isDestructive: action.isDestructive,
+            onPressed: action.onPressed,
+          ),
+      ],
     );
   }
 
-  void _showAndroidMenu(BuildContext context) {
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final Offset offset = renderBox.localToGlobal(Offset.zero);
-    final Size size = renderBox.size;
-
+  void _showAndroidMenu(BuildContext context, Offset anchor) {
+    final screenSize = MediaQuery.sizeOf(context);
     showMenu<int>(
       context: context,
       position: RelativeRect.fromLTRB(
-        offset.dx,
-        offset.dy + size.height,
-        offset.dx + size.width,
-        offset.dy,
+        anchor.dx,
+        anchor.dy,
+        screenSize.width - anchor.dx,
+        screenSize.height - anchor.dy,
       ),
-      items: actions.asMap().entries.map((entry) {
-        final index = entry.key;
-        final action = entry.value;
-
-        return PopupMenuItem<int>(
-          value: index,
-          enabled: !action.isDisabled,
-          child: Row(
-            children: [
-              if (action.icon != null && action.icon is IconData) ...[
-                Icon(
-                  action.icon as IconData,
-                  size: 20,
-                  color: action.isDestructive
-                      ? Colors.red
-                      : (action.isDisabled ? Colors.grey : null),
-                ),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: Text(
-                  action.title,
+      items: [
+        for (var index = 0; index < actions.length; index++)
+          PopupMenuItem<int>(
+            value: index,
+            enabled: !actions[index].isDisabled,
+            child: Row(
+              children: [
+                if (actions[index].icon is IconData) ...[
+                  Icon(
+                    actions[index].icon as IconData,
+                    color: actions[index].isDestructive
+                        ? Theme.of(context).colorScheme.error
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Text(
+                  actions[index].title,
                   style: TextStyle(
-                    color: action.isDestructive
-                        ? Colors.red
-                        : (action.isDisabled ? Colors.grey : null),
+                    color: actions[index].isDestructive
+                        ? Theme.of(context).colorScheme.error
+                        : null,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        );
-      }).toList(),
+      ],
     ).then((selectedIndex) {
-      if (selectedIndex != null) {
-        actions[selectedIndex].onPressed();
-      }
+      if (selectedIndex != null) actions[selectedIndex].onPressed();
     });
   }
 }

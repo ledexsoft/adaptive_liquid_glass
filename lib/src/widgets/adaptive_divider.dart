@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive divider that renders platform-specific styles.
 ///
@@ -36,7 +38,8 @@ class AdaptiveDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     // iOS / macOS - hairline with grouped-table feel
     if (PlatformInfo.isIOS || PlatformInfo.isMacOS) {
-      final isDark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+      final isDark =
+          MediaQuery.platformBrightnessOf(context) == Brightness.dark;
       final defaultColor = isDark
           ? CupertinoColors.separator.darkColor
           : CupertinoColors.separator.color;
@@ -60,6 +63,17 @@ class AdaptiveDivider extends StatelessWidget {
     }
 
     // Android & other platforms - Material 3 Divider
+    if (PlatformInfo.isAndroid && height == null) {
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        m3e.M3EDivider(
+          thickness: thickness ?? 1,
+          indent: indent ?? 0,
+          endIndent: endIndent ?? 0,
+          color: color,
+        ),
+      );
+    }
     return Divider(
       height: height,
       thickness: thickness,

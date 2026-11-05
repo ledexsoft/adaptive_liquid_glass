@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive search field.
 ///
@@ -106,6 +108,37 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
       );
     }
 
+    if (PlatformInfo.isAndroid) {
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        m3e.M3ESearchBar(
+          controller: _controller,
+          focusNode: _focusNode,
+          hintText: widget.hintText,
+          leading: const Icon(Icons.search_rounded),
+          trailing: _controller.text.isEmpty
+              ? null
+              : [
+                  m3e.M3EIconButton(
+                    icon: const Icon(Icons.clear_rounded),
+                    tooltip: 'Clear',
+                    onPressed: _clear,
+                  ),
+                ],
+          enabled: widget.enabled,
+          autoFocus: widget.autofocus,
+          onChanged: (value) {
+            widget.onChanged?.call(value);
+            setState(() {});
+          },
+          onSubmitted: widget.onSubmitted,
+          onTap: widget.onTap,
+          onTapOutside: (_) => _focusNode.unfocus(),
+          textInputAction: TextInputAction.search,
+        ),
+      );
+    }
+
     // Android & other platforms - Material 3 SearchBar look via TextField
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -136,8 +169,10 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
         filled: true,
         fillColor: isDark ? cs.surfaceContainerHigh : cs.surfaceContainerHigh,
         isDense: true,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(28),
           borderSide: BorderSide.none,

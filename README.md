@@ -3,7 +3,7 @@
 [![CI](https://github.com/ledexsoft/adaptive_liquid_glass/workflows/CI/badge.svg)](https://github.com/ledexsoft/adaptive_liquid_glass/actions)
 [![Release](https://github.com/ledexsoft/adaptive_liquid_glass/workflows/Release/badge.svg)](https://github.com/ledexsoft/adaptive_liquid_glass/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Flutter](https://img.shields.io/badge/Flutter-%3E%3D3.0.0-blue.svg)](https://flutter.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-%3E%3D3.44.0-blue.svg)](https://flutter.dev)
 
 **Widgets adaptativos por plataforma para Flutter, listos para usar.**
 
@@ -13,7 +13,7 @@ Escribe tu app **una sola vez** y los componentes (botones, menús, alertas, bar
 |---|---|
 | 📱 **iOS 26 o superior** | Componentes **nativos de UIKit** con el nuevo diseño **Liquid Glass** (el vidrio translúcido de Apple) |
 | 🍎 **iOS 25 o anterior** | Widgets **Cupertino** tradicionales de Flutter |
-| 🤖 **Android** | Widgets **Material 3** |
+| 🤖 **Android** | Widgets **Material 3 Expressive** cuando existe una adaptación |
 
 **Sin configurar nada.** El paquete detecta el dispositivo solito y elige el estilo correcto.
 
@@ -49,8 +49,44 @@ Escribe tu app **una sola vez** y los componentes (botones, menús, alertas, bar
 ## ✅ Requisitos
 
 - Tener **Flutter** instalado (`flutter --version` en una terminal debe responder).
+- Flutter **3.44.0 o superior** y Dart **3.12.0 o superior**.
 - Saber crear un proyecto (`flutter create mi_app`).
 - Nada más. No necesitas saber nada de Swift, Kotlin ni UIKit.
+
+### Material 3 Expressive en Android
+
+Los controles adaptativos Android con equivalencia segura (`AdaptiveButton` de texto, `AdaptiveSwitch`, `AdaptiveCheckbox`, `AdaptiveRadio` y `AdaptiveSlider`) se dibujan con vistas nativas Jetpack Compose y Material 3 estable 1.4; las opciones personalizadas que Compose no puede representar conservan la ruta Flutter. Otras adaptaciones usan el catálogo Flutter `material_3_expressive` cuando existe una equivalencia. iOS conserva sus rutas Liquid Glass/Cupertino. El paquete reexporta el catálogo M3E Flutter, así que la app no necesita añadir ni importar otra dependencia. `AdaptiveApp` instala automáticamente el tema y las localizaciones que requieren esos componentes. La integración conserva Flutter 3.44/Dart 3.12 y Android API 21.
+
+La integración nativa usa `MaterialTheme` estable con tokens de color dinámicos y formas expresivas. `MaterialExpressiveTheme`, la API oficial nueva para el tema expresivo nativo, aún pertenece a la línea Material 3 1.5 prerelease y no se incluye en esta configuración estable.
+
+Para un componente M3E sin wrapper adaptativo propio, usa `AdaptiveMaterialExpressive` y ofrece una alternativa para las demás plataformas:
+
+```dart
+AdaptiveMaterialExpressive(
+  androidBuilder: (_) => M3EChip(
+    label: 'Filtrar',
+    onPressed: () {},
+  ),
+  fallbackBuilder: (_) => CupertinoButton(
+    onPressed: () {},
+    child: const Text('Filtrar'),
+  ),
+)
+```
+
+Si tu aplicación usa un `MaterialApp` propio, envuelve su `builder` con `AdaptiveMaterialExpressiveTheme` para habilitar también diálogos, selectores, menús y otros componentes M3E que usan el overlay del `Navigator`.
+
+```dart
+MaterialApp(
+  builder: (context, child) => AdaptiveMaterialExpressiveTheme(
+    child: child ?? const SizedBox.shrink(),
+  ),
+)
+```
+
+Los wrappers con equivalencia M3E ya adaptan, entre otros, botones y FAB, scaffold y navegación, pestañas, controles de selección, tarjetas y listas, campos de texto y búsqueda, menús, diálogos, selectores de fecha/hora, hojas inferiores, progreso, badges, tooltips y divisores. Si un argumento personalizado no tiene una equivalencia M3E segura, el wrapper conserva el componente Material de Flutter para respetar esa configuración.
+
+Componentes que no tenían un wrapper adaptativo —por ejemplo chips, carruseles, FAB menus, split buttons, navigation rail/drawer y refresh indicator— están disponibles con sus nombres `M3E*` desde este mismo import y se pueden seleccionar por plataforma con `AdaptiveMaterialExpressive`.
 
 ---
 

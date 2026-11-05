@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 import 'adaptive_segmented_control.dart';
 
 /// An adaptive tab bar view (horizontal swipeable tabs)
@@ -143,6 +145,33 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView>
 
     // Android - Material Design implementation
     if (PlatformInfo.isAndroid) {
+      if (widget.tabs.length >= 2 &&
+          widget.backgroundColor == null &&
+          widget.selectedColor == null &&
+          widget.unselectedColor == null) {
+        return withAdaptiveMaterialExpressiveTheme(
+          context,
+          Column(
+            children: [
+              m3e.M3ETabs(
+                tabs: widget.tabs
+                    .map((label) => m3e.M3ETab(label: label))
+                    .toList(),
+                selectedIndex: _currentIndex,
+                onTabSelected: _onSegmentChanged,
+              ),
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: _onPageChanged,
+                  children: widget.children,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
       final defaultBackgroundColor =
           widget.backgroundColor ?? Theme.of(context).primaryColor;
       final defaultSelectedColor = widget.selectedColor ?? Colors.white;

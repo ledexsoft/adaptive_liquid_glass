@@ -1,13 +1,16 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 import 'adaptive_time_picker.dart';
 import 'minute_interval.dart';
 
 /// An adaptive date picker that renders platform-specific styles
 ///
 /// On iOS: Shows CupertinoDatePicker in a modal bottom sheet
-/// On Android: Shows Material DatePickerDialog
+/// On Android: Shows the M3E date picker when the app theme is installed above
+/// the Navigator, and a Flutter Material date picker otherwise.
 class AdaptiveDatePicker {
   AdaptiveDatePicker._();
 
@@ -26,6 +29,21 @@ class AdaptiveDatePicker {
   }) async {
     final effectiveFirstDate = firstDate ?? DateTime(1900);
     final effectiveLastDate = lastDate ?? DateTime(2100);
+
+    if (PlatformInfo.isAndroid &&
+        mode == CupertinoDatePickerMode.date &&
+        minuteInterval == 1 &&
+        hasAdaptiveMaterialExpressiveNavigatorTheme(context)) {
+      return m3e.M3EDatePicker.show(
+        context,
+        initialDate: initialDate,
+        firstDate: effectiveFirstDate,
+        lastDate: effectiveLastDate,
+        initialCalendarMode: initialDatePickerMode == DatePickerMode.year
+            ? m3e.M3EDatePickerMode.year
+            : m3e.M3EDatePickerMode.day,
+      );
+    }
 
     if (PlatformInfo.isIOS) {
       return _showCupertinoDatePicker(
@@ -100,8 +118,9 @@ class AdaptiveDatePicker {
         initialDate: initialDate,
         firstDate: firstDate,
         lastDate: lastDate,
-        initialDatePickerMode:
-            isMonthYear ? DatePickerMode.year : initialDatePickerMode,
+        initialDatePickerMode: isMonthYear
+            ? DatePickerMode.year
+            : initialDatePickerMode,
       );
       if (picked == null) return null;
       date = isMonthYear ? DateTime(picked.year, picked.month, 1) : picked;

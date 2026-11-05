@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive badge that renders platform-specific badge styles
 ///
@@ -100,6 +102,18 @@ class AdaptiveBadge extends StatelessWidget {
 
     // Android - Use Material Design Badge
     if (PlatformInfo.isAndroid) {
+      if (count != null && label == null && alignment == null && !isLarge) {
+        return withAdaptiveMaterialExpressiveTheme(
+          context,
+          m3e.M3EBadge(
+            count: count,
+            backgroundColor: backgroundColor,
+            foregroundColor: textColor,
+            offset: offset,
+            child: child,
+          ),
+        );
+      }
       return Badge(
         label: Text(displayText),
         backgroundColor: backgroundColor,

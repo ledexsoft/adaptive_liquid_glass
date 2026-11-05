@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 import 'adaptive_blur_view.dart';
 
 /// An adaptive card that renders platform-specific card styles.
@@ -121,22 +123,36 @@ class AdaptiveCard extends StatelessWidget {
 
     // Android & other platforms - Use Material Design Card
     final cardRadius = borderRadius ?? BorderRadius.circular(12);
+    if (PlatformInfo.isAndroid &&
+        shape == null &&
+        borderOnForeground &&
+        semanticContainer) {
+      return Padding(
+        padding: margin ?? const EdgeInsets.all(4),
+        child: withAdaptiveMaterialExpressiveTheme(
+          context,
+          m3e.M3ECard(
+            padding: EdgeInsets.zero,
+            color: color,
+            elevation: elevation,
+            borderRadius: cardRadius,
+            clipBehavior: clipBehavior ?? Clip.antiAlias,
+            onPressed: onTap,
+            child: content,
+          ),
+        ),
+      );
+    }
     Widget card = Card(
       color: color,
       elevation: elevation,
-      shape:
-          shape ??
-          RoundedRectangleBorder(borderRadius: cardRadius),
+      shape: shape ?? RoundedRectangleBorder(borderRadius: cardRadius),
       borderOnForeground: borderOnForeground,
       margin: margin,
       clipBehavior: clipBehavior ?? Clip.antiAlias,
       semanticContainer: semanticContainer,
       child: onTap != null
-          ? InkWell(
-              onTap: onTap,
-              borderRadius: cardRadius,
-              child: content,
-            )
+          ? InkWell(onTap: onTap, borderRadius: cardRadius, child: content)
           : content,
     );
 
@@ -174,7 +190,8 @@ class AdaptiveCard extends StatelessWidget {
     // Android / Windows / fallback - Clean tonal container with subtle border
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final surfaceColor = color ??
+    final surfaceColor =
+        color ??
         (isDark
             ? theme.colorScheme.surfaceContainerHigh
             : theme.colorScheme.surfaceContainerLow);

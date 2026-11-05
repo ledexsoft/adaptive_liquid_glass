@@ -1,3 +1,9 @@
+# [0.1.146]
+* **NEW**: Android adaptive widgets now use Material 3 Expressive components and theme tokens when a matching implementation is available; iOS Liquid Glass and Cupertino paths remain unchanged.
+* **NEW**: Re-exported the M3E component catalog through `adaptive_liquid_glass` and added `AdaptiveMaterialExpressive` for M3E-only components with platform fallbacks.
+* **NEW**: Android popup/context menus, action sheets, expandable tiles, tab views, and supported text form fields now use M3E components; standard and input alert dialogs use expressive dialogs.
+* **CHORE**: M3E 1.1.2 is an internal dependency constrained below 1.2.0 to retain Flutter 3.44 / Dart 3.12 compatibility. Consumers continue to import only this package.
+
 ## [0.1.145]
 * **FIX**: migración a Built-in Kotlin (Flutter 3.44+): el plugin ya no aplica Kotlin Gradle Plugin propio (eliminados `kotlin-android`, `kotlin_version` y `kotlin-stdlib` explícito); usa el KGP provisto por Flutter con `kotlin { compilerOptions { jvmTarget = JVM_1_8 } }`. Requiere Flutter >=3.44 / Dart >=3.12. Elimina la advertencia de KGP obsoleto en `flutter build appbundle`.
 

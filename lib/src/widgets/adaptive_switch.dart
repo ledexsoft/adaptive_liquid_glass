@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
+import 'android/android_m3e_platform_view.dart';
 import 'ios26/ios26_switch.dart';
 
 /// An adaptive switch that renders platform-specific switch styles
@@ -79,22 +80,24 @@ class AdaptiveSwitch extends StatelessWidget {
       );
     }
 
-    // Android - Use Material Design Switch
+    // Android - Use the native Compose Material switch.
     if (PlatformInfo.isAndroid) {
-      return Switch(
-        value: value,
-        onChanged: onChanged,
-        thumbColor: thumbColor != null
-            ? WidgetStateProperty.all(thumbColor)
-            : null,
-        trackColor: activeColor != null
-            ? WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return activeColor;
-                }
-                return null;
-              })
-            : null,
+      return AndroidM3EPlatformView(
+        component: 'switch',
+        width: 64,
+        height: 48,
+        properties: {
+          'value': value,
+          'enabled': onChanged != null,
+          'hasCallback': onChanged != null,
+          'activeColor': activeColor?.toARGB32(),
+          'thumbColor': thumbColor?.toARGB32(),
+        },
+        onEvent: (event, nextValue) {
+          if (event == 'changed' && nextValue is bool) {
+            onChanged?.call(nextValue);
+          }
+        },
       );
     }
 

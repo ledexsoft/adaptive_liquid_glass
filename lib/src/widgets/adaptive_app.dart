@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// Platform-specific configuration for MaterialApp
 class MaterialAppData {
@@ -392,6 +393,13 @@ class AdaptiveApp extends StatelessWidget {
   ) {
     final config = material?.call(context, platform) ?? const MaterialAppData();
 
+    Widget expressiveBuilder(BuildContext context, Widget? child) {
+      final themedChild = AdaptiveMaterialExpressiveTheme(
+        child: child ?? const SizedBox.shrink(),
+      );
+      return builder?.call(context, themedChild) ?? themedChild;
+    }
+
     if (isRouter) {
       return MaterialApp.router(
         key: key,
@@ -400,7 +408,7 @@ class AdaptiveApp extends StatelessWidget {
         routeInformationParser: routeInformationParser,
         routerDelegate: routerDelegate,
         backButtonDispatcher: backButtonDispatcher,
-        builder: builder,
+        builder: expressiveBuilder,
         title: title,
         onGenerateTitle: onGenerateTitle,
         color: config.color,
@@ -438,7 +446,7 @@ class AdaptiveApp extends StatelessWidget {
       onGenerateInitialRoutes: onGenerateInitialRoutes,
       onUnknownRoute: onUnknownRoute,
       navigatorObservers: navigatorObservers,
-      builder: builder,
+      builder: expressiveBuilder,
       title: title,
       onGenerateTitle: onGenerateTitle,
       color: config.color,

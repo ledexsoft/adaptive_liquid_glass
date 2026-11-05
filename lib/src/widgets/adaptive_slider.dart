@@ -1,7 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import 'android/android_m3e_platform_view.dart';
 import 'ios26/ios26_slider.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive slider that renders platform-specific slider styles
 ///
@@ -114,21 +117,72 @@ class AdaptiveSlider extends StatelessWidget {
 
     // Android - Use Material Design Slider
     if (PlatformInfo.isAndroid) {
-      return Slider(
-        value: value,
-        onChanged: onChanged,
-        onChangeStart: onChangeStart,
-        onChangeEnd: onChangeEnd,
-        min: min,
-        max: max,
-        divisions: divisions,
-        label: label,
-        activeColor: activeColor,
-        thumbColor: thumbColor,
-      );
+      if (onChangeStart == null && label == null && value.isFinite) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            if (!constraints.maxWidth.isFinite) {
+              return _buildAndroidFlutterSlider(context);
+            }
+            return AndroidM3EPlatformView(
+              component: 'slider',
+              width: constraints.maxWidth,
+              height: 48,
+              properties: {
+                'value': value,
+                'min': min,
+                'max': max,
+                'divisions': divisions,
+                'enabled': onChanged != null,
+                'hasCallback': onChanged != null,
+                'hasEndCallback': onChangeEnd != null,
+                'activeColor': activeColor?.toARGB32(),
+                'thumbColor': thumbColor?.toARGB32(),
+              },
+              onEvent: (event, nextValue) {
+                if (nextValue is num) {
+                  if (event == 'changed') onChanged?.call(nextValue.toDouble());
+                  if (event == 'finished') {
+                    onChangeEnd?.call(nextValue.toDouble());
+                  }
+                }
+              },
+            );
+          },
+        );
+      }
+      return _buildAndroidFlutterSlider(context);
     }
 
     // Fallback for other platforms (web, desktop, etc.)
+    return Slider(
+      value: value,
+      onChanged: onChanged,
+      onChangeStart: onChangeStart,
+      onChangeEnd: onChangeEnd,
+      min: min,
+      max: max,
+      divisions: divisions,
+      label: label,
+      activeColor: activeColor,
+      thumbColor: thumbColor,
+    );
+  }
+
+  Widget _buildAndroidFlutterSlider(BuildContext context) {
+    if (activeColor == null && thumbColor == null && onChangeStart == null) {
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        m3e.M3ESlider(
+          value: value,
+          onChanged: onChanged,
+          onChangeEnd: onChangeEnd,
+          min: min,
+          max: max,
+          divisions: divisions,
+          label: label,
+        ),
+      );
+    }
     return Slider(
       value: value,
       onChanged: onChanged,

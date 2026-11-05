@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive progress indicator that renders platform-specific styles.
 ///
@@ -99,6 +101,17 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     }
 
     // Android & other platforms
+    if (PlatformInfo.isAndroid) {
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        m3e.M3EProgressIndicator.circularWavy(
+          value: value,
+          size: radius * 2,
+          strokeWidth: strokeWidth,
+          color: color,
+        ),
+      );
+    }
     return CircularProgressIndicator(
       value: value,
       color: color,
@@ -145,6 +158,17 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     }
 
     // Android & other platforms - Material 3 LinearProgressIndicator
+    if (PlatformInfo.isAndroid && borderRadius == null) {
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        m3e.M3EProgressIndicator.linearWavy(
+          value: value,
+          strokeWidth: minHeight,
+          color: color,
+          trackColor: backgroundColor,
+        ),
+      );
+    }
     return LinearProgressIndicator(
       value: value,
       color: color,

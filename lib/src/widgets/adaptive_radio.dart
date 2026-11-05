@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
+import 'android/android_m3e_platform_view.dart';
 
 /// An adaptive radio button that renders platform-specific radio styles
 ///
@@ -81,6 +82,26 @@ class AdaptiveRadio<T> extends StatelessWidget {
 
     // Android - Use Material Design Radio
     if (PlatformInfo.isAndroid) {
+      if (focusColor == null && hoverColor == null) {
+        return AndroidM3EPlatformView(
+          component: 'radio',
+          width: 48,
+          height: 48,
+          properties: {
+            'selected': value == groupValue,
+            'toggleable': toggleable,
+            'enabled': onChanged != null,
+            'hasCallback':
+                onChanged != null && (value != groupValue || toggleable),
+            'activeColor': activeColor?.toARGB32(),
+          },
+          onEvent: (event, nextValue) {
+            if (event == 'changed' && nextValue is bool) {
+              onChanged?.call(nextValue ? value : null);
+            }
+          },
+        );
+      }
       // ignore: deprecated_member_use
       return Radio<T>(
         value: value,

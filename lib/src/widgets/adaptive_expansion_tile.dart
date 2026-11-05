@@ -1,11 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import 'package:adaptive_liquid_glass/src/platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// A platform-adaptive expansion tile widget that provides expandable/collapsible content.
 ///
 /// - On iOS: Creates a custom Cupertino-style expansion tile with chevron icon
-/// - On Android: Uses Material [ExpansionTile] widget
+/// - On Android: Uses an M3E expandable item when supported by its options, and
+///   otherwise uses Material [ExpansionTile].
 ///
 /// Example:
 /// ```dart
@@ -165,8 +168,74 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
     if (PlatformInfo.isIOS) {
       return _buildIOSExpansionTile(context);
     }
+    if (PlatformInfo.isAndroid && _canUseM3E) {
+      final titleText = widget.title as Text;
+      final subtitleText = widget.subtitle is Text
+          ? widget.subtitle as Text
+          : null;
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        m3e.M3EExpandableList(
+          data: [
+            m3e.M3EExpandableData(
+              title: titleText.data!,
+              titleStyle: titleText.style == null ? null : [titleText.style!],
+              subtitle: subtitleText?.data,
+              subtitleStyle: subtitleText?.style == null
+                  ? null
+                  : [subtitleText!.style!],
+              subtitleMaxLines: subtitleText?.maxLines,
+              leading: widget.leading,
+              trailing: widget.trailing,
+              expanded: m3e.M3EExpandableExpanded.content(
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment:
+                      widget.expandedCrossAxisAlignment ??
+                      CrossAxisAlignment.stretch,
+                  children: widget.children,
+                ),
+              ),
+            ),
+          ],
+          initiallyExpanded: widget.initiallyExpanded ? const {0} : const {},
+          onExpansionChanged: (index, {required isExpanded}) {
+            widget.onExpansionChanged?.call(isExpanded);
+          },
+        ),
+      );
+    }
     return _buildMaterialExpansionTile(context);
   }
+
+  bool get _canUseM3E =>
+      widget.title is Text &&
+      (widget.title as Text).data != null &&
+      (widget.title as Text).textAlign == null &&
+      (widget.title as Text).maxLines == null &&
+      (widget.title as Text).overflow == null &&
+      (widget.title as Text).semanticsLabel == null &&
+      (widget.subtitle == null ||
+          (widget.subtitle is Text &&
+              (widget.subtitle as Text).data != null &&
+              (widget.subtitle as Text).textAlign == null &&
+              (widget.subtitle as Text).overflow == null &&
+              (widget.subtitle as Text).semanticsLabel == null)) &&
+      widget.enabled &&
+      !widget.maintainState &&
+      widget.tilePadding == null &&
+      widget.childrenPadding == null &&
+      widget.backgroundColor == null &&
+      widget.collapsedBackgroundColor == null &&
+      widget.textColor == null &&
+      widget.collapsedTextColor == null &&
+      widget.iconColor == null &&
+      widget.collapsedIconColor == null &&
+      widget.shape == null &&
+      widget.collapsedShape == null &&
+      widget.clipBehavior == Clip.none &&
+      widget.expandedAlignment == null &&
+      widget.expandedCrossAxisAlignment == null;
 
   Widget _buildIOSExpansionTile(BuildContext context) {
     final isDark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;

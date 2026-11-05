@@ -9,6 +9,8 @@ buildscript {
 
     dependencies {
         classpath 'com.android.tools.build:gradle:7.3.0'
+        // Match the Kotlin Gradle Plugin version declared by Flutter apps.
+        classpath 'org.jetbrains.kotlin.plugin.compose:org.jetbrains.kotlin.plugin.compose.gradle.plugin:2.1.0'
     }
 }
 
@@ -20,10 +22,15 @@ rootProject.allprojects {
 }
 
 apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 
 android {
     namespace 'com.ledexsoft.adaptive_liquid_glass'
-    compileSdk 34
+    compileSdk 35
+
+    buildFeatures {
+        compose true
+    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -37,6 +44,11 @@ android {
     defaultConfig {
         minSdk 21
     }
+}
+
+dependencies {
+    implementation 'androidx.compose.material3:material3:1.4.0'
+    implementation 'androidx.compose.ui:ui:1.8.2'
 }
 
 // Built-in Kotlin (Flutter 3.44+): KGP lo aplica Flutter, no este plugin.

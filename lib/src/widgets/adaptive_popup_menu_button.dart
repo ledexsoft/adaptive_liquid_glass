@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 import 'ios26/ios26_popup_menu_button.dart';
 
 export 'ios26/ios26_popup_menu_button.dart'
@@ -41,12 +43,43 @@ class AdaptivePopupMenuButton<T> {
 
     // Android - Use Material PopupMenuButton
     if (PlatformInfo.isAndroid) {
-      return _MaterialPopupMenuButton<T>(
-        label: label,
-        items: items,
-        onSelected: onSelected,
-        tint: tint,
-        height: height,
+      return Builder(
+        builder: (context) {
+          if (hasAdaptiveMaterialExpressiveNavigatorTheme(
+            context,
+            rootNavigator: true,
+          )) {
+            return _buildM3EMenu<T>(
+              context: context,
+              items: items,
+              onSelected: onSelected,
+              anchorBuilder: (context, open) => m3e.M3EButton(
+                onPressed: open,
+                style: _mapM3EButtonStyle(buttonStyle),
+                decoration: m3e.M3EButtonDecoration.styleFrom(
+                  foregroundColor: tint,
+                ),
+                child: Text(label),
+              ),
+              key: key,
+            );
+          }
+          return _buildMaterialPopupMenu<T>(
+            context: context,
+            items: items,
+            onSelected: onSelected,
+            height: height,
+            key: key,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_drop_down, size: 20),
+              ],
+            ),
+          );
+        },
       );
     }
 
@@ -95,19 +128,44 @@ class AdaptivePopupMenuButton<T> {
 
     // Android - Use Material PopupMenuButton with custom child
     if (PlatformInfo.isAndroid) {
-      return _MaterialPopupMenuButton<T>.widget(
-        items: items,
-        onSelected: onSelected,
-        tint: tint,
-        child: child,
+      return Builder(
+        builder: (context) =>
+            hasAdaptiveMaterialExpressiveNavigatorTheme(
+              context,
+              rootNavigator: true,
+            )
+            ? _buildM3EMenu<T>(
+                context: context,
+                items: items,
+                onSelected: onSelected,
+                anchorBuilder: (context, open) => triggerOnLongPress
+                    ? GestureDetector(
+                        onTap: onTap,
+                        onLongPress: open,
+                        child: child,
+                      )
+                    : GestureDetector(onTap: open, child: child),
+                key: key,
+              )
+            : _buildMaterialPopupMenu<T>(
+                context: context,
+                items: items,
+                onSelected: onSelected,
+                child: child,
+                key: key,
+              ),
       );
     }
 
     // iOS <26 (iOS 18 and below) - Use GestureDetector with action sheet
     return Builder(
       builder: (context) => GestureDetector(
-        onTap: triggerOnLongPress ? onTap : () => _showMenu<T>(context, null, items, onSelected),
-        onLongPress: triggerOnLongPress ? () => _showMenu<T>(context, null, items, onSelected) : null,
+        onTap: triggerOnLongPress
+            ? onTap
+            : () => _showMenu<T>(context, null, items, onSelected),
+        onLongPress: triggerOnLongPress
+            ? () => _showMenu<T>(context, null, items, onSelected)
+            : null,
         child: child,
       ),
     );
@@ -142,12 +200,38 @@ class AdaptivePopupMenuButton<T> {
 
     // Android - Use Material IconButton with PopupMenu
     if (PlatformInfo.isAndroid) {
-      return _MaterialPopupMenuButton<T>.icon(
-        icon: icon,
-        items: items,
-        onSelected: onSelected,
-        tint: tint,
-        size: size,
+      return Builder(
+        builder: (context) {
+          if (hasAdaptiveMaterialExpressiveNavigatorTheme(
+            context,
+            rootNavigator: true,
+          )) {
+            return _buildM3EMenu<T>(
+              context: context,
+              items: items,
+              onSelected: onSelected,
+              anchorBuilder: (context, open) => m3e.M3EIconButton(
+                icon: Icon(
+                  icon is IconData ? icon : Icons.more_horiz,
+                  color: tint,
+                ),
+                onPressed: open,
+                visualSize: Size.square(size),
+                tooltip: 'More options',
+              ),
+              key: key,
+            );
+          }
+          return _buildMaterialPopupMenu<T>(
+            context: context,
+            items: items,
+            onSelected: onSelected,
+            icon: icon,
+            tint: tint,
+            size: size,
+            key: key,
+          );
+        },
       );
     }
 
@@ -164,6 +248,162 @@ class AdaptivePopupMenuButton<T> {
       ),
     );
   }
+
+  static Widget _buildM3EMenu<T>({
+    required BuildContext context,
+    required List<AdaptivePopupMenuEntry> items,
+    required void Function(int, AdaptivePopupMenuItem<T>) onSelected,
+    required Widget Function(BuildContext, VoidCallback) anchorBuilder,
+    Key? key,
+  }) {
+    final entries = <m3e.M3EMenuNode>[];
+    for (var index = 0; index < items.length; index++) {
+      final entry = items[index];
+      if (entry is AdaptivePopupMenuItem<T>) {
+        final leading = entry.imageBytes != null
+            ? ClipOval(
+                child: Image.memory(
+                  entry.imageBytes!,
+                  width: 24,
+                  height: 24,
+                  fit: BoxFit.cover,
+                ),
+              )
+            : entry.icon is IconData
+            ? Icon(entry.icon as IconData)
+            : null;
+        entries.add(
+          m3e.M3EMenuEntry(
+            label: entry.label,
+            supportingText: entry.subtitle,
+            leading: leading,
+            enabled: entry.enabled,
+            isDestructive: entry.isDestructive,
+            value: index,
+          ),
+        );
+      } else {
+        entries.add(const m3e.M3EMenuDivider());
+      }
+    }
+
+    final menu = m3e.M3EMenu(
+      key: key,
+      anchorBuilder: anchorBuilder,
+      children: entries,
+      onSelected: (value) {
+        if (value is! int || value < 0 || value >= items.length) return;
+        final item = items[value];
+        if (item is AdaptivePopupMenuItem<T>) onSelected(value, item);
+      },
+    );
+    return withAdaptiveMaterialExpressiveTheme(context, menu);
+  }
+
+  static Widget _buildMaterialPopupMenu<T>({
+    required BuildContext context,
+    required List<AdaptivePopupMenuEntry> items,
+    required void Function(int, AdaptivePopupMenuItem<T>) onSelected,
+    Widget? child,
+    dynamic icon,
+    Color? tint,
+    double? height,
+    double? size,
+    Key? key,
+  }) {
+    final menu = PopupMenuButton<int>(
+      key: key,
+      icon: icon == null
+          ? null
+          : Icon(icon is IconData ? icon : Icons.more_vert, color: tint),
+      itemBuilder: (context) => _materialPopupEntries<T>(context, items),
+      onSelected: (index) {
+        if (index < 0 || index >= items.length) return;
+        final item = items[index];
+        if (item is AdaptivePopupMenuItem<T>) onSelected(index, item);
+      },
+      child: child,
+    );
+    if (icon != null) {
+      return SizedBox(width: size, height: size, child: menu);
+    }
+    return height == null ? menu : SizedBox(height: height, child: menu);
+  }
+
+  static List<PopupMenuEntry<int>> _materialPopupEntries<T>(
+    BuildContext context,
+    List<AdaptivePopupMenuEntry> items,
+  ) {
+    return [
+      for (var index = 0; index < items.length; index++)
+        if (items[index] is AdaptivePopupMenuDivider)
+          const PopupMenuDivider()
+        else if (items[index] is AdaptivePopupMenuItem<T>)
+          _materialPopupItem<T>(context, index, items[index]),
+    ];
+  }
+
+  static PopupMenuItem<int> _materialPopupItem<T>(
+    BuildContext context,
+    int index,
+    AdaptivePopupMenuEntry entry,
+  ) {
+    final item = entry as AdaptivePopupMenuItem<T>;
+    final destructiveColor = item.isDestructive
+        ? Theme.of(context).colorScheme.error
+        : null;
+    final leading = item.imageBytes != null
+        ? ClipOval(
+            child: Image.memory(
+              item.imageBytes!,
+              width: 32,
+              height: 32,
+              fit: BoxFit.cover,
+            ),
+          )
+        : item.icon is IconData
+        ? Icon(item.icon as IconData, color: destructiveColor)
+        : null;
+    return PopupMenuItem<int>(
+      value: index,
+      enabled: item.enabled,
+      child: Row(
+        children: [
+          if (leading != null) ...[leading, const SizedBox(width: 12)],
+          Expanded(
+            child: item.subtitle == null || item.subtitle!.isEmpty
+                ? Text(item.label, style: TextStyle(color: destructiveColor))
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        item.label,
+                        style: TextStyle(color: destructiveColor),
+                      ),
+                      Text(
+                        item.subtitle!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static m3e.M3EButtonStyle _mapM3EButtonStyle(PopupButtonStyle style) =>
+      switch (style) {
+        PopupButtonStyle.filled ||
+        PopupButtonStyle.prominentGlass => m3e.M3EButtonStyle.filled,
+        PopupButtonStyle.tinted ||
+        PopupButtonStyle.gray ||
+        PopupButtonStyle.glass => m3e.M3EButtonStyle.tonal,
+        PopupButtonStyle.bordered ||
+        PopupButtonStyle.borderedProminent => m3e.M3EButtonStyle.outlined,
+        PopupButtonStyle.plain => m3e.M3EButtonStyle.text,
+      };
 
   static Widget _buildActionSheetContent<T>(AdaptivePopupMenuItem<T> item) {
     final hasImage = item.imageBytes != null;
@@ -187,8 +427,9 @@ class AdaptivePopupMenuButton<T> {
         ],
         Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-              hasImage ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+          crossAxisAlignment: hasImage
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.center,
           children: [
             Text(item.label),
             if (hasSubtitle)
@@ -221,7 +462,8 @@ class AdaptivePopupMenuButton<T> {
               if (items[i] is AdaptivePopupMenuItem<T>)
                 CupertinoActionSheetAction(
                   onPressed: () => Navigator.of(ctx).pop(i),
-                  isDestructiveAction: (items[i] as AdaptivePopupMenuItem<T>).isDestructive,
+                  isDestructiveAction:
+                      (items[i] as AdaptivePopupMenuItem<T>).isDestructive,
                   child: _buildActionSheetContent<T>(
                     items[i] as AdaptivePopupMenuItem<T>,
                   ),
@@ -248,188 +490,5 @@ class AdaptivePopupMenuButton<T> {
         onSelected(selected, selectedEntry);
       }
     }
-  }
-}
-
-/// Material implementation of popup menu button for Android
-class _MaterialPopupMenuButton<T> extends StatefulWidget {
-  const _MaterialPopupMenuButton({
-    required this.label,
-    required this.items,
-    required this.onSelected,
-    this.tint,
-    this.height = 32.0,
-  }) : icon = null,
-       size = null,
-       child = null;
-
-  const _MaterialPopupMenuButton.icon({
-    required this.icon,
-    required this.items,
-    required this.onSelected,
-    this.tint,
-    this.size = 44.0,
-  }) : label = null,
-       height = null,
-       child = null;
-
-  const _MaterialPopupMenuButton.widget({
-    required this.items,
-    required this.onSelected,
-    this.tint,
-    required this.child,
-  }) : label = null,
-       icon = null,
-       height = null,
-       size = null;
-
-  final String? label;
-  final dynamic icon; // IconData for Android
-  final Widget? child;
-  final List<AdaptivePopupMenuEntry> items;
-  final void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected;
-  final Color? tint;
-  final double? height;
-  final double? size;
-
-  bool get isIconButton => icon != null;
-  bool get isCustomWidget => child != null;
-
-  @override
-  State<_MaterialPopupMenuButton<T>> createState() =>
-      _MaterialPopupMenuButtonState<T>();
-}
-
-class _MaterialPopupMenuButtonState<T>
-    extends State<_MaterialPopupMenuButton<T>> {
-  @override
-  Widget build(BuildContext context) {
-    final menuItems = <PopupMenuEntry<int>>[];
-
-    for (var i = 0; i < widget.items.length; i++) {
-      if (widget.items[i] is AdaptivePopupMenuDivider) {
-        menuItems.add(const PopupMenuDivider());
-      } else if (widget.items[i] is AdaptivePopupMenuItem<T>) {
-        final item = widget.items[i] as AdaptivePopupMenuItem<T>;
-        final labelStyle = item.isDestructive
-            ? TextStyle(color: Theme.of(context).colorScheme.error)
-            : null;
-        final hasSubtitle = item.subtitle != null && item.subtitle!.isNotEmpty;
-        menuItems.add(
-          PopupMenuItem<int>(
-            value: i,
-            enabled: item.enabled,
-            child: Row(
-              children: [
-                if (item.imageBytes != null) ...[
-                  ClipOval(
-                    child: Image.memory(
-                      item.imageBytes!,
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ] else if (item.icon != null) ...[
-                  Icon(
-                    item.icon is IconData
-                        ? item.icon as IconData
-                        : Icons.circle,
-                    size: 20,
-                    color: item.isDestructive
-                        ? Theme.of(context).colorScheme.error
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                Expanded(
-                  child: hasSubtitle
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(item.label, style: labelStyle),
-                            Text(
-                              item.subtitle!,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.color
-                                        ?.withValues(alpha: 0.7),
-                                  ),
-                            ),
-                          ],
-                        )
-                      : Text(item.label, style: labelStyle),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-    }
-
-    // Custom widget case
-    if (widget.isCustomWidget) {
-      return PopupMenuButton<int>(
-        child: widget.child!,
-        itemBuilder: (context) => menuItems,
-        onSelected: (index) {
-          final selectedEntry = widget.items[index];
-          if (selectedEntry is AdaptivePopupMenuItem<T>) {
-            widget.onSelected(index, selectedEntry);
-          }
-        },
-      );
-    }
-
-    if (widget.isIconButton) {
-      return SizedBox(
-        width: widget.size,
-        height: widget.size,
-        child: PopupMenuButton<int>(
-          icon: Icon(
-            widget.icon is IconData ? widget.icon as IconData : Icons.more_vert,
-            color: widget.tint,
-          ),
-          itemBuilder: (context) => menuItems,
-          onSelected: (index) {
-            final selectedEntry = widget.items[index];
-            if (selectedEntry is AdaptivePopupMenuItem<T>) {
-              widget.onSelected(index, selectedEntry);
-            }
-          },
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: widget.height,
-      child: TextButton(
-        onPressed: () {},
-        child: PopupMenuButton<int>(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(widget.label ?? ''),
-              const SizedBox(width: 4),
-              const Icon(Icons.arrow_drop_down, size: 20),
-            ],
-          ),
-          itemBuilder: (context) => menuItems,
-          onSelected: (index) {
-            final selectedEntry = widget.items[index];
-            if (selectedEntry is AdaptivePopupMenuItem<T>) {
-              widget.onSelected(index, selectedEntry);
-            }
-          },
-        ),
-      ),
-    );
   }
 }

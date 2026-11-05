@@ -3,7 +3,7 @@
 /// This package automatically renders native-looking widgets based on the platform:
 /// - iOS 26+: Modern iOS 26 native designs with latest visual styles
 /// - iOS <26 (iOS 18 and below): Traditional Cupertino widgets
-/// - Android: Material Design widgets
+/// - Android: Material 3 Expressive widgets where an adaptive equivalent exists
 ///
 /// ## Features
 ///
@@ -11,7 +11,7 @@
 /// - iOS version-specific widget rendering
 /// - Native iOS 26 designs following Apple's Human Interface Guidelines
 /// - Seamless fallback to appropriate widgets for older iOS versions
-/// - Material Design for Android
+/// - Material 3 Expressive on Android, with the complete expressive catalog
 ///
 /// ## Usage
 ///
@@ -35,6 +35,11 @@ export 'src/utils/animation.dart';
 
 // Styles
 export 'src/style/sf_symbol.dart';
+export 'src/theme/adaptive_material_expressive_theme.dart';
+
+// Material 3 Expressive catalog and design tokens. Consumers still depend on
+// and import only adaptive_liquid_glass; adaptive widgets select M3E on Android.
+export 'package:material_3_expressive/material_3_expressive.dart';
 
 // Widgets
 export 'src/widgets/adaptive_app.dart';

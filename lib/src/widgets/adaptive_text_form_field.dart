@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive text form field that renders platform-specific styles
 ///
@@ -160,8 +162,56 @@ class AdaptiveTextFormField extends StatelessWidget {
       return _buildCupertinoTextFormField(context);
     }
 
+    if (PlatformInfo.isAndroid && _canUseM3E) {
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        FormField<String>(
+          initialValue: controller!.text,
+          validator: validator,
+          onSaved: onSaved,
+          autovalidateMode: autovalidateMode ?? AutovalidateMode.disabled,
+          builder: (field) => m3e.M3ETextField(
+            controller: controller,
+            focusNode: focusNode,
+            label: placeholder,
+            errorText: field.errorText,
+            leading: prefixIcon ?? prefix,
+            trailing: suffixIcon ?? suffix,
+            keyboardType: keyboardType,
+            textInputAction: textInputAction,
+            inputFormatters: inputFormatters,
+            obscureText: obscureText,
+            enabled: enabled,
+            maxLines: maxLines!,
+            onChanged: (value) {
+              field.didChange(value);
+              onChanged?.call(value);
+            },
+            onSubmitted: onSubmitted,
+            onTapOutside: onTapOutside,
+          ),
+        ),
+      );
+    }
+
     return _buildMaterialTextFormField(context);
   }
+
+  bool get _canUseM3E =>
+      controller != null &&
+      initialValue == null &&
+      decoration == null &&
+      style == null &&
+      minLines == null &&
+      maxLength == null &&
+      maxLines != null &&
+      textAlign == TextAlign.start &&
+      !autofocus &&
+      !readOnly &&
+      onTap == null &&
+      autocorrect &&
+      textCapitalization == TextCapitalization.none &&
+      autofillHints == null;
 
   Widget _buildCupertinoTextFormField(BuildContext context) {
     return FormField<String>(

@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive text field that renders platform-specific styles
 ///
@@ -134,6 +136,38 @@ class AdaptiveTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     if (PlatformInfo.isIOS) {
       return _buildCupertinoTextField(context);
+    }
+
+    if (PlatformInfo.isAndroid &&
+        decoration == null &&
+        style == null &&
+        minLines == null &&
+        maxLength == null &&
+        maxLines != null &&
+        textAlign == TextAlign.start &&
+        !autofocus &&
+        !readOnly &&
+        onTap == null &&
+        autocorrect &&
+        textCapitalization == TextCapitalization.none) {
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        m3e.M3ETextField(
+          controller: controller,
+          focusNode: focusNode,
+          label: placeholder,
+          leading: prefixIcon ?? prefix,
+          trailing: suffixIcon ?? suffix,
+          keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          maxLines: maxLines!,
+          obscureText: obscureText,
+          enabled: enabled,
+          inputFormatters: inputFormatters,
+          onChanged: onChanged,
+          onSubmitted: onSubmitted,
+        ),
+      );
     }
 
     return _buildMaterialTextField(context);

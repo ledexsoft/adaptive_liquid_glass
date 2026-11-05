@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive floating action button that renders platform-specific styles
 ///
@@ -73,7 +75,34 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
 
     // Android - Use Material FloatingActionButton
     if (PlatformInfo.isAndroid) {
-      return _buildMaterialFAB(context);
+      final iconWidget = foregroundColor == null
+          ? child
+          : IconTheme(
+              data: IconThemeData(color: foregroundColor),
+              child: child,
+            );
+      Widget fab = withAdaptiveMaterialExpressiveTheme(
+        context,
+        m3e.M3EFab(
+          icon: iconWidget,
+          onPressed: onPressed,
+          size: mini ? m3e.M3EFabSize.small : m3e.M3EFabSize.medium,
+          elevation: elevation,
+          tooltip: tooltip,
+          decoration: backgroundColor == null && foregroundColor == null
+              ? null
+              : m3e.M3EFabDecoration(
+                  backgroundColor: backgroundColor == null
+                      ? null
+                      : WidgetStatePropertyAll(backgroundColor),
+                  foregroundColor: foregroundColor == null
+                      ? null
+                      : WidgetStatePropertyAll(foregroundColor),
+                ),
+        ),
+      );
+      if (heroTag != null) fab = Hero(tag: heroTag!, child: fab);
+      return fab;
     }
 
     // Fallback to Material

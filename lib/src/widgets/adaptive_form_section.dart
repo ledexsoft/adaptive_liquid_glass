@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../adaptive_liquid_glass.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
+import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive form section widget that displays a group of form rows with
 /// optional header and footer.
@@ -95,6 +97,66 @@ class AdaptiveFormSection extends StatelessWidget {
       return _buildIOSFormSection(context);
     }
     if (PlatformInfo.isAndroid) {
+      if (backgroundColor == null && decoration == null) {
+        return withAdaptiveMaterialExpressiveTheme(
+          context,
+          Builder(
+            builder: (context) {
+              final expressiveTheme = m3e.M3ETheme.of(context);
+              final content = m3e.M3ECard(
+                variant: insetGrouped
+                    ? m3e.M3ECardVariant.elevated
+                    : m3e.M3ECardVariant.filled,
+                padding: EdgeInsets.zero,
+                clipBehavior: clipBehavior,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: children,
+                ),
+              );
+              return Padding(
+                padding: margin,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (header != null)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16,
+                          right: 16,
+                          bottom: 8,
+                        ),
+                        child: DefaultTextStyle(
+                          style: expressiveTheme.typeScale.titleSmall.copyWith(
+                            color: expressiveTheme.colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          child: header!,
+                        ),
+                      ),
+                    content,
+                    if (footer != null)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16,
+                          right: 16,
+                          top: 8,
+                        ),
+                        child: DefaultTextStyle(
+                          style: expressiveTheme.typeScale.bodySmall.copyWith(
+                            color: expressiveTheme.colorScheme.onSurfaceVariant,
+                          ),
+                          child: footer!,
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      }
       return _buildMaterialFormSection(context);
     }
     return _buildMaterialFormSection(context);

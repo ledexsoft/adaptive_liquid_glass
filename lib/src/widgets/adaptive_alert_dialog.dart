@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 import 'ios26/ios26_alert_dialog.dart';
 
 export 'ios26/ios26_alert_dialog.dart' show AlertAction, AlertActionStyle;
@@ -36,7 +38,8 @@ class AdaptiveAlertDialogInput {
 ///
 /// On iOS 26+: Uses native iOS 26 UIAlertController with Liquid Glass
 /// On iOS <26 (iOS 18 and below): Uses CupertinoAlertDialog
-/// On Android: Uses Material AlertDialog
+/// On Android: Uses an M3E dialog when the app theme is installed above the
+/// Navigator; otherwise uses a Flutter Material dialog.
 class AdaptiveAlertDialog {
   AdaptiveAlertDialog._();
 
@@ -184,6 +187,37 @@ class AdaptiveAlertDialog {
       );
     }
 
+    if (PlatformInfo.isAndroid &&
+        oneTimeCode == null &&
+        hasAdaptiveMaterialExpressiveNavigatorTheme(context)) {
+      return m3e.M3EDialog.show<void>(
+        context,
+        dialog: m3e.M3EDialog(
+          title: title,
+          icon: icon is IconData
+              ? Icon(icon, size: iconSize, color: iconColor)
+              : null,
+          content: message == null ? null : Text(message),
+          actions: [
+            for (final action in actions)
+              m3e.M3EButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  action.onPressed();
+                },
+                enabled:
+                    action.enabled && action.style != AlertActionStyle.disabled,
+                style: action.style == AlertActionStyle.primary
+                    ? m3e.M3EButtonStyle.filled
+                    : m3e.M3EButtonStyle.text,
+                decoration: _m3eActionForeground(action.style, context),
+                child: Text(action.title),
+              ),
+          ],
+        ),
+      ).then((_) {});
+    }
+
     // Android - Use Material Design AlertDialog
     return _showMaterialDialog(
       context: context,
@@ -313,6 +347,23 @@ class AdaptiveAlertDialog {
             }).toList(),
           );
         },
+      );
+    }
+
+    if (PlatformInfo.isAndroid &&
+        input.maxLength == null &&
+        hasAdaptiveMaterialExpressiveNavigatorTheme(context)) {
+      return m3e.M3EDialog.show<String>(
+        context,
+        dialog: _M3EInputAlertDialog(
+          title: title,
+          message: message,
+          actions: actions,
+          input: input,
+          icon: icon,
+          iconSize: iconSize,
+          iconColor: iconColor,
+        ),
       );
     }
 
@@ -489,4 +540,108 @@ class AdaptiveAlertDialog {
       },
     );
   }
+}
+
+class _M3EInputAlertDialog extends StatefulWidget {
+  const _M3EInputAlertDialog({
+    required this.title,
+    required this.message,
+    required this.actions,
+    required this.input,
+    required this.icon,
+    required this.iconSize,
+    required this.iconColor,
+  });
+
+  final String title;
+  final String? message;
+  final List<AlertAction> actions;
+  final AdaptiveAlertDialogInput input;
+  final dynamic icon;
+  final double? iconSize;
+  final Color? iconColor;
+
+  @override
+  State<_M3EInputAlertDialog> createState() => _M3EInputAlertDialogState();
+}
+
+class _M3EInputAlertDialogState extends State<_M3EInputAlertDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.input.initialValue,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return m3e.M3EDialog(
+      title: widget.title,
+      icon: widget.icon is IconData
+          ? Icon(
+              widget.icon as IconData,
+              size: widget.iconSize,
+              color: widget.iconColor,
+            )
+          : null,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.message != null) ...[
+            Text(widget.message!),
+            const SizedBox(height: 16),
+          ],
+          m3e.M3ETextField(
+            controller: _controller,
+            label: widget.input.placeholder,
+            keyboardType: widget.input.keyboardType,
+            obscureText: widget.input.obscureText,
+            maxLines: 1,
+          ),
+        ],
+      ),
+      actions: [
+        for (final action in widget.actions)
+          m3e.M3EButton(
+            onPressed: () {
+              final value = action.style == AlertActionStyle.cancel
+                  ? null
+                  : _controller.text.trim();
+              Navigator.of(
+                context,
+              ).pop<String>(value == null || value.isEmpty ? null : value);
+              action.onPressed();
+            },
+            enabled:
+                action.enabled && action.style != AlertActionStyle.disabled,
+            style: action.style == AlertActionStyle.primary
+                ? m3e.M3EButtonStyle.filled
+                : m3e.M3EButtonStyle.text,
+            decoration: _m3eActionForeground(action.style, context),
+            child: Text(action.title),
+          ),
+      ],
+    );
+  }
+}
+
+m3e.M3EButtonDecoration? _m3eActionForeground(
+  AlertActionStyle style,
+  BuildContext context,
+) {
+  final theme = m3e.M3ETheme.of(context);
+  final color = switch (style) {
+    AlertActionStyle.destructive => theme.colorScheme.error,
+    AlertActionStyle.success => Colors.green,
+    AlertActionStyle.warning => Colors.orange,
+    AlertActionStyle.info => Colors.blue,
+    _ => null,
+  };
+  return color == null
+      ? null
+      : m3e.M3EButtonDecoration.styleFrom(foregroundColor: color);
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 
 /// An adaptive list tile that renders platform-specific styles
 ///
@@ -159,6 +161,26 @@ class AdaptiveListTile extends StatelessWidget {
   }
 
   Widget _buildMaterialListTile(BuildContext context) {
+    final titleText = title is Text ? title as Text : null;
+    final subtitleText = subtitle is Text ? subtitle as Text : null;
+    if (PlatformInfo.isAndroid &&
+        _isM3EText(titleText) &&
+        (subtitle == null || _isM3EText(subtitleText)) &&
+        onLongPress == null &&
+        backgroundColor == null &&
+        padding == null) {
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        m3e.M3EListItem(
+          headline: titleText!.data!,
+          supportingText: subtitleText?.data,
+          leading: leading,
+          trailing: trailing,
+          onTap: enabled ? onTap : null,
+          selected: selected,
+        ),
+      );
+    }
     return Material(
       type: MaterialType.transparency,
       child: ListTile(
@@ -176,4 +198,13 @@ class AdaptiveListTile extends StatelessWidget {
       ),
     );
   }
+
+  bool _isM3EText(Text? text) =>
+      text != null &&
+      text.data != null &&
+      text.style == null &&
+      text.textAlign == null &&
+      text.maxLines == null &&
+      text.overflow == null &&
+      text.semanticsLabel == null;
 }

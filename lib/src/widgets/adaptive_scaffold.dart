@@ -1,7 +1,9 @@
 import 'package:adaptive_liquid_glass/src/widgets/ios26/ios26_native_tab_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart' as m3e;
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 import '../style/sf_symbol.dart';
 import 'adaptive_app_bar.dart';
 import 'adaptive_badge.dart';
@@ -642,7 +644,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               (widget.appBar!.actions != null &&
                   widget.appBar!.actions!.isNotEmpty) ||
               widget.appBar!.leading != null)) {
-        appBar = AppBar(
+        appBar = m3e.M3EAppBar.top(
           title: _buildAppBarTitle(
             crossAxisAlignment: CrossAxisAlignment.start,
             subtitleFontSize: 13,
@@ -653,19 +655,22 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
           centerTitle: widget.appBar!.titleWidget != null,
           actions: widget.appBar!.actions?.map((action) {
             if (action.title != null) {
-              return TextButton(
+              return m3e.M3EButton.text(
                 onPressed: action.onPressed,
                 child: Text(action.title!),
               );
             }
-            return IconButton(
-              icon: action.iconWidget ?? (action.icon != null
-                  ? Icon(action.icon!)
-                  : const Icon(Icons.circle)),
+            return m3e.M3EIconButton(
+              icon:
+                  action.iconWidget ??
+                  (action.icon != null
+                      ? Icon(action.icon!)
+                      : const Icon(Icons.circle)),
               onPressed: action.onPressed,
             );
           }).toList(),
           leading: widget.appBar!.leading,
+          automaticallyImplyLeading: true,
         );
       }
 
@@ -678,7 +683,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       }
       // Priority 2: Build from items
       else {
-        bottomNavBar = NavigationBar(
+        bottomNavBar = m3e.M3ENavigationBar(
           selectedIndex: widget.bottomNavigationBar!.selectedIndex!,
           onDestinationSelected: widget.bottomNavigationBar!.onTap!,
           indicatorColor: widget.bottomNavigationBar!.selectedItemColor,
@@ -693,41 +698,34 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               platform: TargetPlatform.android,
             );
 
-            if (dest.badgeCount != null && dest.badgeCount! > 0) {
-              iconWidget = AdaptiveBadge(
-                count: dest.badgeCount,
-                child: iconWidget,
-              );
-              selectedIconWidget = AdaptiveBadge(
-                count: dest.badgeCount,
-                child: selectedIconWidget,
-              );
-            }
-
-            return NavigationDestination(
+            return m3e.M3ENavigationBarDestination(
               icon: iconWidget,
               selectedIcon: selectedIconWidget,
               label: dest.label,
+              badgeCount: dest.badgeCount,
             );
           }).toList(),
         );
       }
 
-      return Scaffold(
-        key: widget.scaffoldKey,
-        appBar: appBar,
-        body: widget.body ?? const SizedBox.shrink(),
-        resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
-        bottomNavigationBar: bottomNavBar,
-        floatingActionButton: widget.floatingActionButton,
-        extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
-        drawer: widget.drawer,
-        endDrawer: widget.endDrawer,
-        drawerScrimColor: widget.drawerScrimColor,
-        onDrawerChanged: widget.onDrawerChanged,
-        onEndDrawerChanged: widget.onEndDrawerChanged,
-        drawerEnableOpenDragGesture: widget.drawerEnableOpenDragGesture,
-        endDrawerEnableOpenDragGesture: widget.endDrawerEnableOpenDragGesture,
+      return withAdaptiveMaterialExpressiveTheme(
+        context,
+        Scaffold(
+          key: widget.scaffoldKey,
+          appBar: appBar,
+          body: widget.body ?? const SizedBox.shrink(),
+          resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
+          bottomNavigationBar: bottomNavBar,
+          floatingActionButton: widget.floatingActionButton,
+          extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
+          drawer: widget.drawer,
+          endDrawer: widget.endDrawer,
+          drawerScrimColor: widget.drawerScrimColor,
+          onDrawerChanged: widget.onDrawerChanged,
+          onEndDrawerChanged: widget.onEndDrawerChanged,
+          drawerEnableOpenDragGesture: widget.drawerEnableOpenDragGesture,
+          endDrawerEnableOpenDragGesture: widget.endDrawerEnableOpenDragGesture,
+        ),
       );
     }
 
@@ -742,7 +740,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     }
     // Priority 2: Build AppBar if widget.appBar is provided (even if empty - for automatic back button)
     else if (widget.appBar != null) {
-      appBar = AppBar(
+      appBar = m3e.M3EAppBar.top(
         title: _buildAppBarTitle(
           crossAxisAlignment: CrossAxisAlignment.start,
           subtitleFontSize: 13,
@@ -753,38 +751,44 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         centerTitle: widget.appBar!.titleWidget != null,
         actions: widget.appBar!.actions?.map((action) {
           if (action.title != null) {
-            return TextButton(
+            return m3e.M3EButton.text(
               onPressed: action.onPressed,
               child: Text(action.title!),
             );
           }
-          return IconButton(
-            icon: action.iconWidget ?? (action.icon != null
-                ? Icon(action.icon!)
-                : const Icon(Icons.circle)),
+          return m3e.M3EIconButton(
+            icon:
+                action.iconWidget ??
+                (action.icon != null
+                    ? Icon(action.icon!)
+                    : const Icon(Icons.circle)),
             onPressed: action.onPressed,
           );
         }).toList(),
         leading: widget.appBar!.leading,
+        automaticallyImplyLeading: true,
         // automaticallyImplyLeading defaults to true, so back button will show automatically
       );
     }
 
     // Always use Scaffold to ensure Material context
-    return Scaffold(
-      key: widget.scaffoldKey,
-      appBar: appBar,
-      body: widget.body ?? const SizedBox.shrink(),
-      resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
-      floatingActionButton: widget.floatingActionButton,
-      extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
-      drawer: widget.drawer,
-      endDrawer: widget.endDrawer,
-      drawerScrimColor: widget.drawerScrimColor,
-      onDrawerChanged: widget.onDrawerChanged,
-      onEndDrawerChanged: widget.onEndDrawerChanged,
-      drawerEnableOpenDragGesture: widget.drawerEnableOpenDragGesture,
-      endDrawerEnableOpenDragGesture: widget.endDrawerEnableOpenDragGesture,
+    return withAdaptiveMaterialExpressiveTheme(
+      context,
+      Scaffold(
+        key: widget.scaffoldKey,
+        appBar: appBar,
+        body: widget.body ?? const SizedBox.shrink(),
+        resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
+        floatingActionButton: widget.floatingActionButton,
+        extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
+        drawer: widget.drawer,
+        endDrawer: widget.endDrawer,
+        drawerScrimColor: widget.drawerScrimColor,
+        onDrawerChanged: widget.onDrawerChanged,
+        onEndDrawerChanged: widget.onEndDrawerChanged,
+        drawerEnableOpenDragGesture: widget.drawerEnableOpenDragGesture,
+        endDrawerEnableOpenDragGesture: widget.endDrawerEnableOpenDragGesture,
+      ),
     );
   }
 
