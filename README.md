@@ -63,6 +63,23 @@ En Android, `AdaptiveBlurView` no dibuja un blur de Flutter para imitar Liquid G
 
 `AdaptiveCarousel` usa los carruseles oficiales de Compose en Android. Declara `androidItems` con datos e iconos `AndroidM3EIcon`; los `Widget` de Flutter no se pueden insertar en un árbol Compose nativo. `AdaptiveSplitButton` recibe `AdaptiveSplitButtonItem`, `AdaptiveToolbar` recibe `AdaptiveToolbarAction` y `AdaptiveButtonGroup` recibe `AdaptiveButtonGroupAction` con iconos serializables. Los menús popup con hijo personalizado mantienen el hijo Flutter como ancla y dibujan el menú en Compose.
 
+`AdaptiveToolbar` ofrece las variantes docked y floating nativas. Usa `docked: true` para acciones persistentes de página y `colorStyle: AdaptiveToolbarColorStyle.vibrant` para una barra contextual de mayor énfasis. Las acciones excesivas pasan al menú de desbordamiento de Compose. Revisa [la guía de toolbars Android](docs/android-m3e-toolbars.md) para tamaños, ubicación, accesibilidad y límites del puente Flutter/Compose.
+
+El comportamiento al desplazarse es optativo. Comparte el `ScrollController` de tu lista con la toolbar y elige `pinned`, `exitAlways` o `collapse` (solo floating y con FAB):
+
+```dart
+// Créalo y dispónlo dentro del State que posee la lista.
+final pageScrollController = ScrollController();
+
+AdaptiveToolbar(
+  scrollController: pageScrollController,
+  scrollBehavior: AdaptiveToolbarScrollBehavior.exitAlways,
+  actions: actions,
+)
+
+ListView(controller: pageScrollController, children: items)
+```
+
 Para un drawer Android nativo, usa `AdaptiveNavigationDrawer` en `AdaptiveScaffold.drawer` o `endDrawer`, con destinos e iconos serializables. Flutter conserva compatibilidad con `ScaffoldState.openDrawer()` y el gesto de borde; Compose dibuja la hoja, el scrim y la animación del drawer.
 
 ```dart

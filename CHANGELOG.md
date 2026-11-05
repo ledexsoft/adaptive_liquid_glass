@@ -1,3 +1,7 @@
+## [0.2.4]
+* **NEW**: `AdaptiveToolbar` now exposes native Android docked and floating Material 3 toolbars with standard/vibrant colors, adaptive overflow, selection, safe-area handling, and optional `pinned`, `exitAlways`, or `collapse` scroll behavior.
+* **DOCS**: Added Android toolbar guidance covering placement, behavior, accessibility, and Flutter/Compose bridge limits.
+
 ## [0.2.3]
 * **UPDATE**: Android adaptive carousels now render item image bytes natively with Compose and honor `freeScroll` and `userScrollEnabled` using the official carousel fling APIs.
 

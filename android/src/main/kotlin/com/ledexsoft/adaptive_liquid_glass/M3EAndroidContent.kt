@@ -88,7 +88,11 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.BottomAppBarDefaults
+import androidx.compose.material3.FlexibleBottomAppBar
+import androidx.compose.material3.AppBarRow
+import androidx.compose.material3.AppBarColumn
+import androidx.compose.material3.AppBarOverflowIndicator
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -184,6 +188,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -713,7 +718,7 @@ private fun NativeM3EButtonGroup(
   }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun NativeM3EToolbar(
   properties: Map<String, Any?>,
@@ -723,67 +728,246 @@ private fun NativeM3EToolbar(
   val leading = properties["leadingIcon"] as? String
   val trailing = properties["trailingIcon"] as? String
   val fabIcon = properties["fabIcon"] as? String
+  val fabTooltip = properties["fabTooltip"] as? String ?: "Primary action"
   val actions = properties["actions"] as? List<*> ?: emptyList<Any?>()
   val activeIndex = properties.number("activeIndex")?.toInt() ?: -1
-  val contentColor = properties.color("foregroundColor") ?: MaterialTheme.colorScheme.onSurface
+  val supportsSelection = properties["activeIndex"] is Number
+  val docked = properties.boolean("docked")
+  val vibrant = properties["colorStyle"] == "vibrant"
+  val standardColors = FloatingToolbarDefaults.standardFloatingToolbarColors()
+  val vibrantColors = FloatingToolbarDefaults.vibrantFloatingToolbarColors()
+  val floatingColors = if (vibrant) vibrantColors else standardColors
+  val floatingContainer = properties.color("backgroundColor")
+    ?: floatingColors.toolbarContainerColor
+  val contentColor = properties.color("foregroundColor") ?: if (docked) {
+    if (vibrant) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+  } else floatingColors.toolbarContentColor
+  val fabContainer = if (vibrant) vibrantColors.fabContainerColor else standardColors.fabContainerColor
+  val fabContent = if (vibrant) vibrantColors.fabContentColor else standardColors.fabContentColor
+  val safeBottomInsetPx = with(LocalDensity.current) {
+    (properties.number("safeBottomInset") ?: 0.0).dp.roundToPx()
+  }
+  val resolvedFloatingColors = if (properties.color("backgroundColor") != null || properties.color("foregroundColor") != null) {
+    if (vibrant) FloatingToolbarDefaults.vibrantFloatingToolbarColors(
+      toolbarContainerColor = floatingContainer,
+      toolbarContentColor = contentColor,
+    ) else FloatingToolbarDefaults.standardFloatingToolbarColors(
+      toolbarContainerColor = floatingContainer,
+      toolbarContentColor = contentColor,
+    )
+  } else floatingColors
 
   @Composable
-  fun actionRow() {
-    actions.forEachIndexed { index, rawAction ->
-      val action = rawAction as? Map<*, *> ?: return@forEachIndexed
-      val label = action["tooltip"] as? String ?: action["label"] as? String ?: "Action ${index + 1}"
-      val icon = action["icon"] as? String
-      if (icon != null) {
-        IconButton(
-          onClick = { onEvent("actionPressed", index) },
-          enabled = action["enabled"] as? Boolean ?: true,
-          modifier = Modifier.semantics { contentDescription = label },
-        ) { Icon(nativeM3EIcon(icon), contentDescription = null, tint = contentColor) }
+  fun actionIcon(index: Int, action: Map<*, *>) {
+    val icon = action["icon"] as? String ?: return
+    val label = action["tooltip"] as? String ?: action["label"] as? String ?: "Action ${index + 1}"
+    TooltipBox(
+      positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+      tooltip = { PlainTooltip { Text(label) } },
+      state = rememberTooltipState(),
+    ) {
+      Icon(nativeM3EIcon(icon), contentDescription = label, tint = contentColor)
+    }
+  }
+
+  @Composable
+  fun actionRow(modifier: Modifier = Modifier) {
+    AppBarRow(
+      modifier = modifier,
+      overflowIndicator = { state -> AppBarOverflowIndicator(menuState = state) },
+    ) {
+      actions.forEachIndexed { index, rawAction ->
+        val action = rawAction as? Map<*, *> ?: return@forEachIndexed
+        val label = action["tooltip"] as? String ?: action["label"] as? String ?: "Action ${index + 1}"
+        val enabled = action["enabled"] as? Boolean ?: true
+        if (supportsSelection) {
+          toggleableItem(
+            checked = index == activeIndex,
+            onCheckedChange = { checked ->
+              if (checked) onEvent("activeIndexChanged", index)
+              onEvent("actionPressed", index)
+            },
+            icon = { actionIcon(index, action) },
+            label = label,
+            enabled = enabled,
+          )
+        } else {
+          clickableItem(
+            onClick = { onEvent("actionPressed", index) },
+            icon = { actionIcon(index, action) },
+            label = label,
+            enabled = enabled,
+          )
+        }
       }
     }
   }
 
-  if (properties.boolean("docked")) {
-    BottomAppBar(
-      containerColor = properties.color("backgroundColor") ?: MaterialTheme.colorScheme.surfaceContainer,
-      contentColor = contentColor,
-      tonalElevation = (properties.number("elevation") ?: 0.0).dp,
+  @Composable
+  fun actionColumn() {
+    AppBarColumn(
+      modifier = Modifier.fillMaxHeight(),
+      overflowIndicator = { state -> AppBarOverflowIndicator(menuState = state) },
+    ) {
+      actions.forEachIndexed { index, rawAction ->
+        val action = rawAction as? Map<*, *> ?: return@forEachIndexed
+        val label = action["tooltip"] as? String ?: action["label"] as? String ?: "Action ${index + 1}"
+        val enabled = action["enabled"] as? Boolean ?: true
+        if (supportsSelection) {
+          toggleableItem(
+            checked = index == activeIndex,
+            onCheckedChange = { checked ->
+              if (checked) onEvent("activeIndexChanged", index)
+              onEvent("actionPressed", index)
+            },
+            icon = { actionIcon(index, action) },
+            label = label,
+            enabled = enabled,
+          )
+        } else {
+          clickableItem(
+            onClick = { onEvent("actionPressed", index) },
+            icon = { actionIcon(index, action) },
+            label = label,
+            enabled = enabled,
+          )
+        }
+      }
+    }
+  }
+
+  @Composable
+  fun horizontalContent() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      if (leading != null) {
+        IconButton(onClick = { onEvent("leadingPressed", null) }, enabled = properties.boolean("leadingEnabled")) {
+          Icon(
+            nativeM3EIcon(leading),
+            contentDescription = properties["leadingTooltip"] as? String ?: "Navigate",
+            tint = contentColor,
+          )
+        }
+      }
+      if (!title.isNullOrBlank()) {
+        Text(
+          title,
+          modifier = Modifier.widthIn(max = 180.dp),
+          color = contentColor,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+      actionRow()
+      if (trailing != null) {
+        IconButton(onClick = { onEvent("trailingPressed", null) }, enabled = properties.boolean("trailingEnabled")) {
+          Icon(
+            nativeM3EIcon(trailing),
+            contentDescription = properties["trailingTooltip"] as? String ?: "More actions",
+            tint = contentColor,
+          )
+        }
+      }
+    }
+  }
+
+  @Composable
+  fun verticalContent() {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+      if (leading != null) {
+        IconButton(onClick = { onEvent("leadingPressed", null) }, enabled = properties.boolean("leadingEnabled")) {
+          Icon(
+            nativeM3EIcon(leading),
+            contentDescription = properties["leadingTooltip"] as? String ?: "Navigate",
+            tint = contentColor,
+          )
+        }
+      }
+      if (!title.isNullOrBlank()) {
+        Text(title, color = contentColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+      }
+      actionColumn()
+      if (trailing != null) {
+        IconButton(onClick = { onEvent("trailingPressed", null) }, enabled = properties.boolean("trailingEnabled")) {
+          Icon(
+            nativeM3EIcon(trailing),
+            contentDescription = properties["trailingTooltip"] as? String ?: "More actions",
+            tint = contentColor,
+          )
+        }
+      }
+    }
+  }
+
+  if (docked) {
+    val dockedContainer = properties.color("backgroundColor") ?: if (vibrant) {
+      MaterialTheme.colorScheme.primaryContainer
+    } else MaterialTheme.colorScheme.surfaceContainer
+    val dockedContent = properties.color("foregroundColor") ?: if (vibrant) {
+      MaterialTheme.colorScheme.onPrimaryContainer
+    } else MaterialTheme.colorScheme.onSurface
+    FlexibleBottomAppBar(
+      expandedHeight = 64.dp,
+      contentPadding = PaddingValues(horizontal = 16.dp),
+      horizontalArrangement = BottomAppBarDefaults.FlexibleHorizontalArrangement,
+      containerColor = dockedContainer,
+      contentColor = dockedContent,
+      windowInsets = androidx.compose.foundation.layout.WindowInsets(bottom = safeBottomInsetPx),
     ) {
       if (leading != null) {
         IconButton(onClick = { onEvent("leadingPressed", null) }, enabled = properties.boolean("leadingEnabled")) {
-          Icon(nativeM3EIcon(leading), contentDescription = "Navigate", tint = contentColor)
+          Icon(nativeM3EIcon(leading), contentDescription = properties["leadingTooltip"] as? String ?: "Navigate", tint = contentColor)
         }
       }
       if (!title.isNullOrBlank()) {
         Text(title, modifier = Modifier.weight(1f), color = contentColor, maxLines = 1)
       }
-      actionRow()
+      Box(modifier = Modifier.weight(1f)) { actionRow(Modifier.fillMaxWidth()) }
       if (trailing != null) {
         IconButton(onClick = { onEvent("trailingPressed", null) }, enabled = properties.boolean("trailingEnabled")) {
-          Icon(nativeM3EIcon(trailing), contentDescription = null, tint = contentColor)
+          Icon(nativeM3EIcon(trailing), contentDescription = properties["trailingTooltip"] as? String ?: "More actions", tint = contentColor)
         }
       }
     }
   } else {
     val expanded = properties.boolean("expanded", true)
+    @Composable
+    fun fabIconContent() {
+      TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+        tooltip = { PlainTooltip { Text(fabTooltip) } },
+        state = rememberTooltipState(),
+      ) {
+        Icon(nativeM3EIcon(fabIcon!!), contentDescription = fabTooltip)
+      }
+    }
     val floating = @Composable {
       if (fabIcon != null) {
-        FloatingActionButton(onClick = { onEvent("fabPressed", null) }) {
-          Icon(nativeM3EIcon(fabIcon), contentDescription = "Toolbar action")
+        if (vibrant) {
+          FloatingToolbarDefaults.VibrantFloatingActionButton(
+            onClick = { onEvent("fabPressed", null) },
+            containerColor = fabContainer,
+            contentColor = fabContent,
+          ) { fabIconContent() }
+        } else {
+          FloatingToolbarDefaults.StandardFloatingActionButton(
+            onClick = { onEvent("fabPressed", null) },
+            containerColor = fabContainer,
+            contentColor = fabContent,
+          ) { fabIconContent() }
         }
       }
     }
     if (properties["axis"] == "vertical") {
       if (fabIcon == null) {
-        VerticalFloatingToolbar(expanded = expanded) { actionRow() }
+        VerticalFloatingToolbar(expanded = expanded, colors = resolvedFloatingColors) { verticalContent() }
       } else {
-        VerticalFloatingToolbar(expanded = expanded, floatingActionButton = floating) { actionRow() }
+        VerticalFloatingToolbar(expanded = expanded, colors = resolvedFloatingColors, floatingActionButton = floating) { verticalContent() }
       }
     } else {
       if (fabIcon == null) {
-        HorizontalFloatingToolbar(expanded = expanded) { actionRow() }
+        HorizontalFloatingToolbar(expanded = expanded, colors = resolvedFloatingColors) { horizontalContent() }
       } else {
-        HorizontalFloatingToolbar(expanded = expanded, floatingActionButton = floating) { actionRow() }
+        HorizontalFloatingToolbar(expanded = expanded, colors = resolvedFloatingColors, floatingActionButton = floating) { horizontalContent() }
       }
     }
   }
