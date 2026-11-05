@@ -1,3 +1,8 @@
+## [0.2.9]
+* **FIX**: Android M3 Expressive scaffold app bars and text/form fields now fall back to Flutter Material when custom widgets cannot be represented in Compose, preserving their actions and input behavior instead of throwing during build.
+* **NEW**: `AdaptiveAppBarAction.androidIcon` and `AndroidM3EIcon.autoAwesome` let apps keep platform-specific icons while serializing native Android app bar actions safely.
+* **TESTS**: Added regression coverage for unsupported app bar actions and interactive text-field suffixes on Android.
+
 ## [0.2.8]
 * **FIX**: Context menus on macOS/Linux/Windows now use Flutter Material menus instead of opening the Android Compose overlay; Android keeps the native Compose context menu.
 * **TESTS**: Updated platform widget tests to verify Android Compose bridge properties and exercise Flutter Material fallbacks on Linux. Android blur tests now match the documented no-simulation behavior.

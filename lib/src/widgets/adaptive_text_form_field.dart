@@ -172,6 +172,9 @@ class AdaptiveTextFormField extends StatelessWidget {
 
     if (PlatformInfo.isAndroid) {
       final inputDecoration = decoration;
+      if (!_canUseAndroidM3ETextField(inputDecoration)) {
+        return _buildMaterialTextFormField(context);
+      }
       return FormField<String>(
         initialValue: controller?.text ?? initialValue ?? '',
         validator: validator,
@@ -236,6 +239,30 @@ class AdaptiveTextFormField extends StatelessWidget {
       'Android native text fields require $parameter to be plain Text. '
       'Custom Flutter widget trees cannot cross into Compose.',
     );
+  }
+
+  bool _canUseAndroidM3ETextField(InputDecoration? inputDecoration) {
+    bool plainText(Widget? value) =>
+        value == null ||
+        (value is Text && value.data != null && value.style == null);
+    bool serializableIcon(Widget? value, AndroidM3EIcon? nativeIcon) {
+      if (value == null) return true;
+      // Compose can render the glyph but cannot forward callbacks from a
+      // Flutter IconButton. Keep the Material widget tree for those fields.
+      if (value is IconButton) return false;
+      if (nativeIcon != null) return true;
+      return canResolveAndroidM3EIcon(child: value, nativeIcon: null);
+    }
+
+    final effectivePrefix = inputDecoration?.prefix ?? prefix;
+    final effectiveSuffix = inputDecoration?.suffix ?? suffix;
+    final effectivePrefixIcon = inputDecoration?.prefixIcon ?? prefixIcon;
+    final effectiveSuffixIcon = inputDecoration?.suffixIcon ?? suffixIcon;
+    return plainText(effectivePrefix) &&
+        plainText(effectiveSuffix) &&
+        serializableIcon(effectivePrefixIcon, nativePrefixIcon) &&
+        serializableIcon(effectiveSuffixIcon, nativeSuffixIcon) &&
+        (inputDecoration?.icon == null);
   }
 
   Widget _buildCupertinoTextFormField(BuildContext context) {

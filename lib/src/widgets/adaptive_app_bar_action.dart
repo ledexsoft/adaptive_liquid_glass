@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'android/android_m3e_native_icon.dart';
 
 /// Spacer type for toolbar items (iOS 26+ only)
 enum ToolbarSpacerType {
@@ -35,6 +36,7 @@ class AdaptiveAppBarAction {
     this.iosSymbol,
     this.icon,
     this.iconWidget,
+    this.androidIcon,
     this.title,
     required this.onPressed,
     this.spacerAfter = ToolbarSpacerType.none,
@@ -67,6 +69,12 @@ class AdaptiveAppBarAction {
   /// Custom icon widget for iOS <26 and Android (e.g., SvgPicture.asset)
   /// If provided, this widget is used instead of the icon parameter.
   final Widget? iconWidget;
+
+  /// Explicit serializable icon for the native Android M3 Expressive app bar.
+  /// Keep [icon] or [iconWidget] for other platforms. If omitted and the
+  /// Android icon cannot be serialized, [AdaptiveScaffold] uses a Flutter
+  /// Material app bar fallback so custom widgets and callbacks keep working.
+  final AndroidM3EIcon? androidIcon;
 
   /// Text title for the action (optional)
   /// If provided along with icons, title takes precedence
@@ -123,6 +131,7 @@ class AdaptiveAppBarAction {
         other.iosSymbol == iosSymbol &&
         other.icon == icon &&
         other.iconWidget == iconWidget &&
+        other.androidIcon == androidIcon &&
         other.title == title &&
         other.prominent == prominent &&
         other.tintColor == tintColor &&
@@ -137,6 +146,7 @@ class AdaptiveAppBarAction {
     iosSymbol,
     icon,
     iconWidget,
+    androidIcon,
     title,
     prominent,
     tintColor,
@@ -145,6 +155,23 @@ class AdaptiveAppBarAction {
     wide,
     insideSearchField,
   );
+
+  /// Convert this action to the serializable properties used by Android M3E.
+  Map<String, dynamic> toAndroidMap() => {
+    if (androidIcon != null || iconWidget != null || icon != null)
+      'icon': resolveAndroidM3EIcon(
+        child: iconWidget ?? (icon == null ? null : Icon(icon)),
+        nativeIcon: androidIcon,
+        parameterName: 'AdaptiveAppBarAction.androidIcon',
+      ),
+    if (title != null) 'title': title,
+    'tooltip': semanticLabel ?? title,
+    'semanticLabel': semanticLabel ?? title,
+    'enabled': true,
+    'style': androidStyle.name,
+    'wide': wide,
+    'insideSearchField': insideSearchField,
+  };
 
   /// Convert action to map for native platform channel (iOS 26+ only)
   Map<String, dynamic> toNativeMap() {

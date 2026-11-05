@@ -10,6 +10,7 @@ enum AndroidM3EIcon {
   arrowBack,
   arrowDropDown,
   arrowForward,
+  autoAwesome,
   calendarToday,
   check,
   close,
@@ -62,6 +63,7 @@ String resolveAndroidM3EIcon({
         0xe098 => AndroidM3EIcon.arrowDropDown,
         0xe5c8 => AndroidM3EIcon.arrowForward,
         0xe09b => AndroidM3EIcon.arrowForward,
+        0xe0b7 || 0xf596 || 0xeea9 => AndroidM3EIcon.autoAwesome,
         0xe8df => AndroidM3EIcon.calendarToday,
         0xe122 => AndroidM3EIcon.calendarToday,
         0xe5ca => AndroidM3EIcon.check,
@@ -111,4 +113,22 @@ String resolveAndroidM3EIcon({
     'Pass $parameterName: AndroidM3EIcon.<value>; arbitrary Flutter widgets '
     'cannot be rendered inside the native Compose view.',
   );
+}
+
+/// Returns whether a Flutter child can be represented by the native Android
+/// M3 Expressive icon bridge without throwing.
+bool canResolveAndroidM3EIcon({
+  required Widget? child,
+  required AndroidM3EIcon? nativeIcon,
+}) {
+  try {
+    resolveAndroidM3EIcon(
+      child: child,
+      nativeIcon: nativeIcon,
+      parameterName: 'icon',
+    );
+    return true;
+  } on FlutterError {
+    return false;
+  }
 }

@@ -253,6 +253,7 @@ import androidx.compose.foundation.shape.CircleShape
 import android.graphics.BitmapFactory
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
@@ -2445,6 +2446,7 @@ private fun nativeM3EIcon(name: String?): ImageVector = when (name) {
   "arrowBack" -> Icons.AutoMirrored.Filled.ArrowBack
   "arrowDropDown" -> Icons.Filled.ArrowDropDown
   "arrowForward" -> Icons.AutoMirrored.Filled.ArrowForward
+  "autoAwesome" -> Icons.Filled.AutoAwesome
   "calendarToday" -> Icons.Filled.CalendarToday
   "check" -> Icons.Filled.Check
   "close" -> Icons.Filled.Close

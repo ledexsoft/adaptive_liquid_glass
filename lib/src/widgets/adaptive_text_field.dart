@@ -148,6 +148,9 @@ class AdaptiveTextField extends StatelessWidget {
 
     if (PlatformInfo.isAndroid) {
       final inputDecoration = decoration;
+      if (!_canUseAndroidM3ETextField(inputDecoration)) {
+        return _buildMaterialTextField(context);
+      }
       return AndroidM3ETextField(
         controller: controller,
         focusNode: focusNode,
@@ -155,8 +158,12 @@ class AdaptiveTextField extends StatelessWidget {
         placeholder: inputDecoration?.hintText,
         helperText: inputDecoration?.helperText,
         errorText: inputDecoration?.errorText,
-        prefixText: inputDecoration?.prefixText ?? _plainDecorationText(prefix, 'prefix'),
-        suffixText: inputDecoration?.suffixText ?? _plainDecorationText(suffix, 'suffix'),
+        prefixText:
+            inputDecoration?.prefixText ??
+            _plainDecorationText(prefix, 'prefix'),
+        suffixText:
+            inputDecoration?.suffixText ??
+            _plainDecorationText(suffix, 'suffix'),
         prefixIcon: inputDecoration?.prefixIcon ?? prefixIcon,
         suffixIcon: inputDecoration?.suffixIcon ?? suffixIcon,
         nativePrefixIcon: nativePrefixIcon,
@@ -196,6 +203,30 @@ class AdaptiveTextField extends StatelessWidget {
       'Android native text fields require $parameter to be plain Text. '
       'Custom Flutter widget trees cannot cross into Compose.',
     );
+  }
+
+  bool _canUseAndroidM3ETextField(InputDecoration? inputDecoration) {
+    bool plainText(Widget? value) =>
+        value == null ||
+        (value is Text && value.data != null && value.style == null);
+    bool serializableIcon(Widget? value, AndroidM3EIcon? nativeIcon) {
+      if (value == null) return true;
+      // Compose can render the glyph but cannot forward callbacks from a
+      // Flutter IconButton. Keep the Material widget tree for those fields.
+      if (value is IconButton) return false;
+      if (nativeIcon != null) return true;
+      return canResolveAndroidM3EIcon(child: value, nativeIcon: null);
+    }
+
+    final effectivePrefix = inputDecoration?.prefix ?? prefix;
+    final effectiveSuffix = inputDecoration?.suffix ?? suffix;
+    final effectivePrefixIcon = inputDecoration?.prefixIcon ?? prefixIcon;
+    final effectiveSuffixIcon = inputDecoration?.suffixIcon ?? suffixIcon;
+    return plainText(effectivePrefix) &&
+        plainText(effectiveSuffix) &&
+        serializableIcon(effectivePrefixIcon, nativePrefixIcon) &&
+        serializableIcon(effectiveSuffixIcon, nativeSuffixIcon) &&
+        (inputDecoration?.icon == null);
   }
 
   Widget _buildCupertinoTextField(BuildContext context) {

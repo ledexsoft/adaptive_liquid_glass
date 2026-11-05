@@ -734,7 +734,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               (widget.appBar!.actions != null &&
                   widget.appBar!.actions!.isNotEmpty) ||
               widget.appBar!.leading != null)) {
-        appBar = _buildAndroidTopAppBar(context);
+        appBar = _canRenderAndroidTopAppBarNatively
+            ? _buildAndroidTopAppBar(context)
+            : _buildAndroidFlutterFallbackAppBar(context);
       }
 
       // Determine which bottom navigation bar to use
@@ -806,7 +808,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     }
     // Priority 2: Build AppBar if widget.appBar is provided (even if empty - for automatic back button)
     else if (widget.appBar != null) {
-      appBar = _buildAndroidTopAppBar(context);
+      appBar = _canRenderAndroidTopAppBarNatively
+          ? _buildAndroidTopAppBar(context)
+          : _buildAndroidFlutterFallbackAppBar(context);
     }
 
     // Always use Scaffold to ensure Material context
@@ -879,33 +883,18 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     }
     if (config.variant == AdaptiveAppBarVariant.search &&
         insideSearchActions.any(
-          (action) => action.icon == null && action.iconWidget == null,
+          (action) =>
+              action.icon == null &&
+              action.iconWidget == null &&
+              action.androidIcon == null,
         )) {
       throw FlutterError(
         'An action inside an Android M3 search field must provide an icon.',
       );
     }
-    final serializedActions = [
-      for (final action in actions)
-        {
-          'title': action.title,
-          'icon': action.iconWidget != null || action.icon != null
-              ? resolveAndroidM3EIcon(
-                  child:
-                      action.iconWidget ??
-                      (action.icon == null ? null : Icon(action.icon)),
-                  nativeIcon: null,
-                  parameterName: 'AdaptiveAppBarAction.iconWidget',
-                )
-              : null,
-          'tooltip': action.semanticLabel ?? action.title,
-          'semanticLabel': action.semanticLabel ?? action.title,
-          'enabled': true,
-          'style': action.androidStyle.name,
-          'wide': action.wide,
-          'insideSearchField': action.insideSearchField,
-        },
-    ];
+    final serializedActions = actions
+        .map((action) => action.toAndroidMap())
+        .toList();
     final appBarHeight = switch (config.variant) {
       AdaptiveAppBarVariant.small || AdaptiveAppBarVariant.search => 64.0,
       AdaptiveAppBarVariant.mediumFlexible =>
@@ -974,6 +963,80 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
           }
         },
       ),
+    );
+  }
+
+  bool get _canRenderAndroidTopAppBarNatively {
+    final config = widget.appBar;
+    if (config == null) return true;
+    final titleWidget = config.titleWidget;
+    if (titleWidget != null && titleWidget is! Text) return false;
+
+    final leading = config.leading;
+    if (leading != null) {
+      final child = leading is IconButton ? leading.icon : leading;
+      if (!canResolveAndroidM3EIcon(child: child, nativeIcon: null)) {
+        return false;
+      }
+    }
+
+    for (final action in config.actions ?? const <AdaptiveAppBarAction>[]) {
+      if (action.androidIcon != null) continue;
+      if (action.icon == null && action.iconWidget == null) continue;
+      final child = action.iconWidget ?? Icon(action.icon);
+      if (!canResolveAndroidM3EIcon(child: child, nativeIcon: null)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  PreferredSizeWidget _buildAndroidFlutterFallbackAppBar(BuildContext context) {
+    final config = widget.appBar!;
+    final titleWidget = config.titleWidget;
+    final Widget? title =
+        titleWidget ??
+        (config.title == null
+            ? null
+            : config.subtitle == null
+            ? Text(config.title!)
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    config.title!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    config.subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ],
+              ));
+
+    return AppBar(
+      automaticallyImplyLeading: config.leading == null,
+      leading: config.leading,
+      title: title,
+      centerTitle: config.centerAligned,
+      actions: [
+        for (final action in config.actions ?? const <AdaptiveAppBarAction>[])
+          if (action.iconWidget != null || action.icon != null)
+            IconButton(
+              tooltip: action.semanticLabel ?? action.title,
+              onPressed: action.onPressed,
+              icon: action.iconWidget ?? Icon(action.icon),
+            )
+          else
+            TextButton(
+              onPressed: action.onPressed,
+              child: Text(action.title ?? action.semanticLabel ?? ''),
+            ),
+      ],
     );
   }
 
