@@ -9,18 +9,19 @@ void main() {
   });
 
   group('AdaptiveDivider', () {
-    testWidgets('renders Material Divider on Android', (tester) async {
+    testWidgets('uses the native Compose divider on Android', (tester) async {
       PlatformInfo.debugPlatformOverride = TargetPlatform.android;
 
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: Column(children: [AdaptiveDivider()]),
-          ),
+          home: Scaffold(body: Column(children: [AdaptiveDivider()])),
         ),
       );
 
-      expect(find.byType(Divider), findsOneWidget);
+      final view = tester.widget<AndroidView>(find.byType(AndroidView));
+      final properties = view.creationParams! as Map<Object?, Object?>;
+      expect(properties['component'], 'divider');
+      expect(properties['thickness'], 1);
     });
 
     testWidgets('renders hairline container on iOS', (tester) async {
@@ -28,9 +29,7 @@ void main() {
 
       await tester.pumpWidget(
         const CupertinoApp(
-          home: CupertinoPageScaffold(
-            child: Center(child: AdaptiveDivider()),
-          ),
+          home: CupertinoPageScaffold(child: Center(child: AdaptiveDivider())),
         ),
       );
 
@@ -47,7 +46,7 @@ void main() {
     });
 
     testWidgets('honors indent/endIndent/thickness', (tester) async {
-      PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+      PlatformInfo.debugPlatformOverride = TargetPlatform.linux;
 
       await tester.pumpWidget(
         const MaterialApp(

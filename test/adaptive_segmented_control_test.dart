@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:adaptive_liquid_glass/adaptive_liquid_glass.dart';
 
 void main() {
+  tearDown(PlatformInfo.resetDebugOverrides);
+
   group('AdaptiveSegmentedControl', () {
     testWidgets('creates segmented control with labels', (
       WidgetTester tester,
@@ -269,6 +271,7 @@ void main() {
     });
 
     testWidgets('shows menu on long press', (WidgetTester tester) async {
+      PlatformInfo.debugPlatformOverride = TargetPlatform.linux;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -289,13 +292,14 @@ void main() {
       await tester.longPress(find.text('Long press'));
       await tester.pumpAndSettle();
 
-      // Menu should appear (on Android as PopupMenu)
+      // Desktop fallback should show a Flutter popup menu.
       expect(find.text('Share'), findsOneWidget);
     });
 
     testWidgets('calls action onPressed when action tapped', (
       WidgetTester tester,
     ) async {
+      PlatformInfo.debugPlatformOverride = TargetPlatform.linux;
       bool actionPressed = false;
 
       await tester.pumpWidget(
@@ -324,6 +328,37 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(actionPressed, isTrue);
+    });
+
+    testWidgets('uses the native Compose overlay on Android', (
+      WidgetTester tester,
+    ) async {
+      PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AdaptiveContextMenu(
+              actions: [
+                AdaptiveContextMenuAction(
+                  title: 'Share',
+                  icon: Icons.share,
+                  onPressed: () {},
+                ),
+              ],
+              child: const Text('Long press'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.longPress(find.text('Long press'));
+      await tester.pumpAndSettle();
+
+      final view = tester.widget<AndroidView>(find.byType(AndroidView));
+      final properties = view.creationParams! as Map<Object?, Object?>;
+      expect(properties['component'], 'contextMenu');
+      final actions = properties['actions']! as List<Object?>;
+      expect((actions.single! as Map<Object?, Object?>)['title'], 'Share');
     });
   });
 

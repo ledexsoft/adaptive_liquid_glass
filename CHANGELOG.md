@@ -1,3 +1,7 @@
+## [0.2.8]
+* **FIX**: Context menus on macOS/Linux/Windows now use Flutter Material menus instead of opening the Android Compose overlay; Android keeps the native Compose context menu.
+* **TESTS**: Updated platform widget tests to verify Android Compose bridge properties and exercise Flutter Material fallbacks on Linux. Android blur tests now match the documented no-simulation behavior.
+
 ## [0.2.7]
 * **UPDATE**: Android button groups now expose all five Material 3 Expressive sizes, official standard/connected spacing and shapes, connected equal-width layout, keyboard arrow navigation, and optional required selection.
 * **UPDATE**: Android FAB menus now enforce 2–6 actions, expose localizable toggle/state semantics, focus the close control on open, support RTL-aware corner placement, and scroll their action list on short windows while keeping the close control visible.

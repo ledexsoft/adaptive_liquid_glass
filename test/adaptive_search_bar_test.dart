@@ -24,23 +24,26 @@ void main() {
       expect(find.byType(TextField), findsNothing);
     });
 
-    testWidgets('renders Material TextField on Android', (tester) async {
+    testWidgets('uses the native Compose search bar on Android', (
+      tester,
+    ) async {
       PlatformInfo.debugPlatformOverride = TargetPlatform.android;
 
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: Center(child: AdaptiveSearchBar()),
-          ),
+          home: Scaffold(body: Center(child: AdaptiveSearchBar())),
         ),
       );
 
-      expect(find.byType(TextField), findsOneWidget);
+      final view = tester.widget<AndroidView>(find.byType(AndroidView));
+      final properties = view.creationParams! as Map<Object?, Object?>;
+      expect(properties['component'], 'searchBar');
+      expect(properties['hint'], isEmpty);
       expect(find.byType(CupertinoSearchTextField), findsNothing);
     });
 
     testWidgets('calls onChanged and onSubmitted', (tester) async {
-      PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+      PlatformInfo.debugPlatformOverride = TargetPlatform.linux;
 
       String? changed;
       String? submitted;
@@ -63,17 +66,17 @@ void main() {
       expect(submitted, 'hola');
     });
 
-    testWidgets('clear button empties the field and fires onClear', (tester) async {
-      PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+    testWidgets('clear button empties the field and fires onClear', (
+      tester,
+    ) async {
+      PlatformInfo.debugPlatformOverride = TargetPlatform.linux;
 
       bool cleared = false;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: Center(
-              child: AdaptiveSearchBar(
-                onClear: () => cleared = true,
-              ),
+              child: AdaptiveSearchBar(onClear: () => cleared = true),
             ),
           ),
         ),

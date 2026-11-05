@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:adaptive_liquid_glass/adaptive_liquid_glass.dart';
 
 void main() {
+  tearDown(PlatformInfo.resetDebugOverrides);
+
   group('AdaptiveScaffold drawer support', () {
     testWidgets('renders drawer when provided', (WidgetTester tester) async {
       await tester.pumpWidget(
@@ -51,6 +53,7 @@ void main() {
     testWidgets('no extra Scaffold wrapper when no drawer provided', (
       WidgetTester tester,
     ) async {
+      PlatformInfo.debugPlatformOverride = TargetPlatform.android;
       await tester.pumpWidget(
         MaterialApp(home: AdaptiveScaffold(body: const Text('Body'))),
       );

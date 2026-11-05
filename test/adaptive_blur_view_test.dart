@@ -54,11 +54,9 @@ void main() {
       expect(find.byType(ClipRRect), findsWidgets);
     });
 
-    testWidgets('applies BackdropFilter on non-iOS 26 platforms', (
+    testWidgets('does not simulate Android blur over Flutter content', (
       WidgetTester tester,
     ) async {
-      // Force the Flutter BackdropFilter fallback path: the host test runner
-      // runs on macOS, which now selects the native AppKit blur path.
       PlatformInfo.debugPlatformOverride = TargetPlatform.android;
 
       await tester.pumpWidget(
@@ -72,8 +70,7 @@ void main() {
         ),
       );
 
-      // Should use BackdropFilter on non-iOS 26 platforms
-      expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
       expect(find.text('Test Child'), findsOneWidget);
     });
 
@@ -167,8 +164,7 @@ void main() {
       );
 
       expect(find.text('Test'), findsOneWidget);
-      // BackdropFilter should be present (non-iOS 26 fallback)
-      expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
     });
 
     testWidgets('blur view applies correct background color in dark mode', (
@@ -188,7 +184,7 @@ void main() {
       );
 
       expect(find.text('Test'), findsOneWidget);
-      expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
     });
   });
 }

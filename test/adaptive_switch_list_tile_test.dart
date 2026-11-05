@@ -31,7 +31,9 @@ void main() {
       expect(find.byType(Switch), findsNothing);
     });
 
-    testWidgets('renders Material Switch on Android', (tester) async {
+    testWidgets('uses the native Compose switch list tile on Android', (
+      tester,
+    ) async {
       PlatformInfo.debugPlatformOverride = TargetPlatform.android;
 
       await tester.pumpWidget(
@@ -48,13 +50,16 @@ void main() {
         ),
       );
 
-      expect(find.byType(Switch), findsOneWidget);
-      expect(find.text('Notificaciones'), findsOneWidget);
+      final view = tester.widget<AndroidView>(find.byType(AndroidView));
+      final properties = view.creationParams! as Map<Object?, Object?>;
+      expect(properties['component'], 'switchListTile');
+      expect(properties['title'], 'Notificaciones');
+      expect(properties['value'], isFalse);
       expect(find.byType(CupertinoSwitch), findsNothing);
     });
 
-    testWidgets('tapping toggles the switch', (tester) async {
-      PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+    testWidgets('tapping toggles the Material fallback switch', (tester) async {
+      PlatformInfo.debugPlatformOverride = TargetPlatform.linux;
 
       bool? current = false;
       await tester.pumpWidget(

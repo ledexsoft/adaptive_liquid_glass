@@ -506,7 +506,7 @@ AdaptiveContextMenu(
 )
 ```
 
-**iOS**: `CupertinoContextMenu` con preview y animaciones nativas. **Android**: `PopupMenuButton` de Material.
+**iOS**: `CupertinoContextMenu` con preview y animaciones nativas. **Android**: menú contextual nativo de Compose. **macOS/Linux/Windows**: menú emergente Material de Flutter.
 
 ### AdaptivePopupMenuButton (menú popup)
 

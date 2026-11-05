@@ -44,7 +44,9 @@ void main() {
       expect(find.text('Action 1'), findsOneWidget);
     });
 
-    testWidgets('renders Material bottom sheet on Android', (tester) async {
+    testWidgets('opens the native Compose action sheet on Android', (
+      tester,
+    ) async {
       PlatformInfo.debugPlatformOverride = TargetPlatform.android;
 
       await tester.pumpWidget(
@@ -76,8 +78,15 @@ void main() {
       await tester.tap(find.text('Open Sheet'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Material Title'), findsOneWidget);
-      expect(find.text('Material Action'), findsOneWidget);
+      final view = tester.widget<AndroidView>(find.byType(AndroidView));
+      final properties = view.creationParams! as Map<Object?, Object?>;
+      expect(properties['component'], 'actionSheet');
+      expect(properties['title'], 'Material Title');
+      final actions = properties['actions']! as List<Object?>;
+      expect(
+        (actions.single! as Map<Object?, Object?>)['label'],
+        'Material Action',
+      );
     });
   });
 }

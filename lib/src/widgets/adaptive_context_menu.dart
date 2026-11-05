@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_overlay.dart';
@@ -98,10 +99,59 @@ class AdaptiveContextMenu extends StatelessWidget {
 
   Widget _buildAndroidContextMenu(BuildContext context) {
     return GestureDetector(
-      onLongPressStart: (details) =>
-          _showAndroidMenu(context, details.globalPosition),
+      onLongPressStart: (details) {
+        if (PlatformInfo.isAndroid) {
+          _showAndroidMenu(context, details.globalPosition);
+        } else {
+          _showFlutterMenu(context, details.globalPosition);
+        }
+      },
       child: child,
     );
+  }
+
+  void _showFlutterMenu(BuildContext context, Offset anchor) {
+    final screenSize = MediaQuery.sizeOf(context);
+    showMenu<int>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        anchor.dx,
+        anchor.dy,
+        screenSize.width - anchor.dx,
+        screenSize.height - anchor.dy,
+      ),
+      items: [
+        for (var index = 0; index < actions.length; index++)
+          PopupMenuItem<int>(
+            value: index,
+            enabled: !actions[index].isDisabled,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (actions[index].icon is IconData) ...[
+                  Icon(
+                    actions[index].icon as IconData,
+                    color: actions[index].isDestructive
+                        ? Theme.of(context).colorScheme.error
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Text(
+                  actions[index].title,
+                  style: actions[index].isDestructive
+                      ? TextStyle(color: Theme.of(context).colorScheme.error)
+                      : null,
+                ),
+              ],
+            ),
+          ),
+      ],
+    ).then((index) {
+      if (index != null && index >= 0 && index < actions.length) {
+        actions[index].onPressed();
+      }
+    });
   }
 
   void _showAndroidMenu(BuildContext context, Offset anchor) {
