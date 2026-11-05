@@ -45,6 +45,48 @@ void main() {
     },
   );
 
+  testWidgets('Android button falls back for a custom Flutter child', (
+    tester,
+  ) async {
+    var tapped = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdaptiveButton.child(
+            onPressed: () => tapped = true,
+            child: const Row(
+              children: [Icon(Icons.shopping_cart), Text('Buy')],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(ElevatedButton), findsOneWidget);
+    await tester.tap(find.byType(ElevatedButton));
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('Android icon button falls back for an unsupported icon', (
+    tester,
+  ) async {
+    var tapped = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdaptiveIconButton(
+            icon: const Icon(Icons.shopping_bag_outlined),
+            onPressed: () => tapped = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(IconButton), findsOneWidget);
+    await tester.tap(find.byType(IconButton));
+    expect(tapped, isTrue);
+  });
+
   testWidgets(
     'Android text field falls back and keeps interactive suffix action',
     (tester) async {

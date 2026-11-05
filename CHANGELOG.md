@@ -1,3 +1,7 @@
+## [0.2.10]
+* **FIX**: Android adaptive buttons with custom children or unmapped icons and icon buttons with unmapped content now use Flutter Material fallbacks, preserving screen-specific widgets and callbacks instead of throwing during build.
+* **TESTS**: Added coverage for custom Android button and icon-button fallbacks.
+
 ## [0.2.9]
 * **FIX**: Android M3 Expressive scaffold app bars and text/form fields now fall back to Flutter Material when custom widgets cannot be represented in Compose, preserving their actions and input behavior instead of throwing during build.
 * **NEW**: `AdaptiveAppBarAction.androidIcon` and `AndroidM3EIcon.autoAwesome` let apps keep platform-specific icons while serializing native Android app bar actions safely.
