@@ -1,3 +1,6 @@
+## [0.2.3]
+* **UPDATE**: Android adaptive carousels now render item image bytes natively with Compose and honor `freeScroll` and `userScrollEnabled` using the official carousel fling APIs.
+
 ## [0.2.2]
 * **NEW**: Added opt-in `AdaptiveExpressiveShapeView` with all 35 native Compose Material 3 Expressive shapes and generic native morphing between any two catalog shapes. `morphProgress` is caller-controlled for integration with app-owned springs and gestures; non-Android platforms use a rounded-rectangle fallback.
 

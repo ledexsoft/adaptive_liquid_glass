@@ -133,6 +133,7 @@ import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
 import androidx.compose.material3.carousel.CarouselItemScope
 import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.material3.carousel.CarouselDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -209,7 +210,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.shape.CircleShape
 import android.graphics.BitmapFactory
 import androidx.compose.material.icons.Icons
@@ -974,6 +977,13 @@ private fun NativeM3ECarousel(
   val itemWidth = (properties.number("itemWidth") ?: 300.0).dp
   val itemSpacing = (properties.number("itemSpacing") ?: 8.0).dp
   val cornerRadius = (properties.number("cornerRadius") ?: 28.0).dp
+  val freeScroll = properties["freeScroll"] as? Boolean ?: false
+  val userScrollEnabled = properties["userScrollEnabled"] as? Boolean ?: true
+  val flingBehavior = if (freeScroll) {
+    CarouselDefaults.noSnapFlingBehavior()
+  } else {
+    CarouselDefaults.singleAdvanceFlingBehavior(state)
+  }
   val carouselModifier = Modifier.fillMaxWidth().fillMaxHeight()
   val content: @Composable CarouselItemScope.(Int) -> Unit = { index ->
     val item = items[index] as? Map<*, *> ?: emptyMap<Any?, Any?>()
@@ -987,6 +997,8 @@ private fun NativeM3ECarousel(
       preferredItemWidth = itemWidth,
       modifier = carouselModifier,
       itemSpacing = itemSpacing,
+      flingBehavior = flingBehavior,
+      userScrollEnabled = userScrollEnabled,
       contentPadding = PaddingValues(horizontal = 16.dp),
       content = content,
     )
@@ -995,6 +1007,8 @@ private fun NativeM3ECarousel(
       itemWidth = itemWidth,
       modifier = carouselModifier,
       itemSpacing = itemSpacing,
+      flingBehavior = flingBehavior,
+      userScrollEnabled = userScrollEnabled,
       contentPadding = PaddingValues(horizontal = 16.dp),
       content = content,
     )
@@ -1003,6 +1017,8 @@ private fun NativeM3ECarousel(
       modifier = carouselModifier,
       preferredItemWidth = itemWidth,
       itemSpacing = itemSpacing,
+      flingBehavior = flingBehavior,
+      userScrollEnabled = userScrollEnabled,
       contentPadding = PaddingValues(horizontal = 16.dp),
       content = content,
     )
@@ -1022,6 +1038,10 @@ private fun NativeM3ECarouselCard(
   val title = item["title"] as? String ?: ""
   val supportingText = item["supportingText"] as? String
   val description = item["semanticDescription"] as? String ?: title
+  val imageBytes = item["imageBytes"] as? ByteArray
+  val image = remember(imageBytes) {
+    imageBytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
+  }
   Card(
     modifier = Modifier
       .fillMaxHeight()
@@ -1031,16 +1051,29 @@ private fun NativeM3ECarouselCard(
     shape = RoundedCornerShape(cornerRadius),
     colors = CardDefaults.cardColors(containerColor = container),
   ) {
-    Box(
-      modifier = Modifier.fillMaxSize().padding(24.dp),
-      contentAlignment = Alignment.Center,
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+      if (image != null) {
+        Image(
+          bitmap = image,
+          contentDescription = null,
+          contentScale = ContentScale.Crop,
+          modifier = Modifier.fillMaxSize(),
+        )
+      }
       Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        modifier = if (image != null) {
+          Modifier.align(Alignment.BottomStart)
+            .fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f))))
+            .padding(24.dp)
+        } else {
+          Modifier.fillMaxSize().padding(24.dp)
+        },
+        horizontalAlignment = if (image == null) Alignment.CenterHorizontally else Alignment.Start,
+        verticalArrangement = if (image == null) Arrangement.Center else Arrangement.Bottom,
       ) {
         val icon = item["icon"] as? String
-        if (icon != null) {
+        if (icon != null && image == null) {
           Icon(
             nativeM3EIcon(icon),
             contentDescription = null,
@@ -1049,10 +1082,22 @@ private fun NativeM3ECarouselCard(
           )
           Spacer(Modifier.size(16.dp))
         }
-        Text(title, color = content, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(
+          title,
+          color = if (image != null) Color.White else content,
+          style = MaterialTheme.typography.headlineSmall,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
         if (!supportingText.isNullOrBlank()) {
           Spacer(Modifier.size(8.dp))
-          Text(supportingText, color = content, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
+          Text(
+            supportingText,
+            color = if (image != null) Color.White.copy(alpha = 0.9f) else content,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+          )
         }
       }
     }

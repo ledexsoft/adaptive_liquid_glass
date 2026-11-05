@@ -9,7 +9,7 @@ Android adaptive controls in this package use the package-owned Jetpack Compose 
 | Buttons, icon buttons, switches, checkboxes, radio buttons, sliders | Compose Material 3 Expressive controls | Button content must be serializable text/icons. Focus and hover color overrides on checkbox/radio are not separately mapped. |
 | Button groups, split buttons, toolbars, FABs and FAB menus | Compose expressive layouts and serializable action models | Labels and icons cross the bridge as primitive data and `AndroidM3EIcon` identifiers. |
 | Tabs, segmented controls, navigation rail, app bars, bottom navigation | Compose Material 3 Expressive navigation controls | Scaffold/page structure and arbitrary page content remain Flutter-owned. |
-| Carousels | Official Compose carousel components | Android callers supply `androidItems`; Flutter `children` are used on other platforms. |
+| Carousels | Native Compose hero, multi-browse, and uncontained layouts | Android callers supply serializable `androidItems` (including encoded image bytes); Flutter `children` are used on other platforms. Android supports snapping or free scrolling. The pinned Compose release does not expose the guide's vertical full-screen carousel as a Material 3 carousel composable. |
 | Badge, divider, progress and loading indicators | Compose Material 3 Expressive components | Badge can decorate Flutter child content. |
 | List tiles and switch list tiles | Compose `ListItem`, `Switch` | Titles/subtitles use plain `Text`; icons must be serializable. |
 | Popup and context menus | Compose `DropdownMenu` in the Android window | Flutter anchors remain Flutter; menu rows are serialized. |

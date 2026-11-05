@@ -1,6 +1,6 @@
 name: adaptive_liquid_glass
 description: "Adaptive Flutter widgets with native iOS Liquid Glass and Material 3 Expressive on Android."
-version: 0.2.2
+version: 0.2.3
 homepage: https://github.com/ledexsoft/adaptive_liquid_glass
 screenshots:
   - description: "iOS 26+ liquid glass designs"

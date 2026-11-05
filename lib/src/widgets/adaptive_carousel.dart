@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../platform/platform_info.dart';
@@ -33,6 +35,7 @@ class AdaptiveCarouselItem {
     this.semanticDescription,
     this.containerColor,
     this.contentColor,
+    this.imageBytes,
   });
 
   final String title;
@@ -41,6 +44,9 @@ class AdaptiveCarouselItem {
   final String? semanticDescription;
   final Color? containerColor;
   final Color? contentColor;
+
+  /// Encoded image bytes shown as the visual content of the native Android card.
+  final Uint8List? imageBytes;
 }
 
 /// Adaptive carousel backed by official Material 3 Expressive Compose APIs
@@ -62,6 +68,7 @@ class AdaptiveCarousel extends StatelessWidget {
     this.uncontainedItemExtent,
     this.childElementBorderRadius,
     this.scrollAnimationDuration,
+    this.userScrollEnabled = true,
   });
 
   final List<Widget> children;
@@ -78,6 +85,7 @@ class AdaptiveCarousel extends StatelessWidget {
   final double? uncontainedItemExtent;
   final double? childElementBorderRadius;
   final int? scrollAnimationDuration;
+  final bool userScrollEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -105,6 +113,7 @@ class AdaptiveCarousel extends StatelessWidget {
           properties: {
             'type': type.name,
             'freeScroll': freeScroll,
+            'userScrollEnabled': userScrollEnabled,
             'itemWidth': uncontainedItemExtent ?? 300,
             'itemSpacing': 8,
             'cornerRadius': childElementBorderRadius ?? 28,
@@ -122,6 +131,7 @@ class AdaptiveCarousel extends StatelessWidget {
                   'supportingText': item.supportingText,
                   'icon': item.icon?.name,
                   'semanticDescription': item.semanticDescription,
+                  'imageBytes': item.imageBytes,
                   'containerColor': item.containerColor?.toARGB32(),
                   'contentColor': item.contentColor?.toARGB32(),
                 },
