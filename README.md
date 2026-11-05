@@ -83,6 +83,17 @@ AdaptiveScaffold(
 
 Los FABs e iconos Android aceptan los iconos Material comunes como `Icon(Icons.add)`. Para otros iconos o hijos personalizados, pasa un `AndroidM3EIcon` mediante `nativeIcon` (y `nativeSelectedIcon` cuando corresponda); Compose no puede dibujar un árbol `Widget` de Flutter dentro de una vista nativa.
 
+El destello de IA es optativo y nunca se añade automáticamente. Usa `AdaptiveAiSparkleIcon` para decorar un icono, o `aiPowered: true` en `AdaptiveIconButton` y `AdaptiveFloatingActionButton`. En Android, el distintivo se dibuja en Compose. Añade una etiqueta que explique la acción (por ejemplo, “Resumir con IA”); el destello por sí solo no describe qué hará la IA.
+
+```dart
+AdaptiveIconButton(
+  icon: const Icon(Icons.mic),
+  aiPowered: true,
+  tooltip: 'Transcribir con IA',
+  onPressed: transcribe,
+)
+```
+
 Si tu aplicación usa un `MaterialApp` propio, puedes envolver su `builder` con `AdaptiveMaterialExpressiveTheme` para propagar tema, brillo y color semilla a las vistas Compose del paquete. Android 12+ usa por defecto la paleta dinámica del fondo de pantalla; configura `dynamicColoring: false` para conservar el color semilla de la app.
 
 ```dart

@@ -2,6 +2,7 @@ package com.ledexsoft.adaptive_liquid_glass
 
 import android.os.Build
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -153,6 +154,7 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -278,6 +280,13 @@ internal fun M3EAndroidContent(
     contentAlignment = Alignment.Center,
   ) {
     when (properties["component"] as? String) {
+      "aiSparkleIcon" -> NativeM3EAiSparkleIcon(
+        icon = properties["icon"] as? String,
+        size = (properties.number("size") ?: 24.0).dp,
+        tint = properties.color("color"),
+        sparkleTint = properties.color("sparkleColor") ?: MaterialTheme.colorScheme.primary,
+        semanticLabel = properties["semanticLabel"] as? String,
+      )
       "button" -> NativeM3EButton(properties, enabled && hasCallback, onEvent)
       "switch" -> NativeM3ESwitch(properties, enabled && hasCallback, onEvent)
       "checkbox" -> NativeM3ECheckbox(properties, enabled && hasCallback, onEvent)
@@ -1322,12 +1331,20 @@ private fun NativeM3EIconButton(
   }
   val image = nativeM3EIcon(iconName)
   val icon: @Composable () -> Unit = { Icon(image, contentDescription = null) }
+  val aiPowered = properties["aiPowered"] as? Boolean ?: false
+  val displayIcon: @Composable () -> Unit = {
+    if (aiPowered) {
+      NativeM3EAiSparkleIcon(iconName, size = 24.dp)
+    } else {
+      icon()
+    }
+  }
   val badge = properties["badge"] as? String
   val content: @Composable () -> Unit = {
     if (!badge.isNullOrEmpty()) {
-      BadgedBox(badge = { Badge { Text(badge) } }) { icon() }
+      BadgedBox(badge = { Badge { Text(badge) } }) { displayIcon() }
     } else {
-      icon()
+      displayIcon()
     }
   }
   val defaultForeground = when (variant) {
@@ -1457,6 +1474,42 @@ private fun NativeM3EIconButton(
 }
 
 @Composable
+private fun NativeM3EAiSparkleIcon(
+  icon: String?,
+  size: androidx.compose.ui.unit.Dp,
+  tint: Color? = null,
+  sparkleTint: Color = MaterialTheme.colorScheme.primary,
+  semanticLabel: String? = null,
+) {
+  val semantics = semanticLabel?.takeIf { it.isNotBlank() }
+    ?.let { label -> Modifier.semantics { contentDescription = label } }
+    ?: Modifier
+  Box(
+    modifier = Modifier.size(size).then(semantics),
+    contentAlignment = Alignment.Center,
+  ) {
+    if (tint == null) {
+      Icon(nativeM3EIcon(icon), contentDescription = null, modifier = Modifier.fillMaxSize())
+    } else {
+      Icon(nativeM3EIcon(icon), contentDescription = null, tint = tint, modifier = Modifier.fillMaxSize())
+    }
+    Canvas(Modifier.align(Alignment.TopEnd).size(size * 0.46f)) {
+      val w = this.size.width
+      val h = this.size.height
+      val path = Path().apply {
+        moveTo(w * 0.5f, 0f)
+        cubicTo(w * 0.58f, h * 0.39f, w * 0.61f, h * 0.42f, w, h * 0.5f)
+        cubicTo(w * 0.61f, h * 0.58f, w * 0.58f, h * 0.61f, w * 0.5f, h)
+        cubicTo(w * 0.42f, h * 0.61f, w * 0.39f, h * 0.58f, 0f, h * 0.5f)
+        cubicTo(w * 0.39f, h * 0.42f, w * 0.42f, h * 0.39f, w * 0.5f, 0f)
+        close()
+      }
+      drawPath(path, sparkleTint)
+    }
+  }
+}
+
+@Composable
 private fun NativeM3EFab(
   properties: Map<String, Any?>,
   enabled: Boolean,
@@ -1473,7 +1526,12 @@ private fun NativeM3EFab(
     } ?: Modifier,
   )
   val icon = nativeM3EIcon(properties["icon"] as? String)
+  val aiPowered = properties["aiPowered"] as? Boolean ?: false
   val click = { if (enabled) onEvent("pressed", null) }
+  val fabIcon: @Composable () -> Unit = {
+    if (aiPowered) NativeM3EAiSparkleIcon(properties["icon"] as? String, 24.dp)
+    else Icon(icon, contentDescription = null)
+  }
   val colors = Triple(background, foreground, elevation)
   when (properties["size"] as? String) {
     "small" -> SmallFloatingActionButton(
@@ -1482,21 +1540,21 @@ private fun NativeM3EFab(
       containerColor = colors.first,
       contentColor = colors.second,
       elevation = colors.third,
-    ) { Icon(icon, contentDescription = null) }
+    ) { fabIcon() }
     "large" -> LargeFloatingActionButton(
       onClick = click,
       modifier = modifier,
       containerColor = colors.first,
       contentColor = colors.second,
       elevation = colors.third,
-    ) { Icon(icon, contentDescription = null) }
+    ) { fabIcon() }
     else -> FloatingActionButton(
       onClick = click,
       modifier = modifier,
       containerColor = colors.first,
       contentColor = colors.second,
       elevation = colors.third,
-    ) { Icon(icon, contentDescription = null) }
+    ) { fabIcon() }
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../platform/platform_info.dart';
+import 'adaptive_ai_sparkle_icon.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
 
@@ -23,6 +24,7 @@ class AdaptiveIconButton extends StatelessWidget {
     this.enableFeedback,
     this.nativeIcon,
     this.nativeSelectedIcon,
+    this.aiPowered = false,
     this.backgroundColor,
     this.foregroundColor,
     this.selectedBackgroundColor,
@@ -43,6 +45,9 @@ class AdaptiveIconButton extends StatelessWidget {
   final bool? enableFeedback;
   final AndroidM3EIcon? nativeIcon;
   final AndroidM3EIcon? nativeSelectedIcon;
+
+  /// Adds the AI sparkle to the action icon. Off by default.
+  final bool aiPowered;
   final Color? backgroundColor;
   final Color? foregroundColor;
   final Color? selectedBackgroundColor;
@@ -61,6 +66,7 @@ class AdaptiveIconButton extends StatelessWidget {
             nativeIcon: nativeIcon,
             parameterName: 'nativeIcon',
           ),
+          'aiPowered': aiPowered,
           'selectedIcon': selectedIcon == null
               ? null
               : resolveAndroidM3EIcon(
@@ -95,11 +101,20 @@ class AdaptiveIconButton extends StatelessWidget {
     final resolvedIcon = isSelected == true && selectedIcon != null
         ? selectedIcon!
         : icon;
+    final decoratedIcon = aiPowered
+        ? AdaptiveAiSparkleIcon(
+            icon: resolvedIcon,
+            nativeIcon: isSelected == true && selectedIcon != null
+                ? nativeSelectedIcon
+                : nativeIcon,
+            size: 24,
+          )
+        : resolvedIcon;
     if (PlatformInfo.isIOS) {
       return CupertinoButton(
         padding: const EdgeInsets.all(10),
         onPressed: onPressed,
-        child: Semantics(label: semanticLabel, child: resolvedIcon),
+        child: Semantics(label: semanticLabel, child: decoratedIcon),
       );
     }
     return IconButton(
@@ -107,7 +122,7 @@ class AdaptiveIconButton extends StatelessWidget {
       tooltip: tooltip ?? semanticLabel,
       isSelected: isSelected,
       selectedIcon: selectedIcon,
-      icon: icon,
+      icon: decoratedIcon,
     );
   }
 

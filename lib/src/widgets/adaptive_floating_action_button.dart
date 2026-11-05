@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
+import 'adaptive_ai_sparkle_icon.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
 
@@ -32,6 +33,7 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
     this.tooltip,
     this.heroTag,
     this.nativeIcon,
+    this.aiPowered = false,
   });
 
   /// The callback that is called when the button is tapped
@@ -70,6 +72,9 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
   /// Native Material icon for Android when [child] is not a standard [Icon].
   final AndroidM3EIcon? nativeIcon;
 
+  /// Adds the AI sparkle to the FAB icon. Off by default.
+  final bool aiPowered;
+
   @override
   Widget build(BuildContext context) {
     // iOS implementation
@@ -89,6 +94,7 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
             nativeIcon: nativeIcon,
             parameterName: 'nativeIcon',
           ),
+          'aiPowered': aiPowered,
           'size': mini ? 'small' : 'medium',
           'backgroundColor': backgroundColor?.toARGB32(),
           'foregroundColor': foregroundColor?.toARGB32(),
@@ -115,6 +121,13 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
     final buttonSize = mini ? 40.0 : 56.0;
     final iconSize = mini ? 20.0 : 24.0;
     final shadowElevation = elevation ?? 6.0;
+    final displayedChild = aiPowered
+        ? AdaptiveAiSparkleIcon(
+            icon: child,
+            nativeIcon: nativeIcon,
+            size: iconSize,
+          )
+        : child;
 
     Widget button = Container(
       width: buttonSize,
@@ -135,7 +148,7 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
         onPressed: onPressed,
         child: IconTheme(
           data: IconThemeData(color: defaultForegroundColor, size: iconSize),
-          child: child,
+          child: displayedChild,
         ),
       ),
     );
@@ -150,6 +163,13 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
 
   Widget _buildMaterialFAB(BuildContext context) {
     Widget fab;
+    final displayedChild = aiPowered
+        ? AdaptiveAiSparkleIcon(
+            icon: child,
+            nativeIcon: nativeIcon,
+            size: mini ? 20 : 24,
+          )
+        : child;
 
     if (mini) {
       fab = FloatingActionButton.small(
@@ -159,7 +179,7 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
         elevation: elevation,
         tooltip: tooltip,
         heroTag: heroTag,
-        child: child,
+        child: displayedChild,
       );
     } else {
       fab = FloatingActionButton(
@@ -169,7 +189,7 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
         elevation: elevation,
         tooltip: tooltip,
         heroTag: heroTag,
-        child: child,
+        child: displayedChild,
       );
     }
 

@@ -1,3 +1,6 @@
+## [0.2.1]
+* **NEW**: Added the optional `AdaptiveAiSparkleIcon` decorator and `aiPowered` flags for adaptive icon buttons and FABs. Android renders the sparkle with native Compose; it stays disabled by default.
+
 ## [0.2.0]
 * **BREAKING**: Removed the Flutter `material_3_expressive` dependency, its catalog re-export, and the Flutter-builder `AdaptiveMaterialExpressive` selector. Android adaptive controls now use package-owned Jetpack Compose implementations.
 * **BREAKING**: `AdaptiveMaterialExpressiveTheme.lightTheme` and `darkTheme` now accept Flutter `ThemeData`; custom M3E catalog/theme types are no longer part of this package's public API.
