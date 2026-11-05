@@ -111,6 +111,26 @@ void main() {
     expect(selected, isTrue);
   });
 
+  testWidgets('Android list tile falls back for a custom title widget', (
+    tester,
+  ) async {
+    var tapped = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdaptiveListTile(
+            title: const Row(children: [Icon(Icons.person), Text('Account')]),
+            onTap: () => tapped = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(ListTile), findsOneWidget);
+    await tester.tap(find.text('Account'));
+    expect(tapped, isTrue);
+  });
+
   testWidgets(
     'Android text field falls back and keeps interactive suffix action',
     (tester) async {

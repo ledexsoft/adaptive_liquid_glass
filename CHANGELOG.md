@@ -1,3 +1,7 @@
+## [0.2.12]
+* **FIX**: Android adaptive list tiles with styled/custom title, subtitle, leading, or trailing widgets now use Material `ListTile`, retaining the full Flutter layout and interactions rather than failing Compose serialization.
+* **TESTS**: Added regression coverage for a custom list-tile title.
+
 ## [0.2.11]
 * **FIX**: Android popup menus with custom or unmapped icons now fall back to Flutter's Material popup menu, preserving selection callbacks rather than failing while building Compose properties.
 * **TESTS**: Added regression coverage for the popup menu fallback.

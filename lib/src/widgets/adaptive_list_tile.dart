@@ -80,10 +80,29 @@ class AdaptiveListTile extends StatelessWidget {
       return _buildCupertinoListTile(context);
     }
 
-    if (PlatformInfo.isAndroid) return _buildAndroidNativeListItem(context);
+    if (PlatformInfo.isAndroid) {
+      return _canRenderAndroidNatively
+          ? _buildAndroidNativeListItem(context)
+          : _buildMaterialListTile(context);
+    }
 
     // Other platforms - Use Material ListTile
     return _buildMaterialListTile(context);
+  }
+
+  bool get _canRenderAndroidNatively {
+    bool isPlainText(Widget? value) =>
+        value == null ||
+        (value is Text && value.data != null && value.style == null);
+    bool isSerializableIcon(Widget? value, AndroidM3EIcon? native) =>
+        value == null ||
+        native != null ||
+        canResolveAndroidM3EIcon(child: value, nativeIcon: null);
+
+    return isPlainText(title) &&
+        isPlainText(subtitle) &&
+        isSerializableIcon(leading, androidLeadingIcon) &&
+        isSerializableIcon(trailing, androidTrailingIcon);
   }
 
   Widget _buildAndroidNativeListItem(BuildContext context) {
