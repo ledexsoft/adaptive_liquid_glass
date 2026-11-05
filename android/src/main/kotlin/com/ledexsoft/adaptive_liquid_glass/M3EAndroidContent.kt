@@ -95,6 +95,19 @@ import androidx.compose.material3.AppBarColumn
 import androidx.compose.material3.AppBarOverflowIndicator
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.AppBarWithSearch
+import androidx.compose.material3.ExpandedFullScreenContainedSearchBar
+import androidx.compose.material3.rememberContainedSearchBarState
+import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.material3.SearchBarValue
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.heading
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.VerticalFloatingToolbar
 import androidx.compose.material3.FloatingToolbarDefaults
@@ -165,6 +178,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalFocusManager
@@ -489,53 +503,354 @@ private fun NativeM3ETopAppBar(
   val subtitle = properties["subtitle"] as? String
   val leadingIcon = properties["leadingIcon"] as? String
   val actions = properties["actions"] as? List<*> ?: emptyList<Any?>()
+  val variant = properties["variant"] as? String ?: "small"
+  val centerAligned = properties.boolean("centerAligned")
+  val transparentWhenScrolled = properties.boolean("transparentWhenScrolled")
+  val scrollOffset = (properties.number("scrollOffset") ?: 0.0).toFloat().coerceAtLeast(0f)
+  val scrollDelta = (properties.number("scrollDelta") ?: 0.0).toFloat()
+  val scrollKind = properties["scrollBehavior"] as? String ?: "pinned"
   val contentColor = properties.color("contentColor") ?: MaterialTheme.colorScheme.onSurface
-  TopAppBar(
-    title = {
-      Column {
-        Text(title, maxLines = 1)
-        if (!subtitle.isNullOrBlank()) {
-          Text(subtitle, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+  val surfaceColor = properties.color("backgroundColor") ?: MaterialTheme.colorScheme.surface
+  val isFlexible = variant == "mediumFlexible" || variant == "largeFlexible"
+  val collapsedHeight = TopAppBarDefaults.TopAppBarExpandedHeight
+  val expandedHeight = when {
+    variant == "largeFlexible" && !subtitle.isNullOrBlank() -> 152.dp
+    variant == "largeFlexible" -> 120.dp
+    variant == "mediumFlexible" && !subtitle.isNullOrBlank() -> 136.dp
+    variant == "mediumFlexible" -> 112.dp
+    else -> TopAppBarDefaults.TopAppBarExpandedHeight
+  }
+  val heightOffsetLimit = if (scrollKind == "enterAlways") {
+    -expandedHeight.value
+  } else {
+    -(expandedHeight - collapsedHeight).value
+  }
+  val appBarState = rememberTopAppBarState(initialHeightOffsetLimit = heightOffsetLimit)
+  val scrollBehavior = when (scrollKind) {
+    "enterAlways" -> TopAppBarDefaults.enterAlwaysScrollBehavior(appBarState)
+    "exitUntilCollapsed" -> TopAppBarDefaults.exitUntilCollapsedScrollBehavior(appBarState)
+    else -> TopAppBarDefaults.pinnedScrollBehavior(appBarState)
+  }
+  LaunchedEffect(scrollOffset, scrollDelta, scrollKind, isFlexible) {
+    appBarState.contentOffset = -scrollOffset
+    appBarState.heightOffset = when (scrollKind) {
+      "enterAlways" -> (appBarState.heightOffset - scrollDelta).coerceIn(heightOffsetLimit, 0f)
+      "exitUntilCollapsed" -> if (isFlexible) (-scrollOffset).coerceIn(heightOffsetLimit, 0f) else 0f
+      else -> 0f
+    }
+  }
+  val colors = TopAppBarDefaults.topAppBarColors(
+    containerColor = surfaceColor,
+    scrolledContainerColor = if (transparentWhenScrolled) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
+    titleContentColor = contentColor,
+    navigationIconContentColor = contentColor,
+    actionIconContentColor = contentColor,
+  )
+  val leadingFocusRequester = remember { FocusRequester() }
+  val firstActionFocusRequester = remember { FocusRequester() }
+  val firstActionIndex = actions.indexOfFirst { raw ->
+    val item = raw as? Map<*, *>
+    item?.get("icon") is String || item?.get("title") is String
+  }
+  LaunchedEffect(leadingIcon, firstActionIndex, actions.size, variant) {
+    if (leadingIcon != null) leadingFocusRequester.requestFocus()
+    else if (firstActionIndex >= 0 && variant != "search") firstActionFocusRequester.requestFocus()
+  }
+
+  val logoBytes = properties["logoBytes"] as? ByteArray
+  val logo = remember(logoBytes) {
+    logoBytes?.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
+  }
+  val logoDescription = properties["logoContentDescription"] as? String
+  val logoReplacesSmallTitle = properties.boolean("logoReplacesSmallTitle", true)
+
+  @Composable
+  fun titleContent(maxLines: Int) {
+    Column(
+      horizontalAlignment = if (centerAligned) Alignment.CenterHorizontally else Alignment.Start,
+    ) {
+      if (logo != null && variant != "search") {
+        val logoSemantics = logoDescription ?: if (variant == "small" && logoReplacesSmallTitle) title else null
+        Image(
+          bitmap = logo,
+          contentDescription = logoSemantics,
+          modifier = Modifier.size(if (isFlexible) 36.dp else 32.dp),
+          contentScale = ContentScale.Fit,
+        )
+      }
+      if (title.isNotEmpty() && !(variant == "small" && logo != null && logoReplacesSmallTitle)) {
+        Text(
+          text = title,
+          maxLines = maxLines,
+          overflow = TextOverflow.Clip,
+          modifier = Modifier.semantics { heading() },
+        )
+      }
+      if (!subtitle.isNullOrBlank()) {
+        Text(
+          text = subtitle,
+          maxLines = if (isFlexible) 2 else 1,
+          overflow = TextOverflow.Clip,
+          style = when (variant) {
+            "largeFlexible" -> MaterialTheme.typography.titleMedium
+            "mediumFlexible" -> MaterialTheme.typography.labelLarge
+            else -> MaterialTheme.typography.labelMedium
+          },
+        )
+      }
+    }
+  }
+
+  @Composable
+  fun leadingContent() {
+    if (leadingIcon == null) return
+    val description = properties["leadingDescription"] as? String ?: "Navigate back"
+    TooltipBox(
+      positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Below),
+      tooltip = { PlainTooltip { Text(description) } },
+      state = rememberTooltipState(),
+    ) {
+      val leadingSize = IconButtonDefaults.smallContainerSize(
+        if (transparentWhenScrolled) IconButtonDefaults.IconButtonWidthOption.Narrow
+        else IconButtonDefaults.IconButtonWidthOption.Uniform,
+      )
+      val leadingButtonContent: @Composable () -> Unit = {
+        if (logo != null && variant == "search") {
+          Image(logo, contentDescription = logoDescription, modifier = Modifier.size(24.dp))
+        } else {
+          Icon(nativeM3EIcon(leadingIcon), contentDescription = description)
         }
       }
-    },
-    navigationIcon = {
-      if (leadingIcon != null) {
+      if (transparentWhenScrolled) {
+        FilledTonalIconButton(
+          onClick = { onEvent("leadingPressed", null) },
+          enabled = properties.boolean("leadingEnabled", true),
+          shapes = IconButtonDefaults.shapes(shape = IconButtonDefaults.filledShape),
+          modifier = Modifier.focusRequester(leadingFocusRequester).size(leadingSize),
+        ) { leadingButtonContent() }
+      } else {
         IconButton(
           onClick = { onEvent("leadingPressed", null) },
           enabled = properties.boolean("leadingEnabled", true),
-        ) {
-          Icon(nativeM3EIcon(leadingIcon), contentDescription = properties["leadingDescription"] as? String ?: "Navigate back")
-        }
+          shapes = IconButtonDefaults.shapes(),
+          modifier = Modifier.focusRequester(leadingFocusRequester).size(leadingSize),
+        ) { leadingButtonContent() }
       }
-    },
-    actions = {
-      actions.forEachIndexed { index, raw ->
-        val action = raw as? Map<*, *> ?: return@forEachIndexed
-        val label = action["title"] as? String
-        val icon = action["icon"] as? String
-        if (label != null) {
-          TextButton(
-            onClick = { onEvent("actionPressed", index) },
-            enabled = action["enabled"] as? Boolean ?: true,
-          ) { Text(label) }
-        } else if (icon != null) {
-          IconButton(
-            onClick = { onEvent("actionPressed", index) },
-            enabled = action["enabled"] as? Boolean ?: true,
-          ) {
-            Icon(nativeM3EIcon(icon), contentDescription = action["semanticLabel"] as? String ?: action["tooltip"] as? String)
+    }
+  }
+
+  val menuExpanded = remember { mutableStateOf(false) }
+  @Composable
+  fun actionButton(index: Int, action: Map<*, *>, requestFocus: Boolean) {
+    val icon = action["icon"] as? String
+    val titleLabel = action["title"] as? String
+    val label = action["semanticLabel"] as? String ?: titleLabel ?: "Action ${index + 1}"
+    val style = action["style"] as? String ?: "standard"
+    val wide = action["wide"] as? Boolean ?: false
+    val enabled = action["enabled"] as? Boolean ?: true
+    val focusModifier = if (requestFocus) Modifier.focusRequester(firstActionFocusRequester) else Modifier
+    val widthOption = if (wide) IconButtonDefaults.IconButtonWidthOption.Wide else IconButtonDefaults.IconButtonWidthOption.Uniform
+    val buttonSize = IconButtonDefaults.smallContainerSize(widthOption)
+    val buttonModifier = focusModifier.size(buttonSize)
+    if (icon == null) {
+      TextButton(
+        onClick = { onEvent("actionPressed", index) },
+        enabled = enabled,
+        modifier = focusModifier,
+      ) { Text(titleLabel ?: label, maxLines = 1) }
+      return
+    }
+    TooltipBox(
+      positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Below),
+      tooltip = { PlainTooltip { Text(label) } },
+      state = rememberTooltipState(),
+    ) {
+      val onClick = { onEvent("actionPressed", index) }
+      when (style) {
+        "filled" -> FilledIconButton(onClick, shapes = IconButtonDefaults.shapes(shape = IconButtonDefaults.filledShape), enabled = enabled, modifier = buttonModifier) {
+          Icon(nativeM3EIcon(icon), contentDescription = label)
+        }
+        "filledTonal" -> FilledTonalIconButton(onClick, shapes = IconButtonDefaults.shapes(shape = IconButtonDefaults.filledShape), enabled = enabled, modifier = buttonModifier) {
+          Icon(nativeM3EIcon(icon), contentDescription = label)
+        }
+        else -> if (transparentWhenScrolled) {
+          FilledTonalIconButton(onClick, shapes = IconButtonDefaults.shapes(shape = IconButtonDefaults.filledShape), enabled = enabled, modifier = buttonModifier) {
+            Icon(nativeM3EIcon(icon), contentDescription = label)
+          }
+        } else {
+          IconButton(onClick, shapes = IconButtonDefaults.shapes(), enabled = enabled, modifier = buttonModifier) {
+            Icon(nativeM3EIcon(icon), contentDescription = label)
           }
         }
       }
-    },
-    colors = TopAppBarDefaults.topAppBarColors(
-      containerColor = properties.color("backgroundColor") ?: MaterialTheme.colorScheme.surface,
-      titleContentColor = contentColor,
-      navigationIconContentColor = contentColor,
-      actionIconContentColor = contentColor,
-    ),
-  )
+    }
+  }
+
+  @Composable
+  fun actionContent(search: Boolean = false) {
+    val insideSearchIndex = actions.indexOfFirst { raw ->
+      (raw as? Map<*, *>)?.get("insideSearchField") == true
+    }
+    val visibleActions = actions.mapIndexedNotNull { index, raw ->
+      val action = raw as? Map<*, *> ?: return@mapIndexedNotNull null
+      if (search && index == insideSearchIndex) null else index to action
+    }
+    val maxVisible = if (search) {
+      if (LocalConfiguration.current.screenWidthDp >= 600) 4 else 2
+    } else 2
+    val shown = visibleActions.take(maxVisible)
+    shown.forEach { (index, action) ->
+      actionButton(index, action, requestFocus = index == firstActionIndex && leadingIcon == null)
+    }
+    if (visibleActions.size > maxVisible) {
+      Box {
+        val moreButtonSize = IconButtonDefaults.smallContainerSize(
+          if (transparentWhenScrolled) IconButtonDefaults.IconButtonWidthOption.Wide
+          else IconButtonDefaults.IconButtonWidthOption.Uniform,
+        )
+        val moreButtonContent: @Composable () -> Unit = {
+          Icon(Icons.Filled.MoreVert, contentDescription = "More actions")
+        }
+        if (transparentWhenScrolled) {
+          FilledTonalIconButton(
+            onClick = { menuExpanded.value = true },
+            shapes = IconButtonDefaults.shapes(shape = IconButtonDefaults.filledShape),
+            modifier = Modifier.size(moreButtonSize),
+          ) { moreButtonContent() }
+        } else {
+          IconButton(
+            onClick = { menuExpanded.value = true },
+            shapes = IconButtonDefaults.shapes(),
+            modifier = Modifier.size(moreButtonSize),
+          ) { moreButtonContent() }
+        }
+        DropdownMenu(expanded = menuExpanded.value, onDismissRequest = { menuExpanded.value = false }) {
+          visibleActions.drop(maxVisible).forEach { (index, action) ->
+            val label = action["semanticLabel"] as? String ?: action["title"] as? String ?: "Action ${index + 1}"
+            DropdownMenuItem(
+              text = { Text(action["title"] as? String ?: label) },
+              leadingIcon = (action["icon"] as? String)?.let { icon -> ({ Icon(nativeM3EIcon(icon), contentDescription = null) }) },
+              onClick = { menuExpanded.value = false; onEvent("actionPressed", index) },
+            )
+          }
+        }
+      }
+    }
+  }
+
+  if (variant == "search") {
+    val searchState = rememberContainedSearchBarState()
+    val textFieldState = rememberTextFieldState()
+    val scope = rememberCoroutineScope()
+    val searchColors = SearchBarDefaults.appBarWithSearchColors()
+    val insideSearchIndex = actions.indexOfFirst { raw ->
+      (raw as? Map<*, *>)?.get("insideSearchField") == true
+    }
+    val inputField: @Composable () -> Unit = {
+      SearchBarDefaults.InputField(
+        textFieldState = textFieldState,
+        searchBarState = searchState,
+        colors = searchColors.searchBarColors.inputFieldColors,
+        onSearch = { query -> onEvent("searchSubmitted", query); scope.launch { searchState.animateToCollapsed() } },
+        placeholder = { Text(properties["searchHint"] as? String ?: "Search", modifier = Modifier.semantics { contentDescription = properties["searchHint"] as? String ?: "Search" }) },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        trailingIcon = if (insideSearchIndex >= 0) {
+          val action = actions[insideSearchIndex] as? Map<*, *>
+          val icon = action?.get("icon") as? String
+          val label = action?.get("semanticLabel") as? String ?: action?.get("title") as? String ?: "Search action"
+          if (action != null && icon != null) ({
+            IconButton(onClick = { onEvent("actionPressed", insideSearchIndex) }, shapes = IconButtonDefaults.shapes()) {
+              Icon(nativeM3EIcon(icon), contentDescription = label)
+            }
+          }) else null
+        } else null,
+      )
+    }
+    LaunchedEffect(textFieldState) {
+      snapshotFlow { textFieldState.text.toString() }.distinctUntilChanged().collect { query ->
+        onEvent("searchQueryChanged", query)
+      }
+    }
+    Column(Modifier.fillMaxWidth()) {
+      AppBarWithSearch(
+        state = searchState,
+        inputField = inputField,
+        navigationIcon = { leadingContent() },
+        actions = { actionContent(search = true) },
+        colors = searchColors,
+      )
+      ExpandedFullScreenContainedSearchBar(
+        state = searchState,
+        inputField = inputField,
+        colors = searchColors.searchBarColors,
+      ) {
+        val query = textFieldState.text.toString()
+        val suggestions = properties["searchSuggestions"] as? List<*> ?: emptyList<Any?>()
+        Column(Modifier.fillMaxWidth()) {
+          suggestions.mapNotNull { it as? String }
+            .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
+            .forEach { suggestion ->
+              ListItem(
+                modifier = Modifier.clickable {
+                  textFieldState.setTextAndPlaceCursorAtEnd(suggestion)
+                  onEvent("searchResultSelected", suggestion)
+                  scope.launch { searchState.animateToCollapsed() }
+                },
+                leadingContent = { Icon(Icons.Filled.Search, contentDescription = null) },
+              ) { Text(suggestion) }
+            }
+        }
+      }
+    }
+    return
+  }
+
+  if (variant == "mediumFlexible") {
+    MediumFlexibleTopAppBar(
+      title = { titleContent(maxLines = 2) },
+      subtitle = if (subtitle.isNullOrBlank()) null else ({ Text(subtitle, maxLines = 2, overflow = TextOverflow.Clip) }),
+      titleHorizontalAlignment = if (centerAligned) Alignment.CenterHorizontally else Alignment.Start,
+      navigationIcon = { leadingContent() },
+      actions = { actionContent() },
+      expandedHeight = expandedHeight,
+      collapsedHeight = collapsedHeight,
+      colors = colors,
+      scrollBehavior = scrollBehavior,
+    )
+  } else if (variant == "largeFlexible") {
+    LargeFlexibleTopAppBar(
+      title = { titleContent(maxLines = 2) },
+      subtitle = if (subtitle.isNullOrBlank()) null else ({ Text(subtitle, maxLines = 2, overflow = TextOverflow.Clip) }),
+      titleHorizontalAlignment = if (centerAligned) Alignment.CenterHorizontally else Alignment.Start,
+      navigationIcon = { leadingContent() },
+      actions = { actionContent() },
+      expandedHeight = expandedHeight,
+      collapsedHeight = collapsedHeight,
+      colors = colors,
+      scrollBehavior = scrollBehavior,
+    )
+  } else {
+    val appBar = @Composable {
+      if (centerAligned) {
+        CenterAlignedTopAppBar(
+          title = { titleContent(maxLines = 1) },
+          navigationIcon = { leadingContent() },
+          actions = { actionContent() },
+          colors = colors,
+          scrollBehavior = scrollBehavior,
+        )
+      } else {
+        TopAppBar(
+          title = { titleContent(maxLines = 1) },
+          navigationIcon = { leadingContent() },
+          actions = { actionContent() },
+          colors = colors,
+          scrollBehavior = scrollBehavior,
+        )
+      }
+    }
+    appBar()
+  }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

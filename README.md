@@ -384,6 +384,29 @@ AdaptiveScaffold(
 - 🌟 **Componentes nativos de iOS 26**: Liquid Glass con UIKit real
 - 🔄 **Flexible**: si pasas algo en null, simplemente no se muestra
 
+En Android puedes elegir las variantes nativas de Material 3 Expressive. Usa
+`mediumFlexible` o `largeFlexible` para títulos que colapsan al desplazarte, o
+`search` para abrir la vista de búsqueda nativa de Compose. Consulta la
+[guía de app bars Android](docs/android-m3e-app-bars.md) para búsqueda,
+sugerencias, acciones destacadas, logos y accesibilidad.
+
+```dart
+AdaptiveAppBar(
+  variant: AdaptiveAppBarVariant.mediumFlexible,
+  title: 'Mis podcasts',
+  subtitle: '12 episodios',
+  scrollBehavior: AdaptiveAppBarScrollBehavior.exitUntilCollapsed,
+  actions: [
+    AdaptiveAppBarAction(
+      icon: Icons.bookmark,
+      semanticLabel: 'Guardar podcast',
+      androidStyle: AdaptiveAppBarActionStyle.filledTonal,
+      onPressed: savePodcast,
+    ),
+  ],
+)
+```
+
 Bottom Navigation Bar adaptativa:
 <p align="center">
   <img src="https://raw.githubusercontent.com/ledexsoft/adaptive_liquid_glass/refs/heads/main/img/bottom_nav_p.png" alt="Toolbar nativa"/>

@@ -1,3 +1,9 @@
+## [0.2.5]
+* **NEW**: Android scaffold app bars now expose native Material 3 Expressive small, medium/large flexible, and search variants with native suggestions and callbacks.
+* **NEW**: Added app bar scroll behaviors, centered titles, optional logos, accessible action labels, wide icon buttons, filled/tonal primary actions, and native overflow.
+* **UPDATE**: Android app bar interaction now forwards vertical Flutter scroll updates to Compose for collapse, hide/reveal, and scrolled surface behavior.
+* **DOCS**: Added Android app bar setup, behavior, and accessibility guidance.
+
 ## [0.2.4]
 * **NEW**: `AdaptiveToolbar` now exposes native Android docked and floating Material 3 toolbars with standard/vibrant colors, adaptive overflow, selection, safe-area handling, and optional `pinned`, `exitAlways`, or `collapse` scroll behavior.
 * **DOCS**: Added Android toolbar guidance covering placement, behavior, accessibility, and Flutter/Compose bridge limits.

@@ -187,6 +187,47 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       GlobalKey<_MinimizableTabBarState>();
   final GlobalKey<ScaffoldState> _internalScaffoldKey =
       GlobalKey<ScaffoldState>();
+  double _androidAppBarScrollOffset = 0;
+  double _androidAppBarScrollDelta = 0;
+
+  @override
+  void didUpdateWidget(covariant AdaptiveScaffold oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.body != widget.body ||
+        oldWidget.bottomNavigationBar?.selectedIndex !=
+            widget.bottomNavigationBar?.selectedIndex) {
+      _androidAppBarScrollOffset = 0;
+      _androidAppBarScrollDelta = 0;
+    }
+  }
+
+  bool _observeAndroidAppBarScroll(ScrollNotification notification) {
+    if (notification.depth != 0 ||
+        (notification.metrics.axis != Axis.vertical) ||
+        notification is! ScrollUpdateNotification) {
+      return false;
+    }
+    final nextOffset = notification.metrics.pixels;
+    if ((nextOffset - _androidAppBarScrollOffset).abs() > 0.5) {
+      setState(() {
+        _androidAppBarScrollDelta = nextOffset - _androidAppBarScrollOffset;
+        _androidAppBarScrollOffset = nextOffset;
+      });
+    }
+    return false;
+  }
+
+  Widget _buildAndroidObservedBody() {
+    final shouldObserveScroll =
+        widget.appBar != null && widget.appBar!.appBar == null;
+    if (!shouldObserveScroll) {
+      return widget.body ?? const SizedBox.shrink();
+    }
+    return NotificationListener<ScrollNotification>(
+      onNotification: _observeAndroidAppBarScroll,
+      child: widget.body ?? const SizedBox.shrink(),
+    );
+  }
 
   GlobalKey<ScaffoldState> get _effectiveScaffoldKey =>
       widget.scaffoldKey ?? _internalScaffoldKey;
@@ -595,6 +636,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       else if (widget.appBar != null &&
           (widget.appBar!.title != null ||
               widget.appBar!.titleWidget != null ||
+              widget.appBar!.subtitle != null ||
               (widget.appBar!.actions != null &&
                   widget.appBar!.actions!.isNotEmpty) ||
               effectiveLeading != null ||
@@ -686,6 +728,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       else if (widget.appBar != null &&
           (widget.appBar!.title != null ||
               widget.appBar!.titleWidget != null ||
+              widget.appBar!.subtitle != null ||
+              widget.appBar!.variant != AdaptiveAppBarVariant.small ||
+              widget.appBar!.androidLogoBytes != null ||
               (widget.appBar!.actions != null &&
                   widget.appBar!.actions!.isNotEmpty) ||
               widget.appBar!.leading != null)) {
@@ -733,7 +778,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       return Scaffold(
         key: _effectiveScaffoldKey,
         appBar: appBar,
-        body: widget.body ?? const SizedBox.shrink(),
+        body: _buildAndroidObservedBody(),
         resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
         bottomNavigationBar: bottomNavBar,
         floatingActionButton: widget.floatingActionButton,
@@ -768,7 +813,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     return Scaffold(
       key: _effectiveScaffoldKey,
       appBar: appBar,
-      body: widget.body ?? const SizedBox.shrink(),
+      body: _buildAndroidObservedBody(),
       resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
       floatingActionButton: widget.floatingActionButton,
       extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
@@ -813,32 +858,80 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
             parameterName: 'AdaptiveAppBar.leading',
           );
     final actions = config.actions ?? const <AdaptiveAppBarAction>[];
+    final emphasizedActionCount = actions
+        .where(
+          (action) => action.androidStyle != AdaptiveAppBarActionStyle.standard,
+        )
+        .length;
+    if (emphasizedActionCount > 1) {
+      throw FlutterError(
+        'An Android M3 app bar can have at most one filled or tonal primary action.',
+      );
+    }
+    final insideSearchActions = actions
+        .where((action) => action.insideSearchField)
+        .toList(growable: false);
+    if (config.variant == AdaptiveAppBarVariant.search &&
+        insideSearchActions.length > 1) {
+      throw FlutterError(
+        'An Android M3 search app bar can have at most one action inside the search field.',
+      );
+    }
+    if (config.variant == AdaptiveAppBarVariant.search &&
+        insideSearchActions.any(
+          (action) => action.icon == null && action.iconWidget == null,
+        )) {
+      throw FlutterError(
+        'An action inside an Android M3 search field must provide an icon.',
+      );
+    }
     final serializedActions = [
       for (final action in actions)
         {
           'title': action.title,
-          'icon': action.title != null
-              ? null
-              : resolveAndroidM3EIcon(
+          'icon': action.iconWidget != null || action.icon != null
+              ? resolveAndroidM3EIcon(
                   child:
                       action.iconWidget ??
                       (action.icon == null ? null : Icon(action.icon)),
                   nativeIcon: null,
                   parameterName: 'AdaptiveAppBarAction.iconWidget',
-                ),
-          'tooltip': action.title,
-          'semanticLabel': action.title,
+                )
+              : null,
+          'tooltip': action.semanticLabel ?? action.title,
+          'semanticLabel': action.semanticLabel ?? action.title,
           'enabled': true,
+          'style': action.androidStyle.name,
+          'wide': action.wide,
+          'insideSearchField': action.insideSearchField,
         },
     ];
+    final appBarHeight = switch (config.variant) {
+      AdaptiveAppBarVariant.small || AdaptiveAppBarVariant.search => 64.0,
+      AdaptiveAppBarVariant.mediumFlexible =>
+        config.subtitle == null ? 112.0 : 136.0,
+      AdaptiveAppBarVariant.largeFlexible =>
+        config.subtitle == null ? 120.0 : 152.0,
+    };
     return PreferredSize(
-      preferredSize: const Size.fromHeight(64),
+      preferredSize: Size.fromHeight(appBarHeight),
       child: AndroidM3EPlatformView(
         component: 'topAppBar',
-        height: 64,
+        height: appBarHeight,
         properties: {
           'title': title,
           'subtitle': config.subtitle,
+          'variant': config.variant.name,
+          'centerAligned': config.centerAligned,
+          'logoBytes': config.androidLogoBytes,
+          'logoContentDescription': config.androidLogoContentDescription,
+          'logoReplacesSmallTitle': config.androidLogoReplacesSmallTitle,
+          'searchHint': config.searchHint,
+          'searchSuggestions': config.searchSuggestions,
+          'scrollBehavior': config.scrollBehavior.name,
+          'scrollOffset': _androidAppBarScrollOffset,
+          'scrollDelta': _androidAppBarScrollDelta,
+          'transparentWhenScrolled': config.transparentWhenScrolled,
           'leadingIcon': leadingIcon,
           'leadingEnabled': leadingWidget == null || leadingAction != null,
           'leadingDescription': leadingWidget == null
@@ -869,6 +962,15 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               value >= 0 &&
               value < actions.length) {
             actions[value].onPressed();
+          }
+          if (event == 'searchQueryChanged' && value is String) {
+            config.onSearchQueryChanged?.call(value);
+          }
+          if (event == 'searchSubmitted' && value is String) {
+            config.onSearchSubmitted?.call(value);
+          }
+          if (event == 'searchResultSelected' && value is String) {
+            config.onSearchResultSelected?.call(value);
           }
         },
       ),

@@ -1,5 +1,34 @@
+import 'dart:typed_data';
+
 import 'package:flutter/widgets.dart';
 import 'adaptive_app_bar_action.dart';
+
+/// Native Android M3 Expressive app bar layout.
+enum AdaptiveAppBarVariant {
+  /// Compact page label and navigation/actions.
+  small,
+
+  /// A larger title that collapses to [small] while scrolling.
+  mediumFlexible,
+
+  /// A prominent page title that collapses to [small] while scrolling.
+  largeFlexible,
+
+  /// Search-first app bar that opens a native Material search view.
+  search,
+}
+
+/// Native Android app bar scroll behavior.
+enum AdaptiveAppBarScrollBehavior {
+  /// Keep the app bar visible and change its surface color while scrolling.
+  pinned,
+
+  /// Hide while scrolling down and reveal while scrolling back up.
+  enterAlways,
+
+  /// Collapse a flexible app bar to the small variant while scrolling.
+  exitUntilCollapsed,
+}
 
 /// Configuration for an adaptive app bar
 ///
@@ -26,6 +55,18 @@ class AdaptiveAppBar {
     this.titleWidget,
     this.cupertinoNavigationBar,
     this.appBar,
+    this.variant = AdaptiveAppBarVariant.small,
+    this.centerAligned = false,
+    this.androidLogoBytes,
+    this.androidLogoContentDescription,
+    this.androidLogoReplacesSmallTitle = true,
+    this.searchHint = 'Search',
+    this.searchSuggestions = const [],
+    this.onSearchQueryChanged,
+    this.onSearchSubmitted,
+    this.onSearchResultSelected,
+    this.scrollBehavior = AdaptiveAppBarScrollBehavior.pinned,
+    this.transparentWhenScrolled = false,
   });
 
   /// Title for the app bar
@@ -85,6 +126,45 @@ class AdaptiveAppBar {
   /// Ignored on iOS platforms.
   final PreferredSizeWidget? appBar;
 
+  /// M3 Expressive variant used by the native Android app bar.
+  /// Other platforms keep their existing navigation bar behavior.
+  final AdaptiveAppBarVariant variant;
+
+  /// Center the title and subtitle on Android. Defaults to leading alignment.
+  final bool centerAligned;
+
+  /// Optional encoded image bytes for a native Android brand logo.
+  /// Small app bars can use the logo in place of the title.
+  final Uint8List? androidLogoBytes;
+
+  /// Accessible description for [androidLogoBytes].
+  final String? androidLogoContentDescription;
+
+  /// Whether the Android logo replaces the title in the small variant.
+  final bool androidLogoReplacesSmallTitle;
+
+  /// Search-field hint for [AdaptiveAppBarVariant.search]. Include “Search”.
+  final String searchHint;
+
+  /// Native Compose suggestions shown in the expanded search view.
+  final List<String> searchSuggestions;
+
+  /// Called when the native search query changes.
+  final ValueChanged<String>? onSearchQueryChanged;
+
+  /// Called when the user submits a query from the native search field.
+  final ValueChanged<String>? onSearchSubmitted;
+
+  /// Called when the user selects a native search suggestion.
+  final ValueChanged<String>? onSearchResultSelected;
+
+  /// Scroll behavior for the Android native app bar.
+  final AdaptiveAppBarScrollBehavior scrollBehavior;
+
+  /// Keep the app bar container transparent while scrolled.
+  /// Use filled/tonal actions so controls remain distinct over content.
+  final bool transparentWhenScrolled;
+
   /// Creates a copy of this app bar with the given fields replaced
   AdaptiveAppBar copyWith({
     String? title,
@@ -96,6 +176,18 @@ class AdaptiveAppBar {
     Widget? titleWidget,
     PreferredSizeWidget? cupertinoNavigationBar,
     PreferredSizeWidget? appBar,
+    AdaptiveAppBarVariant? variant,
+    bool? centerAligned,
+    Uint8List? androidLogoBytes,
+    String? androidLogoContentDescription,
+    bool? androidLogoReplacesSmallTitle,
+    String? searchHint,
+    List<String>? searchSuggestions,
+    ValueChanged<String>? onSearchQueryChanged,
+    ValueChanged<String>? onSearchSubmitted,
+    ValueChanged<String>? onSearchResultSelected,
+    AdaptiveAppBarScrollBehavior? scrollBehavior,
+    bool? transparentWhenScrolled,
   }) {
     return AdaptiveAppBar(
       title: title ?? this.title,
@@ -108,6 +200,22 @@ class AdaptiveAppBar {
       cupertinoNavigationBar:
           cupertinoNavigationBar ?? this.cupertinoNavigationBar,
       appBar: appBar ?? this.appBar,
+      variant: variant ?? this.variant,
+      centerAligned: centerAligned ?? this.centerAligned,
+      androidLogoBytes: androidLogoBytes ?? this.androidLogoBytes,
+      androidLogoContentDescription:
+          androidLogoContentDescription ?? this.androidLogoContentDescription,
+      androidLogoReplacesSmallTitle:
+          androidLogoReplacesSmallTitle ?? this.androidLogoReplacesSmallTitle,
+      searchHint: searchHint ?? this.searchHint,
+      searchSuggestions: searchSuggestions ?? this.searchSuggestions,
+      onSearchQueryChanged: onSearchQueryChanged ?? this.onSearchQueryChanged,
+      onSearchSubmitted: onSearchSubmitted ?? this.onSearchSubmitted,
+      onSearchResultSelected:
+          onSearchResultSelected ?? this.onSearchResultSelected,
+      scrollBehavior: scrollBehavior ?? this.scrollBehavior,
+      transparentWhenScrolled:
+          transparentWhenScrolled ?? this.transparentWhenScrolled,
     );
   }
 }

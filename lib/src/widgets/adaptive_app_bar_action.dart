@@ -13,6 +13,18 @@ enum ToolbarSpacerType {
   flexible,
 }
 
+/// Visual prominence of a trailing Android M3 Expressive app bar action.
+enum AdaptiveAppBarActionStyle {
+  /// Standard icon button.
+  standard,
+
+  /// Filled primary icon button.
+  filled,
+
+  /// Filled tonal primary icon button.
+  filledTonal,
+}
+
 /// An app bar action that can be displayed in AdaptiveScaffold
 ///
 /// - On iOS 26+: Uses iosSymbol (SF Symbol) in native UIToolbar
@@ -28,8 +40,15 @@ class AdaptiveAppBarAction {
     this.spacerAfter = ToolbarSpacerType.none,
     this.prominent = false,
     this.tintColor,
+    this.semanticLabel,
+    this.androidStyle = AdaptiveAppBarActionStyle.standard,
+    this.wide = false,
+    this.insideSearchField = false,
   }) : assert(
-         iosSymbol != null || icon != null || iconWidget != null || title != null,
+         iosSymbol != null ||
+             icon != null ||
+             iconWidget != null ||
+             title != null,
          'At least one of iosSymbol, icon, iconWidget, or title must be provided',
        );
 
@@ -83,6 +102,20 @@ class AdaptiveAppBarAction {
   /// - iOS <26 / Android: Ignored
   final Color? tintColor;
 
+  /// Accessible action name used by Android screen readers and tooltips.
+  /// Set this for icon-only actions; [title] is used when omitted.
+  final String? semanticLabel;
+
+  /// Android native M3 Expressive button treatment.
+  /// At most one app bar action should be `filled` or `filledTonal`.
+  final AdaptiveAppBarActionStyle androidStyle;
+
+  /// Use the native wide icon button size on Android.
+  final bool wide;
+
+  /// Place this Android action inside the native search field, when used.
+  final bool insideSearchField;
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
@@ -92,11 +125,26 @@ class AdaptiveAppBarAction {
         other.iconWidget == iconWidget &&
         other.title == title &&
         other.prominent == prominent &&
-        other.tintColor == tintColor;
+        other.tintColor == tintColor &&
+        other.semanticLabel == semanticLabel &&
+        other.androidStyle == androidStyle &&
+        other.wide == wide &&
+        other.insideSearchField == insideSearchField;
   }
 
   @override
-  int get hashCode => Object.hash(iosSymbol, icon, iconWidget, title, prominent, tintColor);
+  int get hashCode => Object.hash(
+    iosSymbol,
+    icon,
+    iconWidget,
+    title,
+    prominent,
+    tintColor,
+    semanticLabel,
+    androidStyle,
+    wide,
+    insideSearchField,
+  );
 
   /// Convert action to map for native platform channel (iOS 26+ only)
   Map<String, dynamic> toNativeMap() {
