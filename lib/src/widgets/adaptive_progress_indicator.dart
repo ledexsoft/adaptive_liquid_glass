@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
 import 'android/android_m3e_platform_view.dart';
 
+/// Native Material 3 Expressive active-indicator shape on Android.
+enum AdaptiveProgressIndicatorShape { flat, wavy }
+
 /// An adaptive progress indicator that renders platform-specific styles.
 ///
 /// On iOS & macOS: Uses [CupertinoActivityIndicator] with native spin or partial reveal.
@@ -27,11 +30,16 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     super.key,
     this.value,
     this.color,
+    this.trackColor,
+    this.semanticsLabel,
+    this.shape = AdaptiveProgressIndicatorShape.flat,
     this.radius = 10.0,
     this.strokeWidth = 3.0,
     this.animating = true,
   }) : _isLinear = false,
        backgroundColor = null,
+       trackThickness = 4.0,
+       linearInset = 0.0,
        minHeight = null,
        borderRadius = null;
 
@@ -41,7 +49,12 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     this.value,
     this.color,
     this.backgroundColor,
+    this.trackColor,
+    this.semanticsLabel,
+    this.shape = AdaptiveProgressIndicatorShape.flat,
     this.minHeight = 4.0,
+    this.trackThickness = 4.0,
+    this.linearInset = 4.0,
     this.borderRadius,
   }) : _isLinear = true,
        radius = 10.0,
@@ -55,6 +68,16 @@ class AdaptiveProgressIndicator extends StatelessWidget {
   /// The color of the indicator.
   final Color? color;
 
+  /// Track color. Defaults to Material 3's secondary-container role on Android.
+  /// On circular Cupertino indicators there is no separate track.
+  final Color? trackColor;
+
+  /// Accessibility label describing the process and affected content.
+  final String? semanticsLabel;
+
+  /// Flat is the baseline shape; wavy opts into the expressive Android variant.
+  final AdaptiveProgressIndicatorShape shape;
+
   /// The background track color (linear mode).
   final Color? backgroundColor;
 
@@ -63,6 +86,12 @@ class AdaptiveProgressIndicator extends StatelessWidget {
 
   /// The stroke width of the indicator on Android (default: 3.0).
   final double strokeWidth;
+
+  /// Active and track thickness in logical pixels on Android (default: 4.0).
+  final double trackThickness;
+
+  /// Horizontal inset for linear indicators on Android (default: 4 dp).
+  final double linearInset;
 
   /// Whether the Cupertino activity indicator is animating (iOS only).
   final bool animating;
@@ -77,10 +106,20 @@ class AdaptiveProgressIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Widget indicator;
     if (_isLinear) {
-      return _buildLinear(context);
+      indicator = _buildLinear(context);
+    } else {
+      indicator = _buildCircular(context);
     }
-    return _buildCircular(context);
+    if (semanticsLabel == null || PlatformInfo.isAndroid) return indicator;
+    return Semantics(
+      label: semanticsLabel,
+      value: value == null
+          ? null
+          : '${(value!.clamp(0.0, 1.0) * 100).round()}%',
+      child: indicator,
+    );
   }
 
   Widget _buildCircular(BuildContext context) {
@@ -101,16 +140,20 @@ class AdaptiveProgressIndicator extends StatelessWidget {
 
     // Android & other platforms
     if (PlatformInfo.isAndroid) {
+      final androidSize = (radius * 2).clamp(24.0, 240.0).toDouble();
       return AndroidM3EPlatformView(
         component: 'progressIndicator',
-        width: radius * 2,
-        height: radius * 2,
+        width: androidSize,
+        height: androidSize,
         properties: {
           'linear': false,
           'value': value,
-          'size': radius * 2,
+          'size': androidSize,
           'strokeWidth': strokeWidth,
           'color': color?.toARGB32(),
+          'trackColor': (trackColor ?? backgroundColor)?.toARGB32(),
+          'shape': shape.name,
+          'semanticsLabel': semanticsLabel,
         },
         onEvent: (_, __) {},
       );
@@ -133,6 +176,7 @@ class AdaptiveProgressIndicator extends StatelessWidget {
           ? CupertinoColors.systemGrey5.darkColor
           : CupertinoColors.systemGrey5.color;
       final activeColor = color ?? CupertinoTheme.of(context).primaryColor;
+      final effectiveTrackColor = backgroundColor ?? trackColor ?? defaultTrack;
 
       if (value == null) {
         // Indeterminate on Apple: clean smooth looping bar
@@ -140,7 +184,7 @@ class AdaptiveProgressIndicator extends StatelessWidget {
           borderRadius: effectiveRadius,
           child: LinearProgressIndicator(
             color: activeColor,
-            backgroundColor: backgroundColor ?? defaultTrack,
+            backgroundColor: effectiveTrackColor,
             minHeight: minHeight ?? 4.0,
           ),
         );
@@ -150,7 +194,7 @@ class AdaptiveProgressIndicator extends StatelessWidget {
         borderRadius: effectiveRadius,
         child: Container(
           height: minHeight ?? 4.0,
-          color: backgroundColor ?? defaultTrack,
+          color: effectiveTrackColor,
           child: FractionallySizedBox(
             alignment: Alignment.centerLeft,
             widthFactor: value!.clamp(0.0, 1.0),
@@ -164,15 +208,29 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     if (PlatformInfo.isAndroid) {
       return LayoutBuilder(
         builder: (context, constraints) {
+          final expressiveWavyHeight = trackThickness * 3 > 16
+              ? trackThickness * 3
+              : 16.0;
+          final requestedHeight = minHeight ?? expressiveWavyHeight;
           return AndroidM3EPlatformView(
             component: 'progressIndicator',
             width: constraints.maxWidth.isFinite ? constraints.maxWidth : 240,
-            height: minHeight ?? 4.0,
+            height: shape == AdaptiveProgressIndicatorShape.wavy
+                ? requestedHeight
+                      .clamp(expressiveWavyHeight, double.infinity)
+                      .toDouble()
+                : (minHeight ?? trackThickness)
+                      .clamp(trackThickness, double.infinity)
+                      .toDouble(),
             properties: {
               'linear': true,
               'value': value,
               'color': color?.toARGB32(),
-              'trackColor': backgroundColor?.toARGB32(),
+              'trackColor': (backgroundColor ?? trackColor)?.toARGB32(),
+              'shape': shape.name,
+              'trackThickness': trackThickness,
+              'linearInset': linearInset,
+              'semanticsLabel': semanticsLabel,
               'borderRadius': borderRadius?.topLeft.x,
             },
             onEvent: (_, __) {},
@@ -183,7 +241,7 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     return LinearProgressIndicator(
       value: value,
       color: color,
-      backgroundColor: backgroundColor,
+      backgroundColor: backgroundColor ?? trackColor,
       minHeight: minHeight,
       borderRadius: effectiveRadius,
     );

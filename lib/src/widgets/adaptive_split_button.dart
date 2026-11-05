@@ -7,7 +7,25 @@ import 'android/android_m3e_platform_view.dart';
 
 enum AdaptiveSplitButtonStyle { filled, tonal, outlined, elevated }
 
-enum AdaptiveSplitButtonSize { small, medium, large }
+/// Recommended native Material 3 Expressive split-button sizes.
+enum AdaptiveSplitButtonSize {
+  extraSmall(32, 48),
+  small(40, 48),
+  medium(56, 56),
+  large(96, 96),
+  extraLarge(136, 136);
+
+  const AdaptiveSplitButtonSize(
+    this.containerHeight,
+    this.minimumTouchTargetHeight,
+  );
+
+  /// Visual container height in logical pixels on Android.
+  final double containerHeight;
+
+  /// Minimum host height needed to retain the native 48 dp touch target.
+  final double minimumTouchTargetHeight;
+}
 
 /// Serializable action option for an adaptive split button.
 class AdaptiveSplitButtonItem<T> {
@@ -36,8 +54,9 @@ class AdaptiveSplitButton<T> extends StatelessWidget {
     this.onSelected,
     this.selectedValue,
     this.enabled = true,
-    this.size = AdaptiveSplitButtonSize.medium,
+    this.size = AdaptiveSplitButtonSize.small,
     this.style = AdaptiveSplitButtonStyle.filled,
+    this.menuButtonSemanticLabel,
   });
 
   final List<AdaptiveSplitButtonItem<T>> items;
@@ -51,6 +70,10 @@ class AdaptiveSplitButton<T> extends StatelessWidget {
   final AdaptiveSplitButtonSize size;
   final AdaptiveSplitButtonStyle style;
 
+  /// Accessible name for the trailing menu button, localized by the caller.
+  /// The native toggle semantics announce whether the menu is expanded.
+  final String? menuButtonSemanticLabel;
+
   @override
   Widget build(BuildContext context) {
     if (PlatformInfo.isAndroid) {
@@ -63,13 +86,10 @@ class AdaptiveSplitButton<T> extends StatelessWidget {
             );
       return AndroidM3EPlatformView(
         component: 'splitButton',
-        height: switch (size) {
-          AdaptiveSplitButtonSize.small => 40,
-          AdaptiveSplitButtonSize.medium => 48,
-          AdaptiveSplitButtonSize.large => 56,
-        },
+        height: size.minimumTouchTargetHeight,
         properties: {
           'label': label,
+          'menuButtonSemanticLabel': menuButtonSemanticLabel,
           'leadingIcon': leadingIconName,
           'enabled': enabled && (onPressed != null || onSelected != null),
           'primaryEnabled': enabled && onPressed != null,

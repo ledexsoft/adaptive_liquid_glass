@@ -412,6 +412,30 @@ Bottom Navigation Bar adaptativa:
   <img src="https://raw.githubusercontent.com/ledexsoft/adaptive_liquid_glass/refs/heads/main/img/bottom_nav_p.png" alt="Toolbar nativa"/>
 </p>
 
+`AdaptiveSplitButton` usa el split button nativo M3 Expressive en Android, con
+cinco tamaños, cuatro estilos y menú accesible. Revisa la
+[guía de split buttons Android](docs/android-m3e-split-buttons.md) para las
+alturas, targets táctiles y etiquetas del botón de opciones.
+
+```dart
+AdaptiveSplitButton<String>(
+  label: 'Guardar',
+  size: AdaptiveSplitButtonSize.small,
+  style: AdaptiveSplitButtonStyle.tonal,
+  menuButtonSemanticLabel: 'Más opciones para guardar',
+  items: const [
+    AdaptiveSplitButtonItem(value: 'copy', label: 'Guardar una copia'),
+  ],
+  onPressed: guardar,
+  onSelected: guardarConOpcion,
+)
+```
+
+`AdaptiveProgressIndicator` ofrece progreso lineal y circular en Android Compose,
+con estado determinado/indeterminado, forma plana u ondulada y etiquetas para
+lectores de pantalla. Consulta la
+[guía de indicadores Android](docs/android-m3e-progress-indicators.md).
+
 ### AdaptiveAlertDialog (diálogos de alerta)
 
 <img src="https://raw.githubusercontent.com/ledexsoft/adaptive_liquid_glass/refs/heads/main/img/alert_p.png" alt="Alerta nativa iOS 26">

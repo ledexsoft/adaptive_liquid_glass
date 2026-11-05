@@ -35,7 +35,7 @@ AdaptiveScaffold(
 )
 ```
 
-Vertical scroll notifications from the scaffold body are forwarded to the Compose app bar. Horizontal and nested scroll notifications are ignored. `pinned` keeps the bar visible and applies the M3 `surfaceContainer` scrolled color; `enterAlways` hides it as content moves and reveals it as content returns; `exitUntilCollapsed` collapses flexible bars to small. The optional `transparentWhenScrolled` keeps the container transparent and gives icon actions tonal fill for contrast.
+Vertical scroll notifications from the scaffold body are forwarded to the Compose app bar. Horizontal and nested scroll notifications are ignored. `pinned` keeps the bar visible and applies the M3 `surfaceContainer` scrolled color; `enterAlways` hides it as content moves and reveals it as content returns; `exitUntilCollapsed` collapses flexible bars to small. Search bars receive the same scroll state and native scrolled colors; `exitUntilCollapsed` keeps Search in its own variant. The optional `transparentWhenScrolled` keeps the app-bar container transparent and gives icon actions tonal fill for contrast.
 
 ## Search
 
@@ -66,7 +66,7 @@ AdaptiveScaffold(
 )
 ```
 
-Tapping the field opens the native full-screen Material search view. Queries, submission, and selected suggestions cross the Flutter/Compose bridge as callbacks. Keep “Search” (or its localized equivalent) in the hint. The native app bar shows at most two trailing actions on compact windows and four on wide windows; extra actions move to a native overflow menu. Mark at most one action `insideSearchField`.
+Tapping the field opens the native full-screen Material search view. Queries, submission, and selected suggestions cross the Flutter/Compose bridge as callbacks. Keep “Search” (or its localized equivalent) in the hint. The total trailing-action limit, including an action marked `insideSearchField`, is two on compact windows and four on expanded windows. Extra outside actions move to native overflow. Mark at most one action `insideSearchField`.
 
 ## Logos and primary actions
 
@@ -74,7 +74,9 @@ Pass encoded Android image bytes with `androidLogoBytes`; supply `androidLogoCon
 
 Use `AdaptiveAppBarAction.semanticLabel` for icon-only actions. `androidStyle: AdaptiveAppBarActionStyle.filled` or `.filledTonal` emphasizes one primary action. The scaffold rejects more than one filled/tonal action. Set `wide: true` to use the native wide icon-button width.
 
-Compose supplies touch ripple, hover feedback, keyboard activation, and focus indicators. When a leading control is present, initial keyboard focus goes there; Tab moves through the remaining interactive controls, and Space or Enter activates the focused control. Search uses Compose's native focus behavior. Compose mirrors leading/trailing placement in RTL locales and exposes title-heading and action-button semantics.
+Prefer one or two essential actions in a regular app bar. On expanded windows, actions beyond the compact limit can remain visible up to the responsive limit; use `AdaptiveToolbar` when the page needs many actions.
+
+Compose supplies touch ripple, hover feedback, keyboard activation, and focus indicators. With default colors, the native app bar uses M3's title, subtitle, navigation, and action color roles. When a leading control is present, initial keyboard focus goes there; Tab moves through the remaining interactive controls, and Space or Enter activates the focused control. Search uses Compose's native focus behavior. Compose mirrors leading/trailing placement in RTL locales and exposes title-heading and action-button semantics.
 
 ## Limits
 

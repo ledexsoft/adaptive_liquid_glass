@@ -1,3 +1,10 @@
+## [0.2.6]
+* **UPDATE**: Native Android app bars now reveal up to four trailing actions on expanded windows; search-field actions count toward the responsive total.
+* **UPDATE**: Android split buttons now match all five official Material 3 Expressive sizes, preserve minimum touch targets, use style-specific Compose controls, rotate the menu chevron with standard motion, and anchor menus to the trailing segment.
+* **UPDATE**: Split-button menus expose a localizable related-options label and native expanded/collapsed toggle semantics; the default size is now the M3 recommended small size.
+* **UPDATE**: Android progress indicators now support native flat and wavy linear/circular forms, determinate and indeterminate states, M3 track colors, configurable thickness/inset, and accessible process labels.
+* **DOCS**: Added native Android split-button guidance and updated app-bar responsive behavior coverage.
+
 ## [0.2.5]
 * **NEW**: Android scaffold app bars now expose native Material 3 Expressive small, medium/large flexible, and search variants with native suggestions and callbacks.
 * **NEW**: Added app bar scroll behaviors, centered titles, optional logos, accessible action labels, wide icon buttons, filled/tonal primary actions, and native overflow.

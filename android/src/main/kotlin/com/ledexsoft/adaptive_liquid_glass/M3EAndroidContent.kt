@@ -101,6 +101,7 @@ import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.AppBarWithSearch
 import androidx.compose.material3.ExpandedFullScreenContainedSearchBar
 import androidx.compose.material3.rememberContainedSearchBarState
+import androidx.compose.material3.rememberSearchBarScrollState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -127,6 +128,8 @@ import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.PlainTooltip
@@ -186,11 +189,14 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -509,8 +515,9 @@ private fun NativeM3ETopAppBar(
   val scrollOffset = (properties.number("scrollOffset") ?: 0.0).toFloat().coerceAtLeast(0f)
   val scrollDelta = (properties.number("scrollDelta") ?: 0.0).toFloat()
   val scrollKind = properties["scrollBehavior"] as? String ?: "pinned"
-  val contentColor = properties.color("contentColor") ?: MaterialTheme.colorScheme.onSurface
+  val contentColor = properties.color("contentColor") ?: Color.Unspecified
   val surfaceColor = properties.color("backgroundColor") ?: MaterialTheme.colorScheme.surface
+  val density = LocalDensity.current
   val isFlexible = variant == "mediumFlexible" || variant == "largeFlexible"
   val collapsedHeight = TopAppBarDefaults.TopAppBarExpandedHeight
   val expandedHeight = when {
@@ -520,10 +527,9 @@ private fun NativeM3ETopAppBar(
     variant == "mediumFlexible" -> 112.dp
     else -> TopAppBarDefaults.TopAppBarExpandedHeight
   }
-  val heightOffsetLimit = if (scrollKind == "enterAlways") {
-    -expandedHeight.value
-  } else {
-    -(expandedHeight - collapsedHeight).value
+  val heightOffsetLimit = with(density) {
+    if (scrollKind == "enterAlways") -expandedHeight.toPx()
+    else -(expandedHeight - collapsedHeight).toPx()
   }
   val appBarState = rememberTopAppBarState(initialHeightOffsetLimit = heightOffsetLimit)
   val scrollBehavior = when (scrollKind) {
@@ -531,11 +537,13 @@ private fun NativeM3ETopAppBar(
     "exitUntilCollapsed" -> TopAppBarDefaults.exitUntilCollapsedScrollBehavior(appBarState)
     else -> TopAppBarDefaults.pinnedScrollBehavior(appBarState)
   }
-  LaunchedEffect(scrollOffset, scrollDelta, scrollKind, isFlexible) {
-    appBarState.contentOffset = -scrollOffset
+  val scrollOffsetPx = with(density) { scrollOffset.dp.toPx() }
+  val scrollDeltaPx = with(density) { scrollDelta.dp.toPx() }
+  LaunchedEffect(scrollOffsetPx, scrollDeltaPx, scrollKind, isFlexible) {
+    appBarState.contentOffset = -scrollOffsetPx
     appBarState.heightOffset = when (scrollKind) {
-      "enterAlways" -> (appBarState.heightOffset - scrollDelta).coerceIn(heightOffsetLimit, 0f)
-      "exitUntilCollapsed" -> if (isFlexible) (-scrollOffset).coerceIn(heightOffsetLimit, 0f) else 0f
+      "enterAlways" -> (appBarState.heightOffset - scrollDeltaPx).coerceIn(heightOffsetLimit, 0f)
+      "exitUntilCollapsed" -> if (isFlexible) (-scrollOffsetPx).coerceIn(heightOffsetLimit, 0f) else 0f
       else -> 0f
     }
   }
@@ -545,6 +553,7 @@ private fun NativeM3ETopAppBar(
     titleContentColor = contentColor,
     navigationIconContentColor = contentColor,
     actionIconContentColor = contentColor,
+    subtitleContentColor = properties.color("contentColor") ?: Color.Unspecified,
   )
   val leadingFocusRequester = remember { FocusRequester() }
   val firstActionFocusRequester = remember { FocusRequester() }
@@ -565,7 +574,7 @@ private fun NativeM3ETopAppBar(
   val logoReplacesSmallTitle = properties.boolean("logoReplacesSmallTitle", true)
 
   @Composable
-  fun titleContent(maxLines: Int) {
+  fun titleContent(maxLines: Int, includeSubtitle: Boolean = true) {
     Column(
       horizontalAlignment = if (centerAligned) Alignment.CenterHorizontally else Alignment.Start,
     ) {
@@ -586,7 +595,7 @@ private fun NativeM3ETopAppBar(
           modifier = Modifier.semantics { heading() },
         )
       }
-      if (!subtitle.isNullOrBlank()) {
+      if (includeSubtitle && !subtitle.isNullOrBlank()) {
         Text(
           text = subtitle,
           maxLines = if (isFlexible) 2 else 1,
@@ -695,9 +704,9 @@ private fun NativeM3ETopAppBar(
       val action = raw as? Map<*, *> ?: return@mapIndexedNotNull null
       if (search && index == insideSearchIndex) null else index to action
     }
-    val maxVisible = if (search) {
-      if (LocalConfiguration.current.screenWidthDp >= 600) 4 else 2
-    } else 2
+    val maxTrailingActions = if (LocalConfiguration.current.screenWidthDp >= 600) 4 else 2
+    val insideSearchCount = if (search && insideSearchIndex >= 0) 1 else 0
+    val maxVisible = (maxTrailingActions - insideSearchCount).coerceAtLeast(0)
     val shown = visibleActions.take(maxVisible)
     shown.forEach { (index, action) ->
       actionButton(index, action, requestFocus = index == firstActionIndex && leadingIcon == null)
@@ -742,7 +751,26 @@ private fun NativeM3ETopAppBar(
     val searchState = rememberContainedSearchBarState()
     val textFieldState = rememberTextFieldState()
     val scope = rememberCoroutineScope()
-    val searchColors = SearchBarDefaults.appBarWithSearchColors()
+    val searchScrollState = rememberSearchBarScrollState(
+      initialScrollOffsetLimit = with(density) { -64.dp.toPx() },
+    )
+    val searchScrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior(searchScrollState)
+    val searchColors = SearchBarDefaults.appBarWithSearchColors(
+      appBarContainerColor = surfaceColor,
+      scrolledAppBarContainerColor = if (transparentWhenScrolled) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
+      appBarNavigationIconColor = contentColor,
+      appBarActionIconColor = contentColor,
+    )
+    val searchOffsetPx = with(density) { scrollOffset.dp.toPx() }
+    val searchDeltaPx = with(density) { scrollDelta.dp.toPx() }
+    LaunchedEffect(scrollOffset, scrollDelta, scrollKind) {
+      searchScrollState.contentOffset = -searchOffsetPx
+      searchScrollState.scrollOffset = when (scrollKind) {
+        "enterAlways" -> (searchScrollState.scrollOffset - searchDeltaPx)
+          .coerceIn(searchScrollState.scrollOffsetLimit, 0f)
+        else -> 0f
+      }
+    }
     val insideSearchIndex = actions.indexOfFirst { raw ->
       (raw as? Map<*, *>)?.get("insideSearchField") == true
     }
@@ -778,6 +806,7 @@ private fun NativeM3ETopAppBar(
         navigationIcon = { leadingContent() },
         actions = { actionContent(search = true) },
         colors = searchColors,
+        scrollBehavior = searchScrollBehavior,
       )
       ExpandedFullScreenContainedSearchBar(
         state = searchState,
@@ -807,7 +836,7 @@ private fun NativeM3ETopAppBar(
 
   if (variant == "mediumFlexible") {
     MediumFlexibleTopAppBar(
-      title = { titleContent(maxLines = 2) },
+      title = { titleContent(maxLines = 2, includeSubtitle = false) },
       subtitle = if (subtitle.isNullOrBlank()) null else ({ Text(subtitle, maxLines = 2, overflow = TextOverflow.Clip) }),
       titleHorizontalAlignment = if (centerAligned) Alignment.CenterHorizontally else Alignment.Start,
       navigationIcon = { leadingContent() },
@@ -819,7 +848,7 @@ private fun NativeM3ETopAppBar(
     )
   } else if (variant == "largeFlexible") {
     LargeFlexibleTopAppBar(
-      title = { titleContent(maxLines = 2) },
+      title = { titleContent(maxLines = 2, includeSubtitle = false) },
       subtitle = if (subtitle.isNullOrBlank()) null else ({ Text(subtitle, maxLines = 2, overflow = TextOverflow.Clip) }),
       titleHorizontalAlignment = if (centerAligned) Alignment.CenterHorizontally else Alignment.Start,
       navigationIcon = { leadingContent() },
@@ -1300,75 +1329,135 @@ private fun NativeM3ESplitButton(
   val selectedIndex = properties.number("selectedIndex")?.toInt() ?: -1
   val label = properties["label"] as? String ?: ""
   val iconName = properties["leadingIcon"] as? String
+  val menuButtonLabel = properties["menuButtonSemanticLabel"] as? String
+    ?: "More $label options"
   val primaryEnabled = properties.boolean("primaryEnabled")
   val buttonHeight = when (properties["size"] as? String) {
-    "small" -> 40.dp
-    "large" -> 56.dp
-    else -> 48.dp
+    "extraSmall" -> SplitButtonDefaults.ExtraSmallContainerHeight
+    "small" -> SplitButtonDefaults.SmallContainerHeight
+    "medium" -> SplitButtonDefaults.MediumContainerHeight
+    "large" -> SplitButtonDefaults.LargeContainerHeight
+    "extraLarge" -> SplitButtonDefaults.ExtraLargeContainerHeight
+    else -> SplitButtonDefaults.SmallContainerHeight
   }
   val style = properties["style"] as? String ?: "filled"
-  val buttonColors = when (style) {
-    "tonal" -> ButtonDefaults.filledTonalButtonColors()
-    "outlined" -> ButtonDefaults.outlinedButtonColors()
-    "elevated" -> ButtonDefaults.elevatedButtonColors()
-    else -> ButtonDefaults.buttonColors()
+  val arrowRotation by animateFloatAsState(
+    targetValue = if (expanded) 180f else 0f,
+    animationSpec = MotionScheme.standard().defaultSpatialSpec(),
+    label = "splitButtonMenuArrowRotation",
+  )
+
+  @Composable
+  fun leadingContent() {
+    Row(
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      if (iconName != null) Icon(nativeM3EIcon(iconName), contentDescription = null)
+      Text(label)
+    }
   }
-  val buttonElevation = when (style) {
-    "tonal" -> ButtonDefaults.filledTonalButtonElevation()
-    "outlined" -> null
-    "elevated" -> ButtonDefaults.elevatedButtonElevation()
-    else -> ButtonDefaults.buttonElevation()
+
+  @Composable
+  fun trailingContent() {
+    Icon(
+      imageVector = Icons.Filled.ArrowDropDown,
+      contentDescription = menuButtonLabel,
+      modifier = Modifier.rotate(arrowRotation),
+    )
   }
+
   Box {
     SplitButtonLayout(
       leadingButton = {
-        SplitButtonDefaults.LeadingButton(
-          onClick = { if (primaryEnabled) onEvent("primaryPressed", null) },
-          enabled = primaryEnabled,
-          shapes = SplitButtonDefaults.leadingButtonShapesFor(buttonHeight),
-          colors = buttonColors,
-          elevation = buttonElevation,
-          contentPadding = SplitButtonDefaults.leadingButtonContentPaddingFor(buttonHeight),
-        ) {
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (iconName != null) Icon(nativeM3EIcon(iconName), contentDescription = null)
-            Text(label)
-          }
+        val shapes = SplitButtonDefaults.leadingButtonShapesFor(buttonHeight)
+        val contentPadding = SplitButtonDefaults.leadingButtonContentPaddingFor(buttonHeight)
+        when (style) {
+          "tonal" -> SplitButtonDefaults.TonalLeadingButton(
+            onClick = { if (primaryEnabled) onEvent("primaryPressed", null) },
+            enabled = primaryEnabled,
+            shapes = shapes,
+            contentPadding = contentPadding,
+          ) { leadingContent() }
+          "outlined" -> SplitButtonDefaults.OutlinedLeadingButton(
+            onClick = { if (primaryEnabled) onEvent("primaryPressed", null) },
+            enabled = primaryEnabled,
+            shapes = shapes,
+            contentPadding = contentPadding,
+          ) { leadingContent() }
+          "elevated" -> SplitButtonDefaults.ElevatedLeadingButton(
+            onClick = { if (primaryEnabled) onEvent("primaryPressed", null) },
+            enabled = primaryEnabled,
+            shapes = shapes,
+            contentPadding = contentPadding,
+          ) { leadingContent() }
+          else -> SplitButtonDefaults.LeadingButton(
+            onClick = { if (primaryEnabled) onEvent("primaryPressed", null) },
+            enabled = primaryEnabled,
+            shapes = shapes,
+            contentPadding = contentPadding,
+          ) { leadingContent() }
         }
       },
       trailingButton = {
-        SplitButtonDefaults.TrailingButton(
-          checked = expanded,
-          onCheckedChange = { expanded = it },
-          enabled = enabled,
-          shapes = SplitButtonDefaults.trailingButtonShapesFor(buttonHeight),
-          colors = buttonColors,
-          elevation = buttonElevation,
-          contentPadding = SplitButtonDefaults.trailingButtonContentPaddingFor(buttonHeight),
-        ) {
-          Icon(
-            imageVector = if (expanded) Icons.Filled.Close else Icons.Filled.ArrowDropDown,
-            contentDescription = if (expanded) "Close menu" else "Open menu",
-          )
+        Box {
+          val shapes = SplitButtonDefaults.trailingButtonShapesFor(buttonHeight)
+          val contentPadding = SplitButtonDefaults.trailingButtonContentPaddingFor(buttonHeight)
+          val onCheckedChange: (Boolean) -> Unit = { expanded = it }
+          when (style) {
+            "tonal" -> SplitButtonDefaults.TonalTrailingButton(
+              checked = expanded,
+              onCheckedChange = onCheckedChange,
+              enabled = enabled,
+              shapes = shapes,
+              contentPadding = contentPadding,
+            ) { trailingContent() }
+            "outlined" -> SplitButtonDefaults.OutlinedTrailingButton(
+              checked = expanded,
+              onCheckedChange = onCheckedChange,
+              enabled = enabled,
+              shapes = shapes,
+              contentPadding = contentPadding,
+            ) { trailingContent() }
+            "elevated" -> SplitButtonDefaults.ElevatedTrailingButton(
+              checked = expanded,
+              onCheckedChange = onCheckedChange,
+              enabled = enabled,
+              shapes = shapes,
+              contentPadding = contentPadding,
+            ) { trailingContent() }
+            else -> SplitButtonDefaults.TrailingButton(
+              checked = expanded,
+              onCheckedChange = onCheckedChange,
+              enabled = enabled,
+              shapes = shapes,
+              contentPadding = contentPadding,
+            ) { trailingContent() }
+          }
+
+          DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            offset = DpOffset(0.dp, 4.dp),
+          ) {
+            items.forEachIndexed { index, rawItem ->
+              val item = rawItem as? Map<*, *> ?: return@forEachIndexed
+              val itemIcon = item["icon"] as? String
+              DropdownMenuItem(
+                text = { Text(item["label"] as? String ?: "") },
+                onClick = {
+                  expanded = false
+                  onEvent("selected", index)
+                },
+                enabled = enabled && (item["enabled"] as? Boolean ?: true),
+                leadingIcon = itemIcon?.let { { Icon(nativeM3EIcon(it), contentDescription = null) } },
+                trailingIcon = if (index == selectedIndex) ({ Icon(Icons.Filled.Check, contentDescription = "Selected") }) else null,
+              )
+            }
+          }
         }
       },
     )
-    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-      items.forEachIndexed { index, rawItem ->
-        val item = rawItem as? Map<*, *> ?: return@forEachIndexed
-        val itemIcon = item["icon"] as? String
-        DropdownMenuItem(
-          text = { Text(item["label"] as? String ?: "") },
-          onClick = {
-            expanded = false
-            onEvent("selected", index)
-          },
-          enabled = enabled && (item["enabled"] as? Boolean ?: true),
-          leadingIcon = itemIcon?.let { { Icon(nativeM3EIcon(it), contentDescription = null) } },
-          trailingIcon = if (index == selectedIndex) ({ Icon(Icons.Filled.Check, contentDescription = "Selected") }) else null,
-        )
-      }
-    }
   }
 }
 
@@ -2292,22 +2381,56 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
   val linear = properties.boolean("linear")
   val value = properties.number("value")?.toFloat()?.coerceIn(0f, 1f)
   val color = properties.color("color") ?: MaterialTheme.colorScheme.primary
-  val trackColor = properties.color("trackColor") ?: Color.Transparent
+  val trackColor = properties.color("trackColor") ?: MaterialTheme.colorScheme.secondaryContainer
+  val shape = properties["shape"] as? String ?: "flat"
+  val semanticsLabel = properties["semanticsLabel"] as? String
+  val semanticsModifier = semanticsLabel?.let { label ->
+    Modifier.semantics(mergeDescendants = true) { contentDescription = label }
+  } ?: Modifier
 
   if (linear) {
-    if (value == null) {
-      LinearWavyProgressIndicator(
-        modifier = Modifier.fillMaxWidth(),
-        color = color,
-        trackColor = trackColor,
-      )
+    val trackThickness = (properties.number("trackThickness") ?: 4.0).dp
+    val linearInset = (properties.number("linearInset") ?: 4.0).dp
+    if (shape == "wavy") {
+      val strokePx = with(LocalDensity.current) { trackThickness.toPx() }
+      val stroke = Stroke(width = strokePx, cap = StrokeCap.Round)
+      val wavyModifier = semanticsModifier.fillMaxWidth().padding(horizontal = linearInset)
+      if (value == null) {
+        LinearWavyProgressIndicator(
+          modifier = wavyModifier,
+          color = color,
+          trackColor = trackColor,
+          stroke = stroke,
+          trackStroke = stroke,
+        )
+      } else {
+        LinearWavyProgressIndicator(
+          progress = { value },
+          modifier = wavyModifier,
+          color = color,
+          trackColor = trackColor,
+          stroke = stroke,
+          trackStroke = stroke,
+        )
+      }
     } else {
-      LinearWavyProgressIndicator(
-        progress = { value },
-        modifier = Modifier.fillMaxWidth(),
-        color = color,
-        trackColor = trackColor,
-      )
+      val flatModifier = semanticsModifier.fillMaxWidth()
+        .padding(horizontal = linearInset)
+        .height(trackThickness)
+      if (value == null) {
+        LinearProgressIndicator(
+          modifier = flatModifier,
+          color = color,
+          trackColor = trackColor,
+        )
+      } else {
+        LinearProgressIndicator(
+          progress = { value },
+          modifier = flatModifier,
+          color = color,
+          trackColor = trackColor,
+        )
+      }
     }
     return
   }
@@ -2316,19 +2439,40 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
   val strokeWidth = (properties.number("strokeWidth") ?: 3.0).dp
   val strokePx = with(LocalDensity.current) { strokeWidth.toPx() }
   val stroke = Stroke(width = strokePx, cap = StrokeCap.Round)
-  if (value == null) {
-    LoadingIndicator(
-      modifier = Modifier.size(size),
-      color = color,
-    )
-  } else {
-    CircularWavyProgressIndicator(
-      progress = { value },
-      modifier = Modifier.size(size),
+  val circularModifier = semanticsModifier.size(size)
+  if (shape == "wavy") {
+    if (value == null) {
+      CircularWavyProgressIndicator(
+        modifier = circularModifier,
+        color = color,
+        trackColor = trackColor,
+        stroke = stroke,
+        trackStroke = stroke,
+      )
+    } else {
+      CircularWavyProgressIndicator(
+        progress = { value },
+        modifier = circularModifier,
+        color = color,
+        trackColor = trackColor,
+        stroke = stroke,
+        trackStroke = stroke,
+      )
+    }
+  } else if (value == null) {
+    CircularProgressIndicator(
+      modifier = circularModifier,
       color = color,
       trackColor = trackColor,
-      stroke = stroke,
-      trackStroke = stroke,
+      strokeWidth = strokeWidth,
+    )
+  } else {
+    CircularProgressIndicator(
+      progress = { value },
+      modifier = circularModifier,
+      color = color,
+      trackColor = trackColor,
+      strokeWidth = strokeWidth,
     )
   }
 }
