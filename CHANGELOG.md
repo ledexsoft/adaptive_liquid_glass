@@ -1,3 +1,7 @@
+## [0.2.11]
+* **FIX**: Android popup menus with custom or unmapped icons now fall back to Flutter's Material popup menu, preserving selection callbacks rather than failing while building Compose properties.
+* **TESTS**: Added regression coverage for the popup menu fallback.
+
 ## [0.2.10]
 * **FIX**: Android adaptive buttons with custom children or unmapped icons and icon buttons with unmapped content now use Flutter Material fallbacks, preserving screen-specific widgets and callbacks instead of throwing during build.
 * **TESTS**: Added coverage for custom Android button and icon-button fallbacks.

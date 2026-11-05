@@ -87,6 +87,30 @@ void main() {
     expect(tapped, isTrue);
   });
 
+  testWidgets('Android popup menu falls back for an unsupported icon', (
+    tester,
+  ) async {
+    var selected = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdaptivePopupMenuButton.icon<String>(
+            icon: Icons.more_horiz,
+            items: const [AdaptivePopupMenuItem(label: 'Choice', value: 'x')],
+            onSelected: (index, item) => selected = item.value == 'x',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(PopupMenuButton<int>), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choice'));
+    await tester.pumpAndSettle();
+    expect(selected, isTrue);
+  });
+
   testWidgets(
     'Android text field falls back and keeps interactive suffix action',
     (tester) async {
