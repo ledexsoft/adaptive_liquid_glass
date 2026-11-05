@@ -287,6 +287,7 @@ internal fun M3EAndroidContent(
         sparkleTint = properties.color("sparkleColor") ?: MaterialTheme.colorScheme.primary,
         semanticLabel = properties["semanticLabel"] as? String,
       )
+      "expressiveShape" -> NativeM3EExpressiveShape(properties)
       "button" -> NativeM3EButton(properties, enabled && hasCallback, onEvent)
       "switch" -> NativeM3ESwitch(properties, enabled && hasCallback, onEvent)
       "checkbox" -> NativeM3ECheckbox(properties, enabled && hasCallback, onEvent)

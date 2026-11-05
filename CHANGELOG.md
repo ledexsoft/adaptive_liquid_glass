@@ -1,3 +1,6 @@
+## [0.2.2]
+* **NEW**: Added opt-in `AdaptiveExpressiveShapeView` with all 35 native Compose Material 3 Expressive shapes and generic native morphing between any two catalog shapes. `morphProgress` is caller-controlled for integration with app-owned springs and gestures; non-Android platforms use a rounded-rectangle fallback.
+
 ## [0.2.1]
 * **NEW**: Added the optional `AdaptiveAiSparkleIcon` decorator and `aiPowered` flags for adaptive icon buttons and FABs. Android renders the sparkle with native Compose; it stays disabled by default.
 

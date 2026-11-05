@@ -60,6 +60,7 @@ export 'src/widgets/adaptive_context_menu.dart';
 export 'src/widgets/adaptive_scaffold.dart';
 export 'src/widgets/adaptive_app_bar_action.dart';
 export 'src/widgets/adaptive_ai_sparkle_icon.dart';
+export 'src/widgets/adaptive_expressive_shape.dart';
 export 'src/widgets/adaptive_snackbar.dart';
 export 'src/widgets/adaptive_split_button.dart';
 export 'src/widgets/adaptive_date_picker.dart';
