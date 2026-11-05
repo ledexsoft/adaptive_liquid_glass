@@ -1,3 +1,8 @@
+## [0.2.7]
+* **UPDATE**: Android button groups now expose all five Material 3 Expressive sizes, official standard/connected spacing and shapes, connected equal-width layout, keyboard arrow navigation, and optional required selection.
+* **UPDATE**: Android FAB menus now enforce 2–6 actions, expose localizable toggle/state semantics, focus the close control on open, support RTL-aware corner placement, and scroll their action list on short windows while keeping the close control visible.
+* **DOCS**: Added Android guidance for button groups, FAB menus, and their native motion/accessibility behavior.
+
 ## [0.2.6]
 * **UPDATE**: Native Android app bars now reveal up to four trailing actions on expanded windows; search-field actions count toward the responsive total.
 * **UPDATE**: Android split buttons now match all five official Material 3 Expressive sizes, preserve minimum touch targets, use style-specific Compose controls, rotate the menu chevron with standard motion, and anchor menus to the trailing segment.

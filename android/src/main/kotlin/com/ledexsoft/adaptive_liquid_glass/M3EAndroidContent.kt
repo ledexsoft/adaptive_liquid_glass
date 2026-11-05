@@ -171,6 +171,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
@@ -188,6 +194,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.sp
@@ -209,6 +219,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -937,18 +948,37 @@ private fun NativeM3EButtonGroup(
   val actions = properties["actions"] as? List<*> ?: emptyList<Any?>()
   if (actions.isEmpty()) return
   val multiSelect = properties.boolean("multiSelect")
-  val selectedIndex = properties.number("selectedIndex")?.toInt() ?: -1
+  val selectedIndex = properties.number("selectedIndex")?.toInt()
+    ?: actions.indexOfFirst { (it as? Map<*, *>)?.get("checked") == true }
   val selectedIndices = (properties["selectedIndices"] as? List<*>)
     ?.mapNotNull { (it as? Number)?.toInt() }
     ?.toSet()
-    ?: emptySet()
+    ?: actions.mapIndexedNotNull { index, item ->
+      index.takeIf { (item as? Map<*, *>)?.get("checked") == true }
+    }.toSet()
   val size = when (properties["size"] as? String) {
+    "extraSmall" -> ToggleButtonSize.ExtraSmall
     "small" -> ToggleButtonSize.Small
+    "extraLarge" -> ToggleButtonSize.ExtraLarge
     "large" -> ToggleButtonSize.Large
     else -> ToggleButtonSize.Medium
   }
   val style = properties["style"] as? String ?: "filled"
-  val spacing = (properties.number("spacing") ?: 8.0).dp
+  val groupType = properties["type"] as? String ?: "standard"
+  val connected = groupType == "connected"
+  val selectionRequired = properties.boolean("selectionRequired")
+  val defaultSpacing = if (connected) 2.0 else when (properties["size"] as? String) {
+    "extraSmall" -> 18.0
+    "small" -> 12.0
+    else -> 8.0
+  }
+  val spacing = (properties.number("spacing") ?: defaultSpacing).dp
+  val focusRequesters = remember(actions.size) { List(actions.size) { FocusRequester() } }
+  val focusedIndex = remember { mutableStateOf(-1) }
+  val layoutDirection = LocalLayoutDirection.current
+  val enabledIndices = actions.indices.filter { index ->
+    (actions[index] as? Map<*, *>)?.get("enabled") != false
+  }
 
   @Composable
   fun renderButton(
@@ -965,11 +995,20 @@ private fun NativeM3EButtonGroup(
       else item["icon"] as? String
     val semanticLabel = item["semanticLabel"] as? String ?: item["tooltip"] as? String ?: label
     val itemInteractionSource = interactionSource ?: remember(index) { MutableInteractionSource() }
-    val click: (Boolean) -> Unit = { next -> onEvent("selectionChanged", listOf(index, next)) }
+    val click: (Boolean) -> Unit = { next ->
+      val selectedCount = if (multiSelect) selectedIndices.size else if (selectedIndex >= 0) 1 else 0
+      if (!(selectionRequired && checked && !next && selectedCount <= 1)) {
+        onEvent("selectionChanged", listOf(index, next))
+      }
+    }
     val iconSlot: (@Composable () -> Unit)? = iconName?.let {
       { Icon(nativeM3EIcon(it), contentDescription = null) }
     }
-    val shapes = ToggleButtonDefaults.shapesFor(size)
+    val shapes = if (!connected) ToggleButtonDefaults.shapesFor(size) else when (index) {
+      0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+      actions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+      else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+    }
     when (style) {
       "tonal" -> FilledTonalToggleButton(
         checked = checked,
@@ -1015,19 +1054,61 @@ private fun NativeM3EButtonGroup(
   }
 
   if (properties["direction"] == "vertical") {
-    Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
+    Column(
+      modifier = Modifier.onPreviewKeyEvent { event ->
+        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+        val position = enabledIndices.indexOf(focusedIndex.value)
+        if (position < 0 || enabledIndices.isEmpty()) return@onPreviewKeyEvent false
+        val delta = when (event.key) {
+          Key.DirectionDown -> 1
+          Key.DirectionUp -> -1
+          else -> 0
+        }
+        if (delta == 0) return@onPreviewKeyEvent false
+        val nextPosition = (position + delta + enabledIndices.size) % enabledIndices.size
+        focusRequesters[enabledIndices[nextPosition]].requestFocus()
+      },
+      verticalArrangement = Arrangement.spacedBy(spacing),
+    ) {
       actions.forEachIndexed { index, raw ->
         val item = raw as? Map<*, *> ?: return@forEachIndexed
-        renderButton(index, item)
+        renderButton(
+          index,
+          item,
+          Modifier
+            .focusRequester(focusRequesters[index])
+            .onFocusChanged { if (it.isFocused) focusedIndex.value = index },
+        )
       }
     }
   } else {
-    ButtonGroup(
+      ButtonGroup(
       overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState = menuState) },
-      modifier = Modifier.fillMaxWidth(),
-      expandedRatio = if (properties.boolean("neighborSquish", true)) 0.2f else 0f,
+      modifier = (if (connected) Modifier.fillMaxWidth() else Modifier.wrapContentWidth())
+        .onPreviewKeyEvent { event ->
+          if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+          val current = focusedIndex.value
+          val position = enabledIndices.indexOf(current)
+          if (position < 0 || enabledIndices.isEmpty()) return@onPreviewKeyEvent false
+          val horizontalDelta = when (event.key) {
+            Key.DirectionRight -> if (layoutDirection == LayoutDirection.Ltr) 1 else -1
+            Key.DirectionLeft -> if (layoutDirection == LayoutDirection.Ltr) -1 else 1
+            else -> 0
+          }
+          val delta = if (horizontalDelta != 0) horizontalDelta else when (event.key) {
+            Key.DirectionDown -> 1
+            Key.DirectionUp -> -1
+            else -> 0
+          }
+          if (delta == 0) return@onPreviewKeyEvent false
+          val nextPosition = (position + delta + enabledIndices.size) % enabledIndices.size
+          focusRequesters[enabledIndices[nextPosition]].requestFocus()
+        },
+      expandedRatio = if (!connected && properties.boolean("neighborSquish", true)) {
+        ButtonGroupDefaults.ExpandedRatio
+      } else 0f,
       horizontalArrangement = Arrangement.spacedBy(
-        if (properties["type"] == "connected") 0.dp else spacing,
+        spacing,
       ),
     ) {
       actions.forEachIndexed { index, raw ->
@@ -1040,7 +1121,13 @@ private fun NativeM3EButtonGroup(
         customItem(
           buttonGroupContent = {
             val interactionSource = remember(index) { MutableInteractionSource() }
-            renderButton(index, item, Modifier.animateWidth(interactionSource), interactionSource)
+            val itemModifier = Modifier
+              .focusRequester(focusRequesters[index])
+              .onFocusChanged { if (it.isFocused) focusedIndex.value = index }
+            val widthModifier = if (connected) itemModifier.weight(1f)
+              else if (properties.boolean("neighborSquish", true)) itemModifier.animateWidth(interactionSource)
+              else itemModifier
+            renderButton(index, item, widthModifier, interactionSource)
           },
           menuContent = { menuState ->
             DropdownMenuItem(
@@ -2243,12 +2330,26 @@ private fun NativeM3EFabMenu(
   val closedIcon = nativeM3EIcon(properties["icon"] as? String)
   val openIcon = nativeM3EIcon(properties["closeIcon"] as? String)
   val alignment = if (properties["position"] == "left") Alignment.Start else Alignment.End
+  val cornerAlignment = if (alignment == Alignment.Start) Alignment.BottomStart else Alignment.BottomEnd
+  val margin = if (LocalConfiguration.current.screenWidthDp >= 600) 24.dp else 16.dp
+  val maxMenuHeight = (
+    LocalConfiguration.current.screenHeightDp.dp - margin * 2 - size
+  ).coerceAtLeast(48.dp)
+  val toggleLabel = properties["toggleMenuLabel"] as? String ?: "Toggle menu"
+  val expandedLabel = properties["expandedStateLabel"] as? String ?: "Expanded"
+  val collapsedLabel = properties["collapsedStateLabel"] as? String ?: "Collapsed"
+  val closeFocusRequester = remember { FocusRequester() }
   val serializedItems = properties["items"] as? List<*> ?: emptyList<Any?>()
 
   ToggleFloatingActionButton(
     checked = expanded,
     onCheckedChange = { expanded = it },
-    modifier = Modifier.size(size),
+    modifier = Modifier.size(size).semantics {
+      contentDescription = toggleLabel
+      role = Role.Button
+      stateDescription = if (expanded) expandedLabel else collapsedLabel
+      traversalIndex = -1f
+    },
     containerColor = { background },
   ) {
     val icon = if (checkedProgress > 0.5f) openIcon else closedIcon
@@ -2260,32 +2361,65 @@ private fun NativeM3EFabMenu(
       onDismissRequest = { expanded = false },
       properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-      Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+      Box(Modifier.fillMaxSize(), contentAlignment = cornerAlignment) {
         FloatingActionButtonMenu(
           expanded = true,
-          button = { Spacer(Modifier.size(size)) },
+          button = {
+            ToggleFloatingActionButton(
+              checked = true,
+              onCheckedChange = { expanded = false },
+              modifier = Modifier
+                .size(size)
+                .focusRequester(closeFocusRequester)
+                .semantics {
+                  contentDescription = toggleLabel
+                  role = Role.Button
+                  stateDescription = expandedLabel
+                  traversalIndex = -1f
+                },
+              containerColor = { background },
+            ) {
+              Icon(openIcon, contentDescription = null, modifier = Modifier.size(24.dp), tint = foreground)
+            }
+          },
           horizontalAlignment = alignment,
           modifier = Modifier
-            .align(Alignment.BottomEnd)
-            .padding(16.dp),
+            .align(cornerAlignment)
+            .padding(margin),
         ) {
-          serializedItems.forEachIndexed { index, raw ->
-            val item = raw as? Map<*, *> ?: return@forEachIndexed
-            val label = item["label"] as? String ?: ""
-            val icon = nativeM3EIcon(item["icon"] as? String)
-            FloatingActionButtonMenuItem(
-              onClick = {
-                expanded = false
-                onEvent("itemPressed", index)
-              },
-              text = { Text(label) },
-              icon = { Icon(icon, contentDescription = null) },
-              containerColor = background,
-              contentColor = foreground,
-            )
+          Column(
+            modifier = Modifier.heightIn(max = maxMenuHeight)
+              .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            serializedItems.forEachIndexed { index, raw ->
+              val item = raw as? Map<*, *> ?: return@forEachIndexed
+              val label = item["label"] as? String ?: ""
+              val icon = nativeM3EIcon(item["icon"] as? String)
+              FloatingActionButtonMenuItem(
+                onClick = {
+                  expanded = false
+                  onEvent("itemPressed", index)
+                },
+                text = { Text(label) },
+                icon = { Icon(icon, contentDescription = null) },
+                modifier = if (index == 0) Modifier.onPreviewKeyEvent { event ->
+                  if (
+                    event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.DirectionUp || (event.isShiftPressed && event.key == Key.Tab))
+                  ) {
+                    closeFocusRequester.requestFocus()
+                    true
+                  } else false
+                } else Modifier,
+                containerColor = background,
+                contentColor = foreground,
+              )
+            }
           }
         }
       }
+      LaunchedEffect(Unit) { closeFocusRequester.requestFocus() }
     }
   }
 }

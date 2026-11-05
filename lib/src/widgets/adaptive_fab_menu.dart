@@ -19,6 +19,9 @@ class AdaptiveFabMenu extends StatelessWidget {
     this.foregroundColor,
     this.nativeIcon,
     this.nativeCloseIcon,
+    this.toggleMenuLabel = 'Toggle menu',
+    this.expandedStateLabel = 'Expanded',
+    this.collapsedStateLabel = 'Collapsed',
   });
 
   final List<AdaptiveFabMenuItem> items;
@@ -32,8 +35,22 @@ class AdaptiveFabMenu extends StatelessWidget {
   final AndroidM3EIcon? nativeIcon;
   final AndroidM3EIcon? nativeCloseIcon;
 
+  /// Accessible name for the FAB that opens and closes this menu.
+  final String toggleMenuLabel;
+
+  /// Localized state descriptions announced by accessibility services.
+  final String expandedStateLabel;
+  final String collapsedStateLabel;
+
   @override
   Widget build(BuildContext context) {
+    if (items.length < 2 || items.length > 6) {
+      throw ArgumentError.value(
+        items.length,
+        'items.length',
+        'Material 3 Expressive FAB menus require 2 to 6 actions.',
+      );
+    }
     if (PlatformInfo.isAndroid) {
       final iconName = resolveAndroidM3EIcon(
         child: icon,
@@ -73,6 +90,9 @@ class AdaptiveFabMenu extends StatelessWidget {
           'position': position.name,
           'backgroundColor': backgroundColor?.toARGB32(),
           'foregroundColor': foregroundColor?.toARGB32(),
+          'toggleMenuLabel': toggleMenuLabel,
+          'expandedStateLabel': expandedStateLabel,
+          'collapsedStateLabel': collapsedStateLabel,
           'items': serializedItems,
         },
         onEvent: (event, value) {

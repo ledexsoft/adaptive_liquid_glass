@@ -63,6 +63,8 @@ En Android, `AdaptiveBlurView` no dibuja un blur de Flutter para imitar Liquid G
 
 `AdaptiveCarousel` usa los carruseles oficiales de Compose en Android. Declara `androidItems` con datos e iconos `AndroidM3EIcon`; los `Widget` de Flutter no se pueden insertar en un árbol Compose nativo. `AdaptiveSplitButton` recibe `AdaptiveSplitButtonItem`, `AdaptiveToolbar` recibe `AdaptiveToolbarAction` y `AdaptiveButtonGroup` recibe `AdaptiveButtonGroupAction` con iconos serializables. Los menús popup con hijo personalizado mantienen el hijo Flutter como ancla y dibujan el menú en Compose.
 
+`AdaptiveButtonGroup` ofrece variantes estándar y conectadas con cinco tamaños M3 Expressive; `selectionRequired` impide vaciar la selección. `AdaptiveFabMenu` admite de dos a seis acciones con etiqueta e icono, y expone `toggleMenuLabel`, `expandedStateLabel` y `collapsedStateLabel` para localización accesible. Consulta [la guía Android de grupos y menús FAB](docs/android-m3e-button-groups-fab-menus.md) para medidas, teclado, RTL y límites de contenido nativo.
+
 `AdaptiveToolbar` ofrece las variantes docked y floating nativas. Usa `docked: true` para acciones persistentes de página y `colorStyle: AdaptiveToolbarColorStyle.vibrant` para una barra contextual de mayor énfasis. Las acciones excesivas pasan al menú de desbordamiento de Compose. Revisa [la guía de toolbars Android](docs/android-m3e-toolbars.md) para tamaños, ubicación, accesibilidad y límites del puente Flutter/Compose.
 
 El comportamiento al desplazarse es optativo. Comparte el `ScrollController` de tu lista con la toolbar y elige `pinned`, `exitAlways` o `collapse` (solo floating y con FAB):

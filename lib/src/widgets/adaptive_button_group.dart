@@ -8,7 +8,8 @@ enum AdaptiveButtonGroupType { standard, connected }
 
 enum AdaptiveButtonGroupStyle { filled, tonal, outlined, elevated }
 
-enum AdaptiveButtonGroupSize { small, medium, large }
+/// Native Material 3 Expressive toggle-button size token.
+enum AdaptiveButtonGroupSize { extraSmall, small, medium, large, extraLarge }
 
 /// Serializable action data for native Android expressive button groups.
 class AdaptiveButtonGroupAction {
@@ -47,6 +48,7 @@ class AdaptiveButtonGroup extends StatelessWidget {
     this.onSelectedIndexChanged,
     this.onSelectedIndicesChanged,
     this.neighborSquish = true,
+    this.selectionRequired = false,
     this.spacing,
   });
 
@@ -60,10 +62,20 @@ class AdaptiveButtonGroup extends StatelessWidget {
   final ValueChanged<int?>? onSelectedIndexChanged;
   final ValueChanged<Set<int>>? onSelectedIndicesChanged;
   final bool neighborSquish;
+
+  /// Keeps at least one action selected when an action is selected.
+  final bool selectionRequired;
   final double? spacing;
 
   bool get _multiSelect =>
       selectedIndices != null || onSelectedIndicesChanged != null;
+
+  Set<int> get _currentSelection =>
+      selectedIndices ??
+      {
+        for (var i = 0; i < actions.length; i++)
+          if (actions[i].checked ?? (selectedIndex == i)) i,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +91,7 @@ class AdaptiveButtonGroup extends StatelessWidget {
           'selectedIndex': selectedIndex,
           'selectedIndices': selectedIndices?.toList(),
           'neighborSquish': neighborSquish,
+          'selectionRequired': selectionRequired,
           'spacing': spacing,
           'actions': [
             for (final action in actions)
@@ -104,10 +117,12 @@ class AdaptiveButtonGroup extends StatelessWidget {
           final checked = value[1];
           if (index is! int || checked is! bool) return;
           if (_multiSelect) {
-            final next = {...?selectedIndices};
+            final next = {..._currentSelection};
+            if (selectionRequired && !checked && next.length <= 1) return;
             checked ? next.add(index) : next.remove(index);
             onSelectedIndicesChanged?.call(next);
           } else {
+            if (selectionRequired && !checked) return;
             onSelectedIndexChanged?.call(checked ? index : null);
           }
         },
@@ -115,12 +130,7 @@ class AdaptiveButtonGroup extends StatelessWidget {
     }
 
     final multiSelect = _multiSelect;
-    final selectedSet =
-        selectedIndices ??
-        {
-          for (var i = 0; i < actions.length; i++)
-            if (actions[i].checked ?? (selectedIndex == i)) i,
-        };
+    final selectedSet = _currentSelection;
     final buttons = [
       for (var index = 0; index < actions.length; index++)
         FilterChip(
@@ -138,9 +148,13 @@ class AdaptiveButtonGroup extends StatelessWidget {
               ? (checked) {
                   if (multiSelect) {
                     final next = {...selectedSet};
+                    if (selectionRequired && !checked && next.length <= 1) {
+                      return;
+                    }
                     checked ? next.add(index) : next.remove(index);
                     onSelectedIndicesChanged?.call(next);
                   } else {
+                    if (selectionRequired && !checked) return;
                     onSelectedIndexChanged?.call(checked ? index : null);
                   }
                 }
