@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 
-/// Baseline and emphasized Material 3 Expressive text scales.
+/// The five semantic roles in the Material 3 type scale.
+enum AdaptiveTypographyRole { display, headline, title, body, label }
+
+/// The three sizes available for each [AdaptiveTypographyRole].
+enum AdaptiveTypographySize { large, medium, small }
+
+/// Paired baseline and emphasized Material 3 text scales.
 ///
-/// The extension is opt-in: it does not replace Flutter's [TextTheme] or
-/// change the appearance of existing package widgets. Register it in
-/// [ThemeData.extensions] to provide a custom scale. If none is registered,
-/// [of] derives an emphasized scale from the current theme.
+/// Each scale contains the 15 styles in Flutter's [TextTheme]. Supply both
+/// complete scales: emphasized tokens have their own font, size, line height,
+/// tracking, and weight values, so they must not be synthesized by blindly
+/// increasing the baseline weight.
+///
+/// Register this extension in [ThemeData.extensions]. It does not replace the
+/// theme's normal [TextTheme] or change any package widget by itself.
 @immutable
 class AdaptiveExpressiveTypography
     extends ThemeExtension<AdaptiveExpressiveTypography> {
@@ -14,35 +23,105 @@ class AdaptiveExpressiveTypography
     required this.emphasized,
   });
 
-  /// Creates an expressive scale from a standard Material [TextTheme].
-  ///
-  /// Unless [emphasized] is supplied, each non-null style is copied with a
-  /// heavier weight. All other style properties, including font family,
-  /// spacing, color, and variable-font axes, are preserved.
-  factory AdaptiveExpressiveTypography.fromTextTheme(
-    TextTheme baseline, {
-    TextTheme? emphasized,
-  }) {
-    return AdaptiveExpressiveTypography(
-      baseline: baseline,
-      emphasized: emphasized ?? _emphasizeTextTheme(baseline),
-    );
-  }
-
-  /// The regular 15-style Material text scale.
+  /// The regular 15-style scale: display, headline, title, body, and label,
+  /// each in large, medium, and small sizes.
   final TextTheme baseline;
 
-  /// The emphasized counterpart of the 15-style text scale.
+  /// The separately defined emphasized counterpart of [baseline].
   ///
-  /// Use selectively for headlines, key actions, selected states, and other
-  /// moments that need stronger hierarchy.
+  /// Use these styles selectively for emphasis and state. Body copy and dense
+  /// information should usually continue to use [baseline].
   final TextTheme emphasized;
 
-  /// Reads a registered scale, or derives one from the active theme.
+  /// Returns the registered expressive type scale, or `null` if the theme
+  /// does not provide one.
+  static AdaptiveExpressiveTypography? maybeOf(BuildContext context) {
+    return Theme.of(context).extension<AdaptiveExpressiveTypography>();
+  }
+
+  /// Returns the registered expressive type scale.
+  ///
+  /// Throws a [FlutterError] with setup guidance if it has not been added to
+  /// the active [ThemeData.extensions]. Use [maybeOf] for optional lookup.
   static AdaptiveExpressiveTypography of(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.extension<AdaptiveExpressiveTypography>() ??
-        AdaptiveExpressiveTypography.fromTextTheme(theme.textTheme);
+    final typography = maybeOf(context);
+    if (typography != null) return typography;
+    throw FlutterError.fromParts(<DiagnosticsNode>[
+      ErrorSummary('No AdaptiveExpressiveTypography is registered.'),
+      ErrorDescription(
+        'Add an AdaptiveExpressiveTypography with explicit baseline and '
+        'emphasized TextThemes to ThemeData.extensions before calling of().',
+      ),
+    ]);
+  }
+
+  /// Gets one role/size token from [baseline] or [emphasized].
+  TextStyle? styleFor(
+    AdaptiveTypographyRole role,
+    AdaptiveTypographySize size, {
+    bool emphasized = false,
+  }) {
+    final theme = emphasized ? this.emphasized : baseline;
+    return switch ((role, size)) {
+      (AdaptiveTypographyRole.display, AdaptiveTypographySize.large) =>
+        theme.displayLarge,
+      (AdaptiveTypographyRole.display, AdaptiveTypographySize.medium) =>
+        theme.displayMedium,
+      (AdaptiveTypographyRole.display, AdaptiveTypographySize.small) =>
+        theme.displaySmall,
+      (AdaptiveTypographyRole.headline, AdaptiveTypographySize.large) =>
+        theme.headlineLarge,
+      (AdaptiveTypographyRole.headline, AdaptiveTypographySize.medium) =>
+        theme.headlineMedium,
+      (AdaptiveTypographyRole.headline, AdaptiveTypographySize.small) =>
+        theme.headlineSmall,
+      (AdaptiveTypographyRole.title, AdaptiveTypographySize.large) =>
+        theme.titleLarge,
+      (AdaptiveTypographyRole.title, AdaptiveTypographySize.medium) =>
+        theme.titleMedium,
+      (AdaptiveTypographyRole.title, AdaptiveTypographySize.small) =>
+        theme.titleSmall,
+      (AdaptiveTypographyRole.body, AdaptiveTypographySize.large) =>
+        theme.bodyLarge,
+      (AdaptiveTypographyRole.body, AdaptiveTypographySize.medium) =>
+        theme.bodyMedium,
+      (AdaptiveTypographyRole.body, AdaptiveTypographySize.small) =>
+        theme.bodySmall,
+      (AdaptiveTypographyRole.label, AdaptiveTypographySize.large) =>
+        theme.labelLarge,
+      (AdaptiveTypographyRole.label, AdaptiveTypographySize.medium) =>
+        theme.labelMedium,
+      (AdaptiveTypographyRole.label, AdaptiveTypographySize.small) =>
+        theme.labelSmall,
+    };
+  }
+
+  /// Applies a brand font to display/headline/title and a plain font to
+  /// body/label styles in both scales.
+  ///
+  /// Unspecified font families and fallbacks are preserved. This only assigns
+  /// family names; the consuming app must bundle or otherwise make those fonts
+  /// available. Existing weight, line height, size, tracking, colors, and
+  /// variable-font axes remain intact.
+  AdaptiveExpressiveTypography withFontRoles({
+    String? brandFontFamily,
+    String? plainFontFamily,
+    List<String>? fontFamilyFallback,
+  }) {
+    return AdaptiveExpressiveTypography(
+      baseline: _applyFontRoles(
+        baseline,
+        brandFontFamily: brandFontFamily,
+        plainFontFamily: plainFontFamily,
+        fontFamilyFallback: fontFamilyFallback,
+      ),
+      emphasized: _applyFontRoles(
+        emphasized,
+        brandFontFamily: brandFontFamily,
+        plainFontFamily: plainFontFamily,
+        fontFamilyFallback: fontFamilyFallback,
+      ),
+    );
   }
 
   @override
@@ -68,49 +147,99 @@ class AdaptiveExpressiveTypography
     );
   }
 
-  static TextTheme _emphasizeTextTheme(TextTheme theme) {
+  static TextTheme _applyFontRoles(
+    TextTheme theme, {
+    required String? brandFontFamily,
+    required String? plainFontFamily,
+    required List<String>? fontFamilyFallback,
+  }) {
     return theme.copyWith(
-      displayLarge: _emphasize(theme.displayLarge),
-      displayMedium: _emphasize(theme.displayMedium),
-      displaySmall: _emphasize(theme.displaySmall),
-      headlineLarge: _emphasize(theme.headlineLarge),
-      headlineMedium: _emphasize(theme.headlineMedium),
-      headlineSmall: _emphasize(theme.headlineSmall),
-      titleLarge: _emphasize(theme.titleLarge),
-      titleMedium: _emphasize(theme.titleMedium),
-      titleSmall: _emphasize(theme.titleSmall),
-      bodyLarge: _emphasize(theme.bodyLarge),
-      bodyMedium: _emphasize(theme.bodyMedium),
-      bodySmall: _emphasize(theme.bodySmall),
-      labelLarge: _emphasize(theme.labelLarge),
-      labelMedium: _emphasize(theme.labelMedium),
-      labelSmall: _emphasize(theme.labelSmall),
+      displayLarge: _withFont(
+        theme.displayLarge,
+        brandFontFamily,
+        fontFamilyFallback,
+      ),
+      displayMedium: _withFont(
+        theme.displayMedium,
+        brandFontFamily,
+        fontFamilyFallback,
+      ),
+      displaySmall: _withFont(
+        theme.displaySmall,
+        brandFontFamily,
+        fontFamilyFallback,
+      ),
+      headlineLarge: _withFont(
+        theme.headlineLarge,
+        brandFontFamily,
+        fontFamilyFallback,
+      ),
+      headlineMedium: _withFont(
+        theme.headlineMedium,
+        brandFontFamily,
+        fontFamilyFallback,
+      ),
+      headlineSmall: _withFont(
+        theme.headlineSmall,
+        brandFontFamily,
+        fontFamilyFallback,
+      ),
+      titleLarge: _withFont(
+        theme.titleLarge,
+        brandFontFamily,
+        fontFamilyFallback,
+      ),
+      titleMedium: _withFont(
+        theme.titleMedium,
+        brandFontFamily,
+        fontFamilyFallback,
+      ),
+      titleSmall: _withFont(
+        theme.titleSmall,
+        brandFontFamily,
+        fontFamilyFallback,
+      ),
+      bodyLarge: _withFont(
+        theme.bodyLarge,
+        plainFontFamily,
+        fontFamilyFallback,
+      ),
+      bodyMedium: _withFont(
+        theme.bodyMedium,
+        plainFontFamily,
+        fontFamilyFallback,
+      ),
+      bodySmall: _withFont(
+        theme.bodySmall,
+        plainFontFamily,
+        fontFamilyFallback,
+      ),
+      labelLarge: _withFont(
+        theme.labelLarge,
+        plainFontFamily,
+        fontFamilyFallback,
+      ),
+      labelMedium: _withFont(
+        theme.labelMedium,
+        plainFontFamily,
+        fontFamilyFallback,
+      ),
+      labelSmall: _withFont(
+        theme.labelSmall,
+        plainFontFamily,
+        fontFamilyFallback,
+      ),
     );
   }
 
-  static TextStyle? _emphasize(TextStyle? style) {
-    if (style == null) return null;
-
-    final variations = style.fontVariations;
-    if (variations != null) {
-      final weightAxis = variations.indexWhere(
-        (variation) => variation.axis == 'wght',
-      );
-      if (weightAxis >= 0) {
-        final updatedVariations = List<FontVariation>.of(variations);
-        final variation = updatedVariations[weightAxis];
-        updatedVariations[weightAxis] = FontVariation.weight(
-          (variation.value + 100).clamp(1, 1000).toDouble(),
-        );
-        return style.copyWith(fontVariations: updatedVariations);
-      }
-    }
-
-    final currentWeight = style.fontWeight ?? FontWeight.w400;
-    final nextWeight = FontWeight.values.firstWhere(
-      (weight) => weight.value > currentWeight.value,
-      orElse: () => currentWeight,
+  static TextStyle? _withFont(
+    TextStyle? style,
+    String? fontFamily,
+    List<String>? fontFamilyFallback,
+  ) {
+    return style?.copyWith(
+      fontFamily: fontFamily ?? style.fontFamily,
+      fontFamilyFallback: fontFamilyFallback ?? style.fontFamilyFallback,
     );
-    return style.copyWith(fontWeight: nextWeight);
   }
 }

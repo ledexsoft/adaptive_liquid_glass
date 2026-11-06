@@ -1,3 +1,8 @@
+## [0.2.15]
+* **UPDATE**: Reworked `AdaptiveExpressiveTypography` around explicitly supplied baseline and emphasized scales; removed automatic weight fabrication.
+* **NEW**: Added semantic role/size lookup and brand/plain font-role assignment while preserving each token's other properties.
+* **DOCS**: Expanded typography guidance for fonts, variable axes, language metrics, accessibility, editorial use, and the Flutter/native Compose boundary.
+
 ## [0.2.14]
 * **NEW**: Added opt-in `AdaptiveExpressiveTypography` with baseline and emphasized Material text scales, including variable-font weight-axis support.
 * **DOCS**: Added Material 3 Expressive typography usage guidance and clarified native Compose typography coverage.
