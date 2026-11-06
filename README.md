@@ -57,6 +57,8 @@ Escribe tu app **una sola vez** y los componentes (botones, menús, alertas, bar
 
 Los controles Android del paquete se implementan con Jetpack Compose y **Material 3 Expressive nativo**: botones, selecciones, sliders, FABs, menús, rail, toolbar, pestañas, carrusel, listas, campos de texto, diálogos, selectores, snackbars, tooltips e indicadores. La capa Compose usa `MaterialExpressiveTheme`; el paquete ya no depende ni reexporta widgets Flutter de `material_3_expressive`. iOS mantiene sus rutas Liquid Glass/Cupertino.
 
+La tipografía expresiva para texto Flutter está disponible mediante `AdaptiveExpressiveTypography`: escala base y escala enfatizada compatibles con cualquier `TextTheme`. Se usa de forma optativa y no cambia el estilo actual por sí sola. Consulta la [guía de tipografía expresiva](docs/expressive-typography.md). Los textos internos de componentes Android nativos siguen usando la tipografía que define Compose.
+
 La ruta nativa requiere Flutter 3.47+, Android `minSdk 24`, `compileSdk 37`, JDK 17+, AGP 9.1.1, Gradle 9.3.1 y Kotlin 2.4.20. El plugin integra Material 3 Compose 1.5.0-rc01, que aporta `MaterialExpressiveTheme` y los componentes expresivos usados aquí.
 
 En Android, `AdaptiveBlurView` no dibuja un blur de Flutter para imitar Liquid Glass: pasa el contenido sin modificar porque esa API no puede desenfocar nativamente el contenido Flutter que queda detrás. `AdaptiveCard.glass` ofrece una superficie Material nativa.

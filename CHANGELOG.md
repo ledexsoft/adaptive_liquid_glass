@@ -1,3 +1,7 @@
+## [0.2.14]
+* **NEW**: Added opt-in `AdaptiveExpressiveTypography` with baseline and emphasized Material text scales, including variable-font weight-axis support.
+* **DOCS**: Added Material 3 Expressive typography usage guidance and clarified native Compose typography coverage.
+
 ## [0.2.13]
 * **FIX**: Android text popup menus now use a Flutter Material fallback when placed in an unbounded layout such as a `Row`, and constrain native views when bounded.
 * **TESTS**: Added regression coverage for a text popup in an unbounded row.
