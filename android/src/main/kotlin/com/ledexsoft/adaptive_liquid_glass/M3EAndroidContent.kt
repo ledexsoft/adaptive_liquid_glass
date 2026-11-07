@@ -128,6 +128,8 @@ import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
@@ -2519,6 +2521,15 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
   val color = properties.color("color") ?: MaterialTheme.colorScheme.primary
   val trackColor = properties.color("trackColor") ?: MaterialTheme.colorScheme.secondaryContainer
   val shape = properties["shape"] as? String ?: "flat"
+  val animatedProgress by animateFloatAsState(
+    targetValue = value ?: 0f,
+    animationSpec = if (shape == "wavy") {
+      WavyProgressIndicatorDefaults.ProgressAnimationSpec
+    } else {
+      ProgressIndicatorDefaults.ProgressAnimationSpec
+    },
+    label = "nativeProgressIndicator",
+  )
   val semanticsLabel = properties["semanticsLabel"] as? String
   val semanticsModifier = semanticsLabel?.let { label ->
     Modifier.semantics(mergeDescendants = true) { contentDescription = label }
@@ -2541,7 +2552,7 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
         )
       } else {
         LinearWavyProgressIndicator(
-          progress = { value },
+          progress = { animatedProgress },
           modifier = wavyModifier,
           color = color,
           trackColor = trackColor,
@@ -2561,7 +2572,7 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
         )
       } else {
         LinearProgressIndicator(
-          progress = { value },
+          progress = { animatedProgress },
           modifier = flatModifier,
           color = color,
           trackColor = trackColor,
@@ -2587,7 +2598,7 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
       )
     } else {
       CircularWavyProgressIndicator(
-        progress = { value },
+        progress = { animatedProgress },
         modifier = circularModifier,
         color = color,
         trackColor = trackColor,
@@ -2604,7 +2615,7 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
     )
   } else {
     CircularProgressIndicator(
-      progress = { value },
+      progress = { animatedProgress },
       modifier = circularModifier,
       color = color,
       trackColor = trackColor,

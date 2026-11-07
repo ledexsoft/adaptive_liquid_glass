@@ -151,7 +151,7 @@ dependencies:
   adaptive_liquid_glass:
     git:
       url: https://github.com/ledexsoft/adaptive_liquid_glass.git
-      ref: v0.1.125
+      ref: v0.2.16
 ```
 
 3. En la terminal, dentro de la carpeta de tu proyecto:
@@ -160,7 +160,7 @@ dependencies:
 flutter pub get
 ```
 
-> 💡 **¿Qué es el `ref`?** Apunta a un **tag** del repositorio (versión congelada). Cada versión nueva del paquete publica su tag (`v0.1.121`, `v0.1.125`…). Así tu app nunca cambia sin que tú lo decidas: actualizas solo cuando cambias ese número.
+> 💡 **¿Qué es el `ref`?** Apunta a un **tag** del repositorio (versión congelada). Cada versión nueva del paquete publica su tag (por ejemplo, `v0.2.16`). Así tu app nunca cambia sin que tú lo decidas: actualizas solo cuando cambias ese número.
 >
 > 🔎 Puedes ver todas las versiones disponibles en: https://github.com/ledexsoft/adaptive_liquid_glass/tags
 

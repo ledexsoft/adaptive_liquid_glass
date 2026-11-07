@@ -51,8 +51,8 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     this.backgroundColor,
     this.trackColor,
     this.semanticsLabel,
-    this.shape = AdaptiveProgressIndicatorShape.flat,
-    this.minHeight = 4.0,
+    this.shape = AdaptiveProgressIndicatorShape.wavy,
+    this.minHeight,
     this.trackThickness = 4.0,
     this.linearInset = 4.0,
     this.borderRadius,
@@ -75,7 +75,8 @@ class AdaptiveProgressIndicator extends StatelessWidget {
   /// Accessibility label describing the process and affected content.
   final String? semanticsLabel;
 
-  /// Flat is the baseline shape; wavy opts into the expressive Android variant.
+  /// Wavy is the Android default; use [AdaptiveProgressIndicatorShape.flat]
+  /// for the baseline Material 3 treatment.
   final AdaptiveProgressIndicatorShape shape;
 
   /// The background track color (linear mode).
@@ -96,7 +97,8 @@ class AdaptiveProgressIndicator extends StatelessWidget {
   /// Whether the Cupertino activity indicator is animating (iOS only).
   final bool animating;
 
-  /// The height of the linear progress bar (default: 4.0).
+  /// Optional linear container height. Android uses the native Material 3
+  /// height when this is null; other platforms use 4.0 logical pixels.
   final double? minHeight;
 
   /// Optional border radius for linear progress bar.

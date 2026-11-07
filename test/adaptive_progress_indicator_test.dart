@@ -9,10 +9,10 @@ void main() {
   });
 
   group('AdaptiveProgressIndicator', () {
-    test('linear expressive options default to flat with a 4 dp track', () {
+    test('linear indicators default to the native expressive shape', () {
       const indicator = AdaptiveProgressIndicator.linear();
 
-      expect(indicator.shape, AdaptiveProgressIndicatorShape.flat);
+      expect(indicator.shape, AdaptiveProgressIndicatorShape.wavy);
       expect(indicator.trackThickness, 4.0);
       expect(indicator.semanticsLabel, isNull);
     });
@@ -85,6 +85,11 @@ void main() {
 
       expect(find.byType(AndroidView), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsNothing);
+      final nativeView = tester.widget<AndroidView>(find.byType(AndroidView));
+      expect(
+        (nativeView.creationParams! as Map<String, Object?>)['shape'],
+        'wavy',
+      );
     });
   });
 }

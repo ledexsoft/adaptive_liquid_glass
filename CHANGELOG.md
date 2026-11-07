@@ -1,3 +1,8 @@
+## [0.2.16]
+* **FIX**: `AdaptiveProgressIndicator.linear` now defaults to the native Material 3 Expressive wavy indicator on Android; the flat baseline remains explicitly selectable.
+* **FIX**: determinate Compose progress animates with the official Material 3 progress animation specifications.
+* **DOCS**: clarify the native Compose implementation, expressive defaults, and accessibility behavior.
+
 ## [0.2.15]
 * **UPDATE**: Reworked `AdaptiveExpressiveTypography` around explicitly supplied baseline and emphasized scales; removed automatic weight fabrication.
 * **NEW**: Added semantic role/size lookup and brand/plain font-role assignment while preserving each token's other properties.
