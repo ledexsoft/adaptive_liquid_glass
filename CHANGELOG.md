@@ -1,3 +1,6 @@
+## [0.2.18]
+* **UPDATE**: Apply the host Flutter `ColorScheme` to native Android Material 3 Expressive controls, including palette variants, contrast levels, and surface roles.
+
 ## [0.2.17]
 * **TESTS**: Add an Android native-view override so Flutter widget tests can preserve Android Material routing without mounting Compose platform views.
 * **FIX**: Route adaptive Android controls, overlays, app bars, and navigation to Flutter Material fallbacks when native views are disabled; production Android remains native by default.
