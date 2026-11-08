@@ -233,15 +233,17 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       widget.scaffoldKey ?? _internalScaffoldKey;
 
   Widget? _drawerForAndroidScaffold(Widget? drawer) {
-    if (!PlatformInfo.isAndroid || drawer is! AdaptiveNavigationDrawer) {
+    if (!PlatformInfo.usesNativeAndroidViews ||
+        drawer is! AdaptiveNavigationDrawer) {
       return drawer;
     }
     return drawer.buildAndroidScaffoldPlaceholder();
   }
 
   Color? get _androidDrawerScrimColor {
-    if (widget.drawer is AdaptiveNavigationDrawer ||
-        widget.endDrawer is AdaptiveNavigationDrawer) {
+    if (PlatformInfo.usesNativeAndroidViews &&
+        (widget.drawer is AdaptiveNavigationDrawer ||
+            widget.endDrawer is AdaptiveNavigationDrawer)) {
       return Colors.transparent;
     }
     return widget.drawerScrimColor;
@@ -251,7 +253,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     (endDrawer ? widget.onEndDrawerChanged : widget.onDrawerChanged)?.call(
       isOpen,
     );
-    if (!isOpen || !PlatformInfo.isAndroid) return;
+    if (!isOpen || !PlatformInfo.usesNativeAndroidViews) return;
     final drawer = endDrawer ? widget.endDrawer : widget.drawer;
     if (drawer is! AdaptiveNavigationDrawer) return;
     drawer.showNativeModal(
@@ -747,7 +749,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         bottomNavBar = widget.bottomNavigationBar!.bottomNavigationBar;
       }
       // Priority 2: Build from items
-      else {
+      else if (PlatformInfo.usesNativeAndroidViews) {
         bottomNavBar = AndroidM3EPlatformView(
           component: 'bottomNavigationBar',
           height: 80,
@@ -774,6 +776,30 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               widget.bottomNavigationBar!.onTap?.call(value);
             }
           },
+        );
+      } else {
+        bottomNavBar = NavigationBar(
+          selectedIndex: widget.bottomNavigationBar!.selectedIndex!,
+          onDestinationSelected: widget.bottomNavigationBar!.onTap!,
+          labelBehavior: widget.bottomNavigationBar!.hideLabels
+              ? NavigationDestinationLabelBehavior.alwaysHide
+              : NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: [
+            for (final destination in widget.bottomNavigationBar!.items!)
+              NavigationDestination(
+                icon: _buildNavigationIconWidget(
+                  rawIcon: destination.icon,
+                  platform: TargetPlatform.android,
+                ),
+                selectedIcon: destination.selectedIcon == null
+                    ? null
+                    : _buildNavigationIconWidget(
+                        rawIcon: destination.selectedIcon,
+                        platform: TargetPlatform.android,
+                      ),
+                label: destination.label,
+              ),
+          ],
         );
       }
 
@@ -967,6 +993,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
   }
 
   bool get _canRenderAndroidTopAppBarNatively {
+    if (!PlatformInfo.usesNativeAndroidViews) return false;
     final config = widget.appBar;
     if (config == null) return true;
     final titleWidget = config.titleWidget;

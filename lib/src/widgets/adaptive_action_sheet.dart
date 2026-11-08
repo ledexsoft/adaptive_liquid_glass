@@ -103,7 +103,7 @@ Future<T?> showAdaptiveActionSheet<T>({
     );
   }
 
-  if (PlatformInfo.isAndroid) {
+  if (PlatformInfo.usesNativeAndroidViews) {
     final allActions = [...actions, if (cancelButton != null) cancelButton];
     final result = showAndroidM3EOverlay(
       context: context,

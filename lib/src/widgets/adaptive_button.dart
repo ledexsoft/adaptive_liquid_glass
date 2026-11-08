@@ -202,7 +202,7 @@ class AdaptiveButton extends StatelessWidget {
     }
 
     // Android - Use the native Compose Material 3 Expressive button.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       if (!_canRenderAndroidNatively) return _buildMaterialButton(context);
       return _buildAndroidExpressiveButton(context);
     }

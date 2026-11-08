@@ -105,7 +105,7 @@ class AdaptiveNavigationDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final effectiveWidth =
           width ?? (MediaQuery.sizeOf(context).width * .88).clamp(280, 360);
       return SizedBox(

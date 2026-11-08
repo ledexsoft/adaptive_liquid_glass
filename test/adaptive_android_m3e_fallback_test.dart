@@ -6,6 +6,7 @@ import 'package:adaptive_liquid_glass/src/widgets/android/android_m3e_platform_v
 void main() {
   setUp(() {
     PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+    PlatformInfo.debugNativeAndroidViewsOverride = false;
   });
 
   tearDown(() {
@@ -206,6 +207,37 @@ void main() {
       expect(find.byType(EditableText), findsOneWidget);
       await tester.tap(find.byType(IconButton));
       expect(tapped, isTrue);
+    },
+  );
+
+  testWidgets(
+    'Android controls use Flutter fallbacks when native views are disabled',
+    (tester) async {
+      var switchValue = false;
+      bool? checkboxValue = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                AdaptiveSwitch(
+                  value: switchValue,
+                  onChanged: (value) => switchValue = value,
+                ),
+                AdaptiveCheckbox(
+                  value: checkboxValue,
+                  onChanged: (value) => checkboxValue = value,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(Switch), findsOneWidget);
+      expect(find.byType(Checkbox), findsOneWidget);
+      expect(find.byType(AndroidM3EPlatformView), findsNothing);
     },
   );
 

@@ -114,7 +114,7 @@ class AdaptiveSlider extends StatelessWidget {
     }
 
     // Android - Use the native Compose Material 3 slider for every option.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return LayoutBuilder(
         builder: (context, constraints) => AndroidM3EPlatformView(
           component: 'slider',

@@ -186,7 +186,7 @@ class AdaptiveAlertDialog {
       );
     }
 
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return showAndroidM3EOverlay(
         context: context,
         component: 'alertDialog',
@@ -349,7 +349,7 @@ class AdaptiveAlertDialog {
       );
     }
 
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       int? selectedActionIndex;
       String? enteredText;
       return showAndroidM3EOverlay(

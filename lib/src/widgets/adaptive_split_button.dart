@@ -76,7 +76,7 @@ class AdaptiveSplitButton<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final leadingIconName = leadingIcon == null && nativeLeadingIcon == null
           ? null
           : resolveAndroidM3EIcon(

@@ -170,7 +170,7 @@ class AdaptiveTextFormField extends StatelessWidget {
       return _buildCupertinoTextFormField(context);
     }
 
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.isAndroid && PlatformInfo.usesNativeAndroidViews) {
       final inputDecoration = decoration;
       if (!_canUseAndroidM3ETextField(inputDecoration)) {
         return _buildMaterialTextFormField(context);

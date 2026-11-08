@@ -80,7 +80,7 @@ class AdaptiveListTile extends StatelessWidget {
       return _buildCupertinoListTile(context);
     }
 
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return _canRenderAndroidNatively
           ? _buildAndroidNativeListItem(context)
           : _buildMaterialListTile(context);

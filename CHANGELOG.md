@@ -1,3 +1,7 @@
+## [0.2.17]
+* **TESTS**: Add an Android native-view override so Flutter widget tests can preserve Android Material routing without mounting Compose platform views.
+* **FIX**: Route adaptive Android controls, overlays, app bars, and navigation to Flutter Material fallbacks when native views are disabled; production Android remains native by default.
+
 ## [0.2.16]
 * **FIX**: `AdaptiveProgressIndicator.linear` now defaults to the native Material 3 Expressive wavy indicator on Android; the flat baseline remains explicitly selectable.
 * **FIX**: determinate Compose progress animates with the official Material 3 progress animation specifications.

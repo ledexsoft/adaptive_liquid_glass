@@ -130,7 +130,7 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformInfo.isAndroid &&
+    if (PlatformInfo.usesNativeAndroidViews &&
         scrollBehavior != AdaptiveToolbarScrollBehavior.pinned &&
         scrollController != null) {
       return _AdaptiveToolbarScrollHost(toolbar: this);
@@ -147,7 +147,7 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
     required bool expanded,
     required ValueChanged<bool>? onExpandedChanged,
   }) {
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final resolvedTitle =
           titleText ?? (title is Text ? (title as Text).data : null);
       if (title != null && title is! Text && titleText == null) {

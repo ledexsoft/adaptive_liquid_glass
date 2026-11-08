@@ -42,7 +42,7 @@ class AdaptiveSnackBar {
     String? action,
     VoidCallback? onActionPressed,
   }) {
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       unawaited(
         showAndroidM3EOverlay(
           context: context,

@@ -114,7 +114,9 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     } else {
       indicator = _buildCircular(context);
     }
-    if (semanticsLabel == null || PlatformInfo.isAndroid) return indicator;
+    if (semanticsLabel == null || PlatformInfo.usesNativeAndroidViews) {
+      return indicator;
+    }
     return Semantics(
       label: semanticsLabel,
       value: value == null
@@ -141,7 +143,7 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     }
 
     // Android & other platforms
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final androidSize = (radius * 2).clamp(24.0, 240.0).toDouble();
       return AndroidM3EPlatformView(
         component: 'progressIndicator',
@@ -207,7 +209,7 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     }
 
     // Android uses a native Compose Material 3 Expressive progress indicator.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return LayoutBuilder(
         builder: (context, constraints) {
           final expressiveWavyHeight = trackThickness * 3 > 16

@@ -41,7 +41,7 @@ class AdaptiveDatePicker {
       );
     }
 
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       if (mode == CupertinoDatePickerMode.time) {
         final time = await AdaptiveTimePicker.show(
           context: context,

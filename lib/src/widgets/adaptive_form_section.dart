@@ -96,7 +96,7 @@ class AdaptiveFormSection extends StatelessWidget {
     if (PlatformInfo.isIOS) {
       return _buildIOSFormSection(context);
     }
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final theme = Theme.of(context);
       final radius = insetGrouped ? 12.0 : 0.0;
       final background =

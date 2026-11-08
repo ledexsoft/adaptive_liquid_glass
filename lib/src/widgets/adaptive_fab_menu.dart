@@ -51,7 +51,7 @@ class AdaptiveFabMenu extends StatelessWidget {
         'Material 3 Expressive FAB menus require 2 to 6 actions.',
       );
     }
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final iconName = resolveAndroidM3EIcon(
         child: icon,
         nativeIcon: nativeIcon,

@@ -100,7 +100,7 @@ class AdaptiveContextMenu extends StatelessWidget {
   Widget _buildAndroidContextMenu(BuildContext context) {
     return GestureDetector(
       onLongPressStart: (details) {
-        if (PlatformInfo.isAndroid) {
+        if (PlatformInfo.usesNativeAndroidViews) {
           _showAndroidMenu(context, details.globalPosition);
         } else {
           _showFlutterMenu(context, details.globalPosition);

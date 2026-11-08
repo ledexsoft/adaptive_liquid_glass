@@ -55,7 +55,7 @@ class AdaptiveIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final selected = isSelected == true && selectedIcon != null;
       final effectiveIcon = selected ? selectedIcon! : icon;
       final effectiveNative = selected ? nativeSelectedIcon : nativeIcon;

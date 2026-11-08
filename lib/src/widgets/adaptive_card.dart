@@ -105,7 +105,7 @@ class AdaptiveCard extends StatelessWidget {
         : child;
 
     if (isGlass) {
-      if (PlatformInfo.isAndroid) {
+      if (PlatformInfo.usesNativeAndroidViews) {
         return _buildAndroidNativeCard(context, content, glass: true);
       }
       return _buildGlassCard(context, content);
@@ -124,7 +124,7 @@ class AdaptiveCard extends StatelessWidget {
       );
     }
 
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       if (shape != null && shape is! RoundedRectangleBorder) {
         throw FlutterError(
           'Android AdaptiveCard supports RoundedRectangleBorder only in its native Compose path.',

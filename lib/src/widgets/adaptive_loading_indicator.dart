@@ -25,7 +25,7 @@ class AdaptiveLoadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return AndroidM3EPlatformView(
         component: 'loadingIndicator',
         width: size,

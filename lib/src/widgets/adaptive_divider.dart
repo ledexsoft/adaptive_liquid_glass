@@ -62,7 +62,7 @@ class AdaptiveDivider extends StatelessWidget {
     }
 
     // Android - native Compose Material 3 divider.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return AndroidM3EPlatformView(
         component: 'divider',
         height: height ?? (thickness ?? 1),

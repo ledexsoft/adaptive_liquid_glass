@@ -39,13 +39,13 @@ class _AdaptiveRefreshIndicatorState extends State<AdaptiveRefreshIndicator> {
   bool _refreshing = false;
 
   Future<void> _refresh() async {
-    if (PlatformInfo.isAndroid && mounted) {
+    if (PlatformInfo.usesNativeAndroidViews && mounted) {
       setState(() => _refreshing = true);
     }
     try {
       await widget.onRefresh();
     } finally {
-      if (PlatformInfo.isAndroid && mounted) {
+      if (PlatformInfo.usesNativeAndroidViews && mounted) {
         setState(() => _refreshing = false);
       }
     }
@@ -66,7 +66,7 @@ class _AdaptiveRefreshIndicatorState extends State<AdaptiveRefreshIndicator> {
       );
     }
 
-    if (!PlatformInfo.isAndroid) {
+    if (!PlatformInfo.usesNativeAndroidViews) {
       return RefreshIndicator(
         onRefresh: _refresh,
         displacement: widget.displacement,

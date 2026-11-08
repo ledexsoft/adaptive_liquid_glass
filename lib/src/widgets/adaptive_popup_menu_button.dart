@@ -42,8 +42,19 @@ class AdaptivePopupMenuButton<T> {
       );
     }
 
+    // Android widget tests and unsupported hosts use the interactive Flutter path.
+    if (PlatformInfo.isAndroid && !PlatformInfo.usesNativeAndroidViews) {
+      return _flutterPopupMenu<T>(
+        key: key,
+        items: items,
+        onSelected: onSelected,
+        child: Text(label),
+        height: height,
+      );
+    }
+
     // Android uses a native Compose anchor and DropdownMenu.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       if (!_canSerializeNativeMenuItems<T>(items)) {
         return _flutterPopupMenu<T>(
           key: key,
@@ -133,8 +144,18 @@ class AdaptivePopupMenuButton<T> {
       );
     }
 
+    // Android widget tests and unsupported hosts use the interactive Flutter path.
+    if (PlatformInfo.isAndroid && !PlatformInfo.usesNativeAndroidViews) {
+      return _flutterPopupMenu<T>(
+        key: key,
+        items: items,
+        onSelected: onSelected,
+        child: child,
+      );
+    }
+
     // Keep the arbitrary Flutter child as an anchor and render the menu in Compose.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       if (!_canSerializeNativeMenuItems<T>(items)) {
         return _flutterPopupMenu<T>(
           key: key,
@@ -194,8 +215,20 @@ class AdaptivePopupMenuButton<T> {
       );
     }
 
+    // Android widget tests and unsupported hosts use the interactive Flutter path.
+    if (PlatformInfo.isAndroid && !PlatformInfo.usesNativeAndroidViews) {
+      return _flutterPopupMenu<T>(
+        key: key,
+        items: items,
+        onSelected: onSelected,
+        child: Icon(icon is IconData ? icon : Icons.more_vert, size: 24),
+        width: size,
+        height: size,
+      );
+    }
+
     // Android uses a native Compose icon button and DropdownMenu.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       if (!_canSerializeNativeMenuItems<T>(items) ||
           !_canResolvePopupIcon(icon)) {
         return _flutterPopupMenu<T>(

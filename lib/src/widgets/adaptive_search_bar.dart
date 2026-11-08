@@ -166,7 +166,7 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
       );
     }
 
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return AndroidM3EPlatformView(
         component: 'searchBar',
         height: 56,

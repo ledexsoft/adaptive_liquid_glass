@@ -162,7 +162,7 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
 
     setState(() {
       _isExpanded = !_isExpanded;
-      if (PlatformInfo.isAndroid) {
+      if (PlatformInfo.usesNativeAndroidViews) {
         final target = _isExpanded ? 1.0 : 0.0;
         if (MediaQuery.of(context).disableAnimations) {
           _androidExpansionController
@@ -192,7 +192,7 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
     if (PlatformInfo.isIOS) {
       return _buildIOSExpansionTile(context);
     }
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return _buildAndroidExpansionTile(context);
     }
     return _buildMaterialExpansionTile(context);

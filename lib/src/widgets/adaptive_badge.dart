@@ -100,7 +100,7 @@ class AdaptiveBadge extends StatelessWidget {
     }
 
     // Android - Use Material Design Badge
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final badgeWidth = displayText.isEmpty
           ? 12.0
           : (isLarge ? 32.0 : 24.0) + (displayText.length > 2 ? 8.0 : 0.0);

@@ -83,7 +83,7 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
     }
 
     // Android - use the official Compose Material 3 Expressive FAB.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       Widget fab = AndroidM3EPlatformView(
         component: 'fab',
         width: mini ? 40 : 56,

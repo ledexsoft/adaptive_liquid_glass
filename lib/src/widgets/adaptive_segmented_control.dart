@@ -90,7 +90,7 @@ class AdaptiveSegmentedControl extends StatelessWidget {
     }
 
     // Android - Use Material SegmentedButton
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final nativeIcons = sfSymbols?.map((symbol) {
         if (symbol is AndroidM3EIcon) return symbol.name;
         if (symbol is IconData) {

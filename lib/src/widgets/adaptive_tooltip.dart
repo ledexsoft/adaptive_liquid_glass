@@ -88,7 +88,7 @@ class AdaptiveTooltip extends StatelessWidget {
       );
     }
 
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return _AndroidM3ETooltip(
         message: message,
         preferBelow: preferBelow,

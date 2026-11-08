@@ -9,6 +9,13 @@ class PlatformInfo {
   /// Optional override for testing platform detection.
   static TargetPlatform? debugPlatformOverride;
 
+  /// Optional testing override for Android Compose platform views.
+  ///
+  /// Widget tests cannot host the Android platform-view plugin. Setting this
+  /// to `false` keeps Android platform selection while rendering each control
+  /// through its Flutter Material fallback.
+  static bool? debugNativeAndroidViewsOverride;
+
   /// Optional override for testing web environment.
   static bool? debugIsWebOverride;
 
@@ -18,6 +25,7 @@ class PlatformInfo {
   /// Resets all debug overrides to null (real device environment).
   static void resetDebugOverrides() {
     debugPlatformOverride = null;
+    debugNativeAndroidViewsOverride = null;
     debugIsWebOverride = null;
     debugIOSVersionOverride = null;
   }
@@ -40,6 +48,13 @@ class PlatformInfo {
     }
     return !isWeb && Platform.isAndroid;
   }
+
+  /// Whether Android Material 3 Expressive controls should use Compose views.
+  ///
+  /// Production follows [isAndroid]. Tests may disable the native bridge while
+  /// retaining Android platform styling and Flutter accessibility/input.
+  static bool get usesNativeAndroidViews =>
+      isAndroid && (debugNativeAndroidViewsOverride ?? true);
 
   /// Returns true if the current platform is macOS
   static bool get isMacOS {

@@ -146,7 +146,7 @@ class AdaptiveTextField extends StatelessWidget {
       return _buildCupertinoTextField(context);
     }
 
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.isAndroid && PlatformInfo.usesNativeAndroidViews) {
       final inputDecoration = decoration;
       if (!_canUseAndroidM3ETextField(inputDecoration)) {
         return _buildMaterialTextField(context);

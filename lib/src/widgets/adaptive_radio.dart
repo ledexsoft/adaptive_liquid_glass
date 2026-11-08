@@ -81,7 +81,7 @@ class AdaptiveRadio<T> extends StatelessWidget {
     }
 
     // Android - Use Material Design Radio
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return AndroidM3EPlatformView(
         component: 'radio',
         width: 48,
