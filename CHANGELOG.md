@@ -1,3 +1,7 @@
+## [0.2.9]
+* **FIX**: Android native M3 Expressive app bars now receive space for the system status-bar inset in addition to their design height, preventing their content from being compressed and keeping the page body below the complete app bar.
+* **FIX**: Android native M3 Expressive navigation bars now reserve the system navigation-bar inset in the shared scaffold, preventing content from appearing beneath the bar.
+
 ## [0.2.8]
 * **FIX**: Context menus on macOS/Linux/Windows now use Flutter Material menus instead of opening the Android Compose overlay; Android keeps the native Compose context menu.
 * **TESTS**: Updated platform widget tests to verify Android Compose bridge properties and exercise Flutter Material fallbacks on Linux. Android blur tests now match the documented no-simulation behavior.

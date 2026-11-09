@@ -746,9 +746,13 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       }
       // Priority 2: Build from items
       else {
+        // Compose Material 3 NavigationBar applies the system navigation-bar
+        // inset itself. Reserve that same space in Flutter's Scaffold so the
+        // native view is not clipped and the body does not paint underneath it.
+        final bottomSystemInset = MediaQuery.viewPaddingOf(context).bottom;
         bottomNavBar = AndroidM3EPlatformView(
           component: 'bottomNavigationBar',
-          height: 80,
+          height: 80 + bottomSystemInset,
           properties: {
             'selectedIndex': widget.bottomNavigationBar!.selectedIndex,
             'selectedColor': widget.bottomNavigationBar!.selectedItemColor
@@ -913,11 +917,16 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       AdaptiveAppBarVariant.largeFlexible =>
         config.subtitle == null ? 120.0 : 152.0,
     };
+    // Flutter's Scaffold adds the status-bar padding to PreferredSize when
+    // primary is true. The Compose app bar also consumes the native top
+    // window inset, so its platform view needs room for both the inset and
+    // the M3 app-bar content height.
+    final topSystemInset = MediaQuery.viewPaddingOf(context).top;
     return PreferredSize(
       preferredSize: Size.fromHeight(appBarHeight),
       child: AndroidM3EPlatformView(
         component: 'topAppBar',
-        height: appBarHeight,
+        height: appBarHeight + topSystemInset,
         properties: {
           'title': title,
           'subtitle': config.subtitle,
