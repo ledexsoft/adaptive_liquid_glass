@@ -1,6 +1,48 @@
-## [0.2.9]
+## [0.2.19]
 * **FIX**: Android native M3 Expressive app bars now receive space for the system status-bar inset in addition to their design height, preventing their content from being compressed and keeping the page body below the complete app bar.
 * **FIX**: Android native M3 Expressive navigation bars now reserve the system navigation-bar inset in the shared scaffold, preventing content from appearing beneath the bar.
+
+## [0.2.18]
+* **UPDATE**: Apply the host Flutter `ColorScheme` to native Android Material 3 Expressive controls, including palette variants, contrast levels, and surface roles.
+
+## [0.2.17]
+* **TESTS**: Add an Android native-view override so Flutter widget tests can preserve Android Material routing without mounting Compose platform views.
+* **FIX**: Route adaptive Android controls, overlays, app bars, and navigation to Flutter Material fallbacks when native views are disabled; production Android remains native by default.
+
+## [0.2.16]
+* **FIX**: `AdaptiveProgressIndicator.linear` now defaults to the native Material 3 Expressive wavy indicator on Android; the flat baseline remains explicitly selectable.
+* **FIX**: determinate Compose progress animates with the official Material 3 progress animation specifications.
+* **DOCS**: clarify the native Compose implementation, expressive defaults, and accessibility behavior.
+
+## [0.2.15]
+* **UPDATE**: Reworked `AdaptiveExpressiveTypography` around explicitly supplied baseline and emphasized scales; removed automatic weight fabrication.
+* **NEW**: Added semantic role/size lookup and brand/plain font-role assignment while preserving each token's other properties.
+* **DOCS**: Expanded typography guidance for fonts, variable axes, language metrics, accessibility, editorial use, and the Flutter/native Compose boundary.
+
+## [0.2.14]
+* **NEW**: Added opt-in `AdaptiveExpressiveTypography` with baseline and emphasized Material text scales, including variable-font weight-axis support.
+* **DOCS**: Added Material 3 Expressive typography usage guidance and clarified native Compose typography coverage.
+
+## [0.2.13]
+* **FIX**: Android text popup menus now use a Flutter Material fallback when placed in an unbounded layout such as a `Row`, and constrain native views when bounded.
+* **TESTS**: Added regression coverage for a text popup in an unbounded row.
+
+## [0.2.12]
+* **FIX**: Android adaptive list tiles with styled/custom title, subtitle, leading, or trailing widgets now use Material `ListTile`, retaining the full Flutter layout and interactions rather than failing Compose serialization.
+* **TESTS**: Added regression coverage for a custom list-tile title.
+
+## [0.2.11]
+* **FIX**: Android popup menus with custom or unmapped icons now fall back to Flutter's Material popup menu, preserving selection callbacks rather than failing while building Compose properties.
+* **TESTS**: Added regression coverage for the popup menu fallback.
+
+## [0.2.10]
+* **FIX**: Android adaptive buttons with custom children or unmapped icons and icon buttons with unmapped content now use Flutter Material fallbacks, preserving screen-specific widgets and callbacks instead of throwing during build.
+* **TESTS**: Added coverage for custom Android button and icon-button fallbacks.
+
+## [0.2.9]
+* **FIX**: Android M3 Expressive scaffold app bars and text/form fields now fall back to Flutter Material when custom widgets cannot be represented in Compose, preserving their actions and input behavior instead of throwing during build.
+* **NEW**: `AdaptiveAppBarAction.androidIcon` and `AndroidM3EIcon.autoAwesome` let apps keep platform-specific icons while serializing native Android app bar actions safely.
+* **TESTS**: Added regression coverage for unsupported app bar actions and interactive text-field suffixes on Android.
 
 ## [0.2.8]
 * **FIX**: Context menus on macOS/Linux/Windows now use Flutter Material menus instead of opening the Android Compose overlay; Android keeps the native Compose context menu.

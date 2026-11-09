@@ -37,7 +37,7 @@ class AdaptiveAiSparkleIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final iconName = resolveAndroidM3EIcon(
         child: icon,
         nativeIcon: nativeIcon,

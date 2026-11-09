@@ -35,7 +35,7 @@ class AdaptiveTimePicker {
       );
     }
 
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final result = await showAndroidM3EOverlay(
         context: context,
         rootNavigator: true,

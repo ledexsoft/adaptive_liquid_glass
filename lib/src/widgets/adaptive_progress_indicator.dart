@@ -51,8 +51,8 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     this.backgroundColor,
     this.trackColor,
     this.semanticsLabel,
-    this.shape = AdaptiveProgressIndicatorShape.flat,
-    this.minHeight = 4.0,
+    this.shape = AdaptiveProgressIndicatorShape.wavy,
+    this.minHeight,
     this.trackThickness = 4.0,
     this.linearInset = 4.0,
     this.borderRadius,
@@ -75,7 +75,8 @@ class AdaptiveProgressIndicator extends StatelessWidget {
   /// Accessibility label describing the process and affected content.
   final String? semanticsLabel;
 
-  /// Flat is the baseline shape; wavy opts into the expressive Android variant.
+  /// Wavy is the Android default; use [AdaptiveProgressIndicatorShape.flat]
+  /// for the baseline Material 3 treatment.
   final AdaptiveProgressIndicatorShape shape;
 
   /// The background track color (linear mode).
@@ -96,7 +97,8 @@ class AdaptiveProgressIndicator extends StatelessWidget {
   /// Whether the Cupertino activity indicator is animating (iOS only).
   final bool animating;
 
-  /// The height of the linear progress bar (default: 4.0).
+  /// Optional linear container height. Android uses the native Material 3
+  /// height when this is null; other platforms use 4.0 logical pixels.
   final double? minHeight;
 
   /// Optional border radius for linear progress bar.
@@ -112,7 +114,9 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     } else {
       indicator = _buildCircular(context);
     }
-    if (semanticsLabel == null || PlatformInfo.isAndroid) return indicator;
+    if (semanticsLabel == null || PlatformInfo.usesNativeAndroidViews) {
+      return indicator;
+    }
     return Semantics(
       label: semanticsLabel,
       value: value == null
@@ -139,7 +143,7 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     }
 
     // Android & other platforms
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final androidSize = (radius * 2).clamp(24.0, 240.0).toDouble();
       return AndroidM3EPlatformView(
         component: 'progressIndicator',
@@ -205,7 +209,7 @@ class AdaptiveProgressIndicator extends StatelessWidget {
     }
 
     // Android uses a native Compose Material 3 Expressive progress indicator.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return LayoutBuilder(
         builder: (context, constraints) {
           final expressiveWavyHeight = trackThickness * 3 > 16

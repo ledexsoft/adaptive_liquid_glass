@@ -186,7 +186,7 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView> {
     }
 
     // Android - Material Design implementation
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return Column(
         children: [
           SizedBox(

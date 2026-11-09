@@ -89,7 +89,7 @@ class AdaptiveCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final items = androidItems;
       if (items == null) {
         throw FlutterError(

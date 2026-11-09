@@ -39,6 +39,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -128,6 +129,8 @@ import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
@@ -253,6 +256,7 @@ import androidx.compose.foundation.shape.CircleShape
 import android.graphics.BitmapFactory
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
@@ -290,7 +294,7 @@ internal fun M3EAndroidTheme(
   val dynamic = properties.boolean("dynamicColoring") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
   val context = LocalContext.current
   val foreground = if (primary.luminance() > 0.5f) Color.Black else Color.White
-  val colors = if (dynamic && dark) {
+  val colors = (if (dynamic && dark) {
     dynamicDarkColorScheme(context)
   } else if (dynamic) {
     dynamicLightColorScheme(context)
@@ -298,11 +302,70 @@ internal fun M3EAndroidTheme(
     darkColorScheme(primary = primary, onPrimary = foreground)
   } else {
     expressiveLightColorScheme().copy(primary = primary, onPrimary = foreground)
-  }
+  }).withAppColorScheme(properties["colorScheme"])
   MaterialExpressiveTheme(
     colorScheme = colors,
     motionScheme = MotionScheme.expressive(),
     content = content,
+  )
+}
+
+private fun ColorScheme.withAppColorScheme(value: Any?): ColorScheme {
+  val roles = value as? Map<*, *> ?: return this
+  fun role(name: String, fallback: Color): Color {
+    val argb = (roles[name] as? Number)?.toInt() ?: return fallback
+    return Color(argb)
+  }
+
+  return copy(
+    primary = role("primary", primary),
+    onPrimary = role("onPrimary", onPrimary),
+    primaryContainer = role("primaryContainer", primaryContainer),
+    onPrimaryContainer = role("onPrimaryContainer", onPrimaryContainer),
+    inversePrimary = role("inversePrimary", inversePrimary),
+    primaryFixed = role("primaryFixed", primaryFixed),
+    primaryFixedDim = role("primaryFixedDim", primaryFixedDim),
+    onPrimaryFixed = role("onPrimaryFixed", onPrimaryFixed),
+    onPrimaryFixedVariant = role("onPrimaryFixedVariant", onPrimaryFixedVariant),
+    secondary = role("secondary", secondary),
+    onSecondary = role("onSecondary", onSecondary),
+    secondaryContainer = role("secondaryContainer", secondaryContainer),
+    onSecondaryContainer = role("onSecondaryContainer", onSecondaryContainer),
+    secondaryFixed = role("secondaryFixed", secondaryFixed),
+    secondaryFixedDim = role("secondaryFixedDim", secondaryFixedDim),
+    onSecondaryFixed = role("onSecondaryFixed", onSecondaryFixed),
+    onSecondaryFixedVariant = role("onSecondaryFixedVariant", onSecondaryFixedVariant),
+    tertiary = role("tertiary", tertiary),
+    onTertiary = role("onTertiary", onTertiary),
+    tertiaryContainer = role("tertiaryContainer", tertiaryContainer),
+    onTertiaryContainer = role("onTertiaryContainer", onTertiaryContainer),
+    tertiaryFixed = role("tertiaryFixed", tertiaryFixed),
+    tertiaryFixedDim = role("tertiaryFixedDim", tertiaryFixedDim),
+    onTertiaryFixed = role("onTertiaryFixed", onTertiaryFixed),
+    onTertiaryFixedVariant = role("onTertiaryFixedVariant", onTertiaryFixedVariant),
+    background = role("background", background),
+    onBackground = role("onBackground", onBackground),
+    surface = role("surface", surface),
+    onSurface = role("onSurface", onSurface),
+    surfaceVariant = role("surfaceVariant", surfaceVariant),
+    onSurfaceVariant = role("onSurfaceVariant", onSurfaceVariant),
+    surfaceTint = role("surfaceTint", surfaceTint),
+    inverseSurface = role("inverseSurface", inverseSurface),
+    inverseOnSurface = role("inverseOnSurface", inverseOnSurface),
+    error = role("error", error),
+    onError = role("onError", onError),
+    errorContainer = role("errorContainer", errorContainer),
+    onErrorContainer = role("onErrorContainer", onErrorContainer),
+    outline = role("outline", outline),
+    outlineVariant = role("outlineVariant", outlineVariant),
+    scrim = role("scrim", scrim),
+    surfaceBright = role("surfaceBright", surfaceBright),
+    surfaceDim = role("surfaceDim", surfaceDim),
+    surfaceContainer = role("surfaceContainer", surfaceContainer),
+    surfaceContainerHigh = role("surfaceContainerHigh", surfaceContainerHigh),
+    surfaceContainerHighest = role("surfaceContainerHighest", surfaceContainerHighest),
+    surfaceContainerLow = role("surfaceContainerLow", surfaceContainerLow),
+    surfaceContainerLowest = role("surfaceContainerLowest", surfaceContainerLowest),
   )
 }
 
@@ -2445,6 +2508,7 @@ private fun nativeM3EIcon(name: String?): ImageVector = when (name) {
   "arrowBack" -> Icons.AutoMirrored.Filled.ArrowBack
   "arrowDropDown" -> Icons.Filled.ArrowDropDown
   "arrowForward" -> Icons.AutoMirrored.Filled.ArrowForward
+  "autoAwesome" -> Icons.Filled.AutoAwesome
   "calendarToday" -> Icons.Filled.CalendarToday
   "check" -> Icons.Filled.Check
   "close" -> Icons.Filled.Close
@@ -2517,6 +2581,15 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
   val color = properties.color("color") ?: MaterialTheme.colorScheme.primary
   val trackColor = properties.color("trackColor") ?: MaterialTheme.colorScheme.secondaryContainer
   val shape = properties["shape"] as? String ?: "flat"
+  val animatedProgress by animateFloatAsState(
+    targetValue = value ?: 0f,
+    animationSpec = if (shape == "wavy") {
+      WavyProgressIndicatorDefaults.ProgressAnimationSpec
+    } else {
+      ProgressIndicatorDefaults.ProgressAnimationSpec
+    },
+    label = "nativeProgressIndicator",
+  )
   val semanticsLabel = properties["semanticsLabel"] as? String
   val semanticsModifier = semanticsLabel?.let { label ->
     Modifier.semantics(mergeDescendants = true) { contentDescription = label }
@@ -2539,7 +2612,7 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
         )
       } else {
         LinearWavyProgressIndicator(
-          progress = { value },
+          progress = { animatedProgress },
           modifier = wavyModifier,
           color = color,
           trackColor = trackColor,
@@ -2559,7 +2632,7 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
         )
       } else {
         LinearProgressIndicator(
-          progress = { value },
+          progress = { animatedProgress },
           modifier = flatModifier,
           color = color,
           trackColor = trackColor,
@@ -2585,7 +2658,7 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
       )
     } else {
       CircularWavyProgressIndicator(
-        progress = { value },
+        progress = { animatedProgress },
         modifier = circularModifier,
         color = color,
         trackColor = trackColor,
@@ -2602,7 +2675,7 @@ private fun NativeM3EProgressIndicator(properties: Map<String, Any?>) {
     )
   } else {
     CircularProgressIndicator(
-      progress = { value },
+      progress = { animatedProgress },
       modifier = circularModifier,
       color = color,
       trackColor = trackColor,

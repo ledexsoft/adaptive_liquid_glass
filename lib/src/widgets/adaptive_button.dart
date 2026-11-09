@@ -202,12 +202,43 @@ class AdaptiveButton extends StatelessWidget {
     }
 
     // Android - Use the native Compose Material 3 Expressive button.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
+      if (!_canRenderAndroidNatively) return _buildMaterialButton(context);
       return _buildAndroidExpressiveButton(context);
     }
 
     // Fallback for other platforms (web, desktop, etc.)
     return _buildMaterialButton(context);
+  }
+
+  bool get _canRenderAndroidNatively {
+    if (sfSymbol != null) return false;
+    if (icon != null &&
+        !canResolveAndroidM3EIcon(child: Icon(icon), nativeIcon: null)) {
+      return false;
+    }
+    if (child == null) return true;
+    if (child is Text) return (child as Text).style == null;
+    if (child is Icon) {
+      return canResolveAndroidM3EIcon(child: child, nativeIcon: null);
+    }
+    if (child is Row) {
+      for (final part in (child as Row).children) {
+        if (part is Icon &&
+            !canResolveAndroidM3EIcon(child: part, nativeIcon: null)) {
+          return false;
+        }
+        if (part is Text && part.style != null) return false;
+        if (part is! Icon &&
+            part is! Text &&
+            part is! SizedBox &&
+            part is! Padding) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return false;
   }
 
   Widget _buildIOS26Native(BuildContext context) {

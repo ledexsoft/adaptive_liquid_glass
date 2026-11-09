@@ -42,27 +42,61 @@ class AdaptivePopupMenuButton<T> {
       );
     }
 
-    // Android uses a native Compose anchor and DropdownMenu.
-    if (PlatformInfo.isAndroid) {
-      return AndroidM3EPlatformView(
+    // Android widget tests and unsupported hosts use the interactive Flutter path.
+    if (PlatformInfo.isAndroid && !PlatformInfo.usesNativeAndroidViews) {
+      return _flutterPopupMenu<T>(
         key: key,
-        component: 'popupMenuButton',
+        items: items,
+        onSelected: onSelected,
+        child: Text(label),
         height: height,
-        properties: {
-          'anchorType': 'text',
-          'label': label,
-          'style': _nativeMenuButtonStyle(buttonStyle),
-          'tint': tint?.toARGB32(),
-          'items': _nativeMenuItems<T>(items),
-        },
-        onEvent: (event, value) {
-          if (event == 'selected' &&
-              value is int &&
-              value >= 0 &&
-              value < items.length) {
-            final entry = items[value];
-            if (entry is AdaptivePopupMenuItem<T>) onSelected(value, entry);
+      );
+    }
+
+    // Android uses a native Compose anchor and DropdownMenu.
+    if (PlatformInfo.usesNativeAndroidViews) {
+      if (!_canSerializeNativeMenuItems<T>(items)) {
+        return _flutterPopupMenu<T>(
+          key: key,
+          items: items,
+          onSelected: onSelected,
+          child: Text(label),
+          height: height,
+        );
+      }
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          if (!constraints.maxWidth.isFinite) {
+            return _flutterPopupMenu<T>(
+              key: key,
+              items: items,
+              onSelected: onSelected,
+              child: Text(label),
+              height: height,
+            );
           }
+          return AndroidM3EPlatformView(
+            key: key,
+            component: 'popupMenuButton',
+            height: height,
+            width: constraints.maxWidth,
+            properties: {
+              'anchorType': 'text',
+              'label': label,
+              'style': _nativeMenuButtonStyle(buttonStyle),
+              'tint': tint?.toARGB32(),
+              'items': _nativeMenuItems<T>(items),
+            },
+            onEvent: (event, value) {
+              if (event == 'selected' &&
+                  value is int &&
+                  value >= 0 &&
+                  value < items.length) {
+                final entry = items[value];
+                if (entry is AdaptivePopupMenuItem<T>) onSelected(value, entry);
+              }
+            },
+          );
         },
       );
     }
@@ -110,8 +144,26 @@ class AdaptivePopupMenuButton<T> {
       );
     }
 
+    // Android widget tests and unsupported hosts use the interactive Flutter path.
+    if (PlatformInfo.isAndroid && !PlatformInfo.usesNativeAndroidViews) {
+      return _flutterPopupMenu<T>(
+        key: key,
+        items: items,
+        onSelected: onSelected,
+        child: child,
+      );
+    }
+
     // Keep the arbitrary Flutter child as an anchor and render the menu in Compose.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
+      if (!_canSerializeNativeMenuItems<T>(items)) {
+        return _flutterPopupMenu<T>(
+          key: key,
+          items: items,
+          onSelected: onSelected,
+          child: child,
+        );
+      }
       return _AndroidNativePopupMenuAnchor<T>(
         key: key,
         items: items,
@@ -163,8 +215,31 @@ class AdaptivePopupMenuButton<T> {
       );
     }
 
+    // Android widget tests and unsupported hosts use the interactive Flutter path.
+    if (PlatformInfo.isAndroid && !PlatformInfo.usesNativeAndroidViews) {
+      return _flutterPopupMenu<T>(
+        key: key,
+        items: items,
+        onSelected: onSelected,
+        child: Icon(icon is IconData ? icon : Icons.more_vert, size: 24),
+        width: size,
+        height: size,
+      );
+    }
+
     // Android uses a native Compose icon button and DropdownMenu.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
+      if (!_canSerializeNativeMenuItems<T>(items) ||
+          !_canResolvePopupIcon(icon)) {
+        return _flutterPopupMenu<T>(
+          key: key,
+          items: items,
+          onSelected: onSelected,
+          child: Icon(icon is IconData ? icon : Icons.more_vert, size: 24),
+          width: size,
+          height: size,
+        );
+      }
       return AndroidM3EPlatformView(
         key: key,
         component: 'popupMenuButton',
@@ -202,6 +277,60 @@ class AdaptivePopupMenuButton<T> {
       ),
     );
   }
+
+  static bool _canResolvePopupIcon(Object? icon) =>
+      icon is AndroidM3EIcon ||
+      (icon is IconData &&
+          canResolveAndroidM3EIcon(child: Icon(icon), nativeIcon: null));
+
+  static bool _canSerializeNativeMenuItems<T>(
+    List<AdaptivePopupMenuEntry> items,
+  ) {
+    for (final entry in items) {
+      if (entry is AdaptivePopupMenuItem<T> &&
+          entry.icon != null &&
+          !_canResolvePopupIcon(entry.icon)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static Widget _flutterPopupMenu<T>({
+    required Key? key,
+    required List<AdaptivePopupMenuEntry> items,
+    required void Function(int index, AdaptivePopupMenuItem<T> entry)
+    onSelected,
+    required Widget child,
+    double? width,
+    double? height,
+  }) => SizedBox(
+    width: width,
+    height: height,
+    child: PopupMenuButton<int>(
+      key: key,
+      onSelected: (index) {
+        if (index >= 0 && index < items.length) {
+          final entry = items[index];
+          if (entry is AdaptivePopupMenuItem<T>) onSelected(index, entry);
+        }
+      },
+      itemBuilder: (context) => [
+        for (var index = 0; index < items.length; index++)
+          if (items[index] is AdaptivePopupMenuItem<T>)
+            PopupMenuItem<int>(
+              value: index,
+              enabled: (items[index] as AdaptivePopupMenuItem<T>).enabled,
+              child: _buildActionSheetContent<T>(
+                items[index] as AdaptivePopupMenuItem<T>,
+              ),
+            )
+          else
+            const PopupMenuDivider(),
+      ],
+      child: Center(child: child),
+    ),
+  );
 
   static List<Map<String, Object?>> _nativeMenuItems<T>(
     List<AdaptivePopupMenuEntry> items,

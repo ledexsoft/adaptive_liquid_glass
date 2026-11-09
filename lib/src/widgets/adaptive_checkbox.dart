@@ -85,7 +85,7 @@ class AdaptiveCheckbox extends StatelessWidget {
     }
 
     // Android - Use Material Design Checkbox
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return AndroidM3EPlatformView(
         component: 'checkbox',
         width: 48,

@@ -81,7 +81,7 @@ class AdaptiveSwitch extends StatelessWidget {
     }
 
     // Android - Use the native Compose Material switch.
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       return AndroidM3EPlatformView(
         component: 'switch',
         width: 64,

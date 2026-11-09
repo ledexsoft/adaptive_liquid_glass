@@ -80,7 +80,7 @@ class AdaptiveExpressiveShapeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shapeView = PlatformInfo.isAndroid
+    final shapeView = PlatformInfo.usesNativeAndroidViews
         ? AndroidM3EPlatformView(
             component: 'expressiveShape',
             width: width,

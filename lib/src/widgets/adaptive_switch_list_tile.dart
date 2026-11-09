@@ -107,7 +107,7 @@ class AdaptiveSwitchListTile extends StatelessWidget {
       );
     }
 
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final titleText = title is Text ? title as Text : null;
       final subtitleText = subtitle is Text ? subtitle as Text : null;
       if (titleText?.data == null || titleText!.style != null) {

@@ -8,6 +8,21 @@ void main() {
   });
 
   group('PlatformInfo debug overrides', () {
+    test(
+      'native Android views default on for Android and can be disabled for tests',
+      () {
+        PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+        expect(PlatformInfo.usesNativeAndroidViews, isTrue);
+
+        PlatformInfo.debugNativeAndroidViewsOverride = false;
+        expect(PlatformInfo.isAndroid, isTrue);
+        expect(PlatformInfo.usesNativeAndroidViews, isFalse);
+
+        PlatformInfo.debugNativeAndroidViewsOverride = true;
+        expect(PlatformInfo.usesNativeAndroidViews, isTrue);
+      },
+    );
+
     test('debugPlatformOverride sets platform cleanly', () {
       PlatformInfo.debugPlatformOverride = TargetPlatform.iOS;
       expect(PlatformInfo.isIOS, isTrue);

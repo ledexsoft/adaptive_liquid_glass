@@ -55,15 +55,30 @@ class AdaptiveIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
+      final selected = isSelected == true && selectedIcon != null;
+      final effectiveIcon = selected ? selectedIcon! : icon;
+      final effectiveNative = selected ? nativeSelectedIcon : nativeIcon;
+      if (!canResolveAndroidM3EIcon(
+        child: effectiveIcon,
+        nativeIcon: effectiveNative,
+      )) {
+        return IconButton(
+          onPressed: onPressed,
+          tooltip: tooltip ?? semanticLabel,
+          isSelected: isSelected,
+          selectedIcon: selectedIcon,
+          icon: Semantics(label: semanticLabel, child: effectiveIcon),
+        );
+      }
       return AndroidM3EPlatformView(
         component: 'iconButton',
         width: _buttonWidth,
         height: _buttonSize,
         properties: {
           'icon': resolveAndroidM3EIcon(
-            child: icon,
-            nativeIcon: nativeIcon,
+            child: effectiveIcon,
+            nativeIcon: effectiveNative,
             parameterName: 'nativeIcon',
           ),
           'aiPowered': aiPowered,

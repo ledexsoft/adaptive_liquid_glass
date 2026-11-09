@@ -57,11 +57,23 @@ Escribe tu app **una sola vez** y los componentes (botones, menús, alertas, bar
 
 Los controles Android del paquete se implementan con Jetpack Compose y **Material 3 Expressive nativo**: botones, selecciones, sliders, FABs, menús, rail, toolbar, pestañas, carrusel, listas, campos de texto, diálogos, selectores, snackbars, tooltips e indicadores. La capa Compose usa `MaterialExpressiveTheme`; el paquete ya no depende ni reexporta widgets Flutter de `material_3_expressive`. iOS mantiene sus rutas Liquid Glass/Cupertino.
 
+La tipografía expresiva para texto Flutter está disponible mediante `AdaptiveExpressiveTypography`: expone explícitamente los 15 estilos base y sus 15 equivalentes enfatizados, selección por rol y tamaño y asignación de fuentes distintas para títulos y lectura. Se registra como `ThemeExtension` y no cambia el estilo actual por sí sola. Consulta la [guía de tipografía](docs/expressive-typography.md) para fuentes, ejes variables, idiomas, accesibilidad y tratamientos editoriales. Los textos internos de componentes Android nativos siguen usando la tipografía que define Compose.
+
 La ruta nativa requiere Flutter 3.47+, Android `minSdk 24`, `compileSdk 37`, JDK 17+, AGP 9.1.1, Gradle 9.3.1 y Kotlin 2.4.20. El plugin integra Material 3 Compose 1.5.0-rc01, que aporta `MaterialExpressiveTheme` y los componentes expresivos usados aquí.
 
 En Android, `AdaptiveBlurView` no dibuja un blur de Flutter para imitar Liquid Glass: pasa el contenido sin modificar porque esa API no puede desenfocar nativamente el contenido Flutter que queda detrás. `AdaptiveCard.glass` ofrece una superficie Material nativa.
 
 `AdaptiveCarousel` usa los carruseles oficiales de Compose en Android. Declara `androidItems` con datos e iconos `AndroidM3EIcon`; los `Widget` de Flutter no se pueden insertar en un árbol Compose nativo. `AdaptiveSplitButton` recibe `AdaptiveSplitButtonItem`, `AdaptiveToolbar` recibe `AdaptiveToolbarAction` y `AdaptiveButtonGroup` recibe `AdaptiveButtonGroupAction` con iconos serializables. Los menús popup con hijo personalizado mantienen el hijo Flutter como ancla y dibujan el menú en Compose.
+
+En Android, los botones, menús popup, campos de texto, filas adaptativas y acciones de app bar usan controles Material de Flutter como alternativa cuando el contenido personalizado no se puede serializar para Compose; también usan alternativa cuando un menú está en un `Row` sin ancho finito. Así se conservan los widgets y callbacks. Para conservar la app bar nativa, asigna `AdaptiveAppBarAction.androidIcon` a cada acción cuyo `icon` no sea uno de los iconos reconocidos:
+
+```dart
+AdaptiveAppBarAction(
+  icon: Icons.auto_awesome_outlined, // iOS y otros renderizadores Flutter
+  androidIcon: AndroidM3EIcon.autoAwesome, // app bar nativa Compose
+  onPressed: onAssistantPressed,
+)
+```
 
 `AdaptiveButtonGroup` ofrece variantes estándar y conectadas con cinco tamaños M3 Expressive; `selectionRequired` impide vaciar la selección. `AdaptiveFabMenu` admite de dos a seis acciones con etiqueta e icono, y expone `toggleMenuLabel`, `expandedStateLabel` y `collapsedStateLabel` para localización accesible. Consulta [la guía Android de grupos y menús FAB](docs/android-m3e-button-groups-fab-menus.md) para medidas, teclado, RTL y límites de contenido nativo.
 
@@ -139,7 +151,7 @@ dependencies:
   adaptive_liquid_glass:
     git:
       url: https://github.com/ledexsoft/adaptive_liquid_glass.git
-      ref: v0.1.125
+      ref: v0.2.16
 ```
 
 3. En la terminal, dentro de la carpeta de tu proyecto:
@@ -148,7 +160,7 @@ dependencies:
 flutter pub get
 ```
 
-> 💡 **¿Qué es el `ref`?** Apunta a un **tag** del repositorio (versión congelada). Cada versión nueva del paquete publica su tag (`v0.1.121`, `v0.1.125`…). Así tu app nunca cambia sin que tú lo decidas: actualizas solo cuando cambias ese número.
+> 💡 **¿Qué es el `ref`?** Apunta a un **tag** del repositorio (versión congelada). Cada versión nueva del paquete publica su tag (por ejemplo, `v0.2.16`). Así tu app nunca cambia sin que tú lo decidas: actualizas solo cuando cambias ese número.
 >
 > 🔎 Puedes ver todas las versiones disponibles en: https://github.com/ledexsoft/adaptive_liquid_glass/tags
 

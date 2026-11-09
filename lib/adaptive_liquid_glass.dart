@@ -35,6 +35,7 @@ export 'src/utils/animation.dart';
 
 // Styles
 export 'src/style/sf_symbol.dart';
+export 'src/theme/adaptive_expressive_typography.dart';
 export 'src/theme/adaptive_material_expressive_theme.dart';
 
 // Widgets

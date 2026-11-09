@@ -105,7 +105,7 @@ class AdaptiveNavigationDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformInfo.isAndroid) {
+    if (PlatformInfo.usesNativeAndroidViews) {
       final effectiveWidth =
           width ?? (MediaQuery.sizeOf(context).width * .88).clamp(280, 360);
       return SizedBox(
@@ -176,6 +176,7 @@ IconData _drawerFlutterIcon(AndroidM3EIcon icon) => switch (icon) {
   AndroidM3EIcon.arrowBack => Icons.arrow_back,
   AndroidM3EIcon.arrowDropDown => Icons.arrow_drop_down,
   AndroidM3EIcon.arrowForward => Icons.arrow_forward,
+  AndroidM3EIcon.autoAwesome => Icons.auto_awesome,
   AndroidM3EIcon.calendarToday => Icons.calendar_today,
   AndroidM3EIcon.check => Icons.check,
   AndroidM3EIcon.close => Icons.close,
