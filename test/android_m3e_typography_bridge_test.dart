@@ -244,6 +244,8 @@ void main() {
       (tester) async {
         PlatformInfo.debugPlatformOverride = TargetPlatform.android;
         final brandedTheme = ThemeData(
+          // This bridge test does not exercise GPU-backed ink shaders.
+          splashFactory: NoSplash.splashFactory,
           colorScheme: ColorScheme.fromSeed(
             seedColor: Colors.teal,
           ).copyWith(secondary: Colors.orange),

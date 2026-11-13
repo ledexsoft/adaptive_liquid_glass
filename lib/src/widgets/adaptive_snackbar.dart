@@ -382,6 +382,8 @@ class _IOSSnackBarState extends State<_IOSSnackBar>
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _opacityAnimation;
+  Timer? _dismissTimer;
+  bool _isDismissing = false;
 
   @override
   void initState() {
@@ -404,22 +406,26 @@ class _IOSSnackBarState extends State<_IOSSnackBar>
     _controller.forward();
 
     // Auto dismiss after duration
-    Future.delayed(widget.duration, () {
-      if (mounted) {
-        _dismiss();
-      }
-    });
+    _dismissTimer = Timer(widget.duration, _dismiss);
   }
 
   @override
   void dispose() {
+    _dismissTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   Future<void> _dismiss() async {
-    await _controller.reverse();
-    widget.onDismiss();
+    if (!mounted || _isDismissing) return;
+    _isDismissing = true;
+    _dismissTimer?.cancel();
+    try {
+      await _controller.reverse().orCancel;
+      if (mounted) widget.onDismiss();
+    } on TickerCanceled {
+      // The overlay can be disposed while its exit animation is running.
+    }
   }
 
   Color _getBackgroundColor(BuildContext context) {

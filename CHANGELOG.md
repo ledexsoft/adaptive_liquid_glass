@@ -1,3 +1,9 @@
+## [0.2.23]
+* **FIX**: Mount the supplied `AdaptiveScaffold.body` only once on iOS 26, avoiding duplicate state, controllers, and GlobalKeys when bottom-navigation destinations are present.
+* **FIX**: Preserve native iOS scaffold and body state when tab selection changes instead of recreating the scaffold and discarding drafts.
+* **FIX**: Cancel iOS snackbar timers on disposal/manual dismissal and guard repeated dismissal and interrupted exit animations.
+* **TESTS**: Cover snackbar lifecycle, single body mounting, GlobalKey compatibility, and state/draft retention across native tab selections.
+
 ## [0.2.22]
 * **FIX**: Fall back to Flutter navigation for unsupported Material icons, custom widgets, and icon effects instead of throwing while serializing Android navigation. Mixed bars preserve explicit native enum icons in the Flutter route.
 * **FIX**: Keep legacy Flutter app-bar icon actions without semantic labels on the Flutter route. Provide localized semantic labels to retain accessibility and native rendering.

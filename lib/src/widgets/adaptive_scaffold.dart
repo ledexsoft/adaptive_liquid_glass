@@ -445,30 +445,10 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 
     // iOS 26+ with native toolbar enabled - Use IOS26Scaffold
     if (PlatformInfo.isIOS26OrHigher() && useNativeToolbar) {
-      // For GoRouter compatibility: Use body directly if it's StatefulNavigationShell
-      // Otherwise replicate body for each destination
-      List<Widget> childrenList;
-      final bodyType = widget.body?.runtimeType.toString() ?? '';
-      final isNavigationShell = bodyType.contains('StatefulNavigationShell');
-
-      if (isNavigationShell) {
-        // GoRouter's StatefulNavigationShell already manages children
-        // Don't replicate, just use it directly
-        childrenList = [widget.body ?? const SizedBox.shrink()];
-      } else if (widget.bottomNavigationBar?.items != null &&
-          widget.bottomNavigationBar!.items!.isNotEmpty) {
-        // Tab-based navigation: replicate single body for all tabs with unique keys
-        childrenList = List.generate(
-          widget.bottomNavigationBar!.items!.length,
-          (index) => KeyedSubtree(
-            key: ValueKey('tab_$index'),
-            child: widget.body ?? const SizedBox.shrink(),
-          ),
-        );
-      } else {
-        // Single page: just one body
-        childrenList = [widget.body ?? const SizedBox.shrink()];
-      }
+      // AdaptiveScaffold accepts one body, whose navigation/state is owned by
+      // the caller. Mount it once, just as on other platforms. Replicating it
+      // per destination duplicates controllers/GlobalKeys and hidden work.
+      List<Widget> childrenList = [widget.body ?? const SizedBox.shrink()];
 
       // Wrap children with Stack if floatingActionButton is provided
       if (widget.floatingActionButton != null) {
@@ -491,9 +471,6 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 
       return _wrapWithDrawerIfNeeded(
         IOS26Scaffold(
-          key: ValueKey(
-            'ios26_scaffold_${selectedBottomIndex ?? 0}_${widget.body?.runtimeType.toString() ?? "empty"}',
-          ),
           bottomNavigationBar: widget.bottomNavigationBar?.copyWith(
             selectedIndex: selectedBottomIndex,
           ),
