@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_overlay.dart';
+import 'native_occurrence_ids.dart';
+
+final _nativeContextActionIds =
+    NativeOccurrenceIds<AdaptiveContextMenuAction>();
 
 /// A context menu action item
 class AdaptiveContextMenuAction {
@@ -41,7 +45,7 @@ class AdaptiveContextMenuAction {
 /// On iOS <26: Uses CupertinoContextMenu
 /// On Android: Uses a native Compose `DropdownMenu` anchored at the long-press
 /// position.
-class AdaptiveContextMenu extends StatelessWidget {
+class AdaptiveContextMenu extends StatefulWidget {
   /// Creates an adaptive context menu
   const AdaptiveContextMenu({
     super.key,
@@ -60,7 +64,17 @@ class AdaptiveContextMenu extends StatelessWidget {
   final Widget Function(BuildContext)? previewBuilder;
 
   @override
+  State<AdaptiveContextMenu> createState() => _AdaptiveContextMenuState();
+}
+
+class _AdaptiveContextMenuState extends State<AdaptiveContextMenu> {
+  @override
   Widget build(BuildContext context) {
+    for (final action in widget.actions) {
+      if (action.title.trim().isEmpty) {
+        throw FlutterError('AdaptiveContextMenuAction.title must be nonempty.');
+      }
+    }
     // iOS 26+ - Use CupertinoContextMenu
     // Note: Native iOS 26 UIContextMenu could be implemented with platform view for enhanced visuals
     if (PlatformInfo.isIOS26OrHigher()) {
@@ -78,7 +92,7 @@ class AdaptiveContextMenu extends StatelessWidget {
 
   Widget _buildCupertinoContextMenu(BuildContext context) {
     return CupertinoContextMenu.builder(
-      actions: actions.map((action) {
+      actions: widget.actions.map((action) {
         return CupertinoContextMenuAction(
           onPressed: () {
             Navigator.of(context, rootNavigator: true).pop();
@@ -92,7 +106,7 @@ class AdaptiveContextMenu extends StatelessWidget {
         );
       }).toList(),
       builder: (context, animation) {
-        return child;
+        return widget.child;
       },
     );
   }
@@ -106,12 +120,13 @@ class AdaptiveContextMenu extends StatelessWidget {
           _showFlutterMenu(context, details.globalPosition);
         }
       },
-      child: child,
+      child: widget.child,
     );
   }
 
   void _showFlutterMenu(BuildContext context, Offset anchor) {
     final screenSize = MediaQuery.sizeOf(context);
+    final actionIds = _nativeContextActionIds.forItems(widget.actions);
     showMenu<int>(
       context: context,
       position: RelativeRect.fromLTRB(
@@ -121,25 +136,25 @@ class AdaptiveContextMenu extends StatelessWidget {
         screenSize.height - anchor.dy,
       ),
       items: [
-        for (var index = 0; index < actions.length; index++)
+        for (var index = 0; index < widget.actions.length; index++)
           PopupMenuItem<int>(
-            value: index,
-            enabled: !actions[index].isDisabled,
+            value: actionIds[index],
+            enabled: !widget.actions[index].isDisabled,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (actions[index].icon is IconData) ...[
+                if (widget.actions[index].icon is IconData) ...[
                   Icon(
-                    actions[index].icon as IconData,
-                    color: actions[index].isDestructive
+                    widget.actions[index].icon as IconData,
+                    color: widget.actions[index].isDestructive
                         ? Theme.of(context).colorScheme.error
                         : null,
                   ),
                   const SizedBox(width: 12),
                 ],
                 Text(
-                  actions[index].title,
-                  style: actions[index].isDestructive
+                  widget.actions[index].title,
+                  style: widget.actions[index].isDestructive
                       ? TextStyle(color: Theme.of(context).colorScheme.error)
                       : null,
                 ),
@@ -147,15 +162,31 @@ class AdaptiveContextMenu extends StatelessWidget {
             ),
           ),
       ],
-    ).then((index) {
-      if (index != null && index >= 0 && index < actions.length) {
-        actions[index].onPressed();
-      }
+    ).then((id) {
+      if (!mounted || id == null) return;
+      final index = _selectedActionIndex({'id': id});
+      if (index != null) widget.actions[index].onPressed();
     });
   }
 
-  void _showAndroidMenu(BuildContext context, Offset anchor) {
-    showAndroidM3EOverlay(
+  int? _selectedActionIndex(Object? value) {
+    int? index;
+    if (value is Map) {
+      final id = value['id'];
+      if (id is! int) return null;
+      index = _nativeContextActionIds.forItems(widget.actions).indexOf(id);
+    } else if (value is int) {
+      index = value;
+    }
+    if (index == null || index < 0 || index >= widget.actions.length) {
+      return null;
+    }
+    return widget.actions[index].isDisabled ? null : index;
+  }
+
+  Future<void> _showAndroidMenu(BuildContext context, Offset anchor) async {
+    final actionIds = _nativeContextActionIds.forItems(widget.actions);
+    final result = await showAndroidM3EOverlay(
       context: context,
       component: 'contextMenu',
       rootNavigator: true,
@@ -163,24 +194,22 @@ class AdaptiveContextMenu extends StatelessWidget {
         'anchorX': anchor.dx,
         'anchorY': anchor.dy,
         'actions': [
-          for (final action in actions)
+          for (var index = 0; index < widget.actions.length; index++)
             {
-              'title': action.title,
-              'icon': _nativeIcon(action),
-              'enabled': !action.isDisabled,
-              'destructive': action.isDestructive,
+              'id': actionIds[index],
+              'title': widget.actions[index].title,
+              'icon': _nativeIcon(widget.actions[index]),
+              'enabled': !widget.actions[index].isDisabled,
+              'destructive': widget.actions[index].isDestructive,
             },
         ],
       },
-      onEvent: (event, value) {
-        if (event == 'selected' &&
-            value is int &&
-            value >= 0 &&
-            value < actions.length) {
-          actions[value].onPressed();
-        }
-      },
     );
+    if (!mounted) return;
+    if (result is AndroidM3EOverlayResult && result.event == 'selected') {
+      final index = _selectedActionIndex(result.value);
+      if (index != null) widget.actions[index].onPressed();
+    }
   }
 
   String? _nativeIcon(AdaptiveContextMenuAction action) {

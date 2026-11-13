@@ -240,6 +240,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
 
                 if let btn = button {
                     btn.tag = index
+                    btn.isEnabled = action["enabled"] as? Bool ?? true
 
                     // Apply prominent style (iOS 26+)
                     if action["prominent"] as? Bool == true {

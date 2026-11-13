@@ -57,7 +57,9 @@ Escribe tu app **una sola vez** y los componentes (botones, menús, alertas, bar
 
 Los controles Android del paquete se implementan con Jetpack Compose y **Material 3 Expressive nativo**: botones, selecciones, sliders, FABs, menús, rail, toolbar, pestañas, carrusel, listas, campos de texto, diálogos, selectores, snackbars, tooltips e indicadores. La capa Compose usa `MaterialExpressiveTheme`; el paquete ya no depende ni reexporta widgets Flutter de `material_3_expressive`. iOS mantiene sus rutas Liquid Glass/Cupertino.
 
-La tipografía expresiva para texto Flutter está disponible mediante `AdaptiveExpressiveTypography`: expone explícitamente los 15 estilos base y sus 15 equivalentes enfatizados, selección por rol y tamaño y asignación de fuentes distintas para títulos y lectura. Se registra como `ThemeExtension` y no cambia el estilo actual por sí sola. Consulta la [guía de tipografía](docs/expressive-typography.md) para fuentes, ejes variables, idiomas, accesibilidad y tratamientos editoriales. Los textos internos de componentes Android nativos siguen usando la tipografía que define Compose.
+La tipografía expresiva para texto Flutter está disponible mediante `AdaptiveExpressiveTypography`: expone los 15 estilos base y sus 15 equivalentes enfatizados, selección por rol y tamaño y asignación de fuentes distintas para títulos y lectura. La extensión no cambia los widgets por sí sola. Al pasarla a `AdaptiveMaterialExpressiveTheme(typography: escala)`, se registra en el tema, se aplica la escala base a Flutter y ambas escalas al tema Compose nativo. `AdaptiveApp` también transmite automáticamente una escala registrada en `materialLightTheme` o `materialDarkTheme`. El puente envía las métricas del `TextTheme` Flutter activo y carga las fuentes declaradas en el proyecto mediante Compose. En Android 8 o posterior también aplica los ejes variables de cada rol tipográfico a esas fuentes. Consulta la [guía de tipografía](docs/expressive-typography.md) para configuración y límites.
+
+Las [formas expresivas](docs/expressive-shapes.md) incluyen el catálogo nativo de 35 polígonos con morph y una escala opcional `AdaptiveExpressiveShapeScale` para los ocho roles reales de `Shapes` en el tema Compose. Los roles no configurados conservan los valores oficiales de Compose.
 
 La ruta nativa requiere Flutter 3.47+, Android `minSdk 24`, `compileSdk 37`, JDK 17+, AGP 9.1.1, Gradle 9.3.1 y Kotlin 2.4.20. El plugin integra Material 3 Compose 1.5.0-rc01, que aporta `MaterialExpressiveTheme` y los componentes expresivos usados aquí.
 
@@ -76,6 +78,14 @@ AdaptiveAppBarAction(
 ```
 
 `AdaptiveButtonGroup` ofrece variantes estándar y conectadas con cinco tamaños M3 Expressive; `selectionRequired` impide vaciar la selección. `AdaptiveFabMenu` admite de dos a seis acciones con etiqueta e icono, y expone `toggleMenuLabel`, `expandedStateLabel` y `collapsedStateLabel` para localización accesible. Consulta [la guía Android de grupos y menús FAB](docs/android-m3e-button-groups-fab-menus.md) para medidas, teclado, RTL y límites de contenido nativo.
+
+`AdaptiveFilterChip` expone el chip de filtro plano o elevado de Compose en Android, con formas nativas para selección y pulsación. Recibe `label`, `selected` y `onSelected`; admite `leadingIcon`/`trailingIcon` para iconos Flutter reconocidos o `nativeLeadingIcon`/`nativeTrailingIcon` para elegir explícitamente un `AndroidM3EIcon`. En otras plataformas usa el `FilterChip` de Flutter.
+
+`AdaptiveInputChip` expone el `InputChip` real de Compose con morph nativo entre sus formas. Admite `label`, `selected`, `onSelected`, icono inicial, `avatarIcon`/`nativeAvatarIcon` o `avatarImageBytes`, y una descripción opcional del avatar. La imagen tiene prioridad sobre el icono de avatar, y cualquier avatar tiene prioridad sobre el icono inicial. También puede usar `onDismiss` en lugar de `onSelected`: al pulsar cualquier parte del chip se descarta el valor y aparece el icono de cerrar. `dismissLabel` permite localizar esa acción; sin él se usa la traducción Material de la app. En otras plataformas usa el `InputChip` de Flutter.
+
+`AdaptiveAssistChip` y `AdaptiveSuggestionChip` usan sus componentes Compose planos o elevados para acciones contextuales; reciben `label`, `onPressed` y los iconos que admite cada componente. Estas API nativas tienen una forma única, sin el morph de selección de los chips de filtro y entrada. En otras plataformas usan `ActionChip` de Flutter.
+
+`AdaptiveDivider` usa el divisor horizontal de Compose en Android; `AdaptiveVerticalDivider` usa el `VerticalDivider` nativo. Este último necesita una altura acotada, por ejemplo dentro de un `Row` contenido en un `SizedBox(height: ...)`. Ambos aceptan grosor, color e insets, y conservan el grosor Material predeterminado cuando no se indica uno.
 
 `AdaptiveToolbar` ofrece las variantes docked y floating nativas. Usa `docked: true` para acciones persistentes de página y `colorStyle: AdaptiveToolbarColorStyle.vibrant` para una barra contextual de mayor énfasis. Las acciones excesivas pasan al menú de desbordamiento de Compose. Revisa [la guía de toolbars Android](docs/android-m3e-toolbars.md) para tamaños, ubicación, accesibilidad y límites del puente Flutter/Compose.
 
@@ -125,7 +135,24 @@ AdaptiveIconButton(
 )
 ```
 
-Si tu aplicación usa un `MaterialApp` propio, puedes envolver su `builder` con `AdaptiveMaterialExpressiveTheme` para propagar tema, brillo y color semilla a las vistas Compose del paquete. Android 12+ usa por defecto la paleta dinámica del fondo de pantalla; configura `dynamicColoring: false` para conservar el color semilla de la app.
+En Android, `AdaptiveIconButton` usa las cinco alturas M3 Expressive (32, 40, 56, 96 y 136 dp) y `AdaptiveIconButtonWidth.narrow`, `defaultWidth` o `wide`. Compose aplica el tamaño oficial del icono salvo que el `Icon` tenga tamaño o color explícitos, y transforma la forma al pulsar o seleccionar; el área anfitriona mide al menos 48 dp. Por ejemplo:
+
+```dart
+AdaptiveIconButton(
+  icon: const Icon(Icons.favorite_border),
+  selectedIcon: const Icon(Icons.favorite),
+  isSelected: liked,
+  size: AdaptiveIconButtonSize.medium,
+  width: AdaptiveIconButtonWidth.wide,
+  shape: AdaptiveIconButtonShape.round,
+  semanticLabel: 'Favorito',
+  onPressed: toggleLiked,
+)
+```
+
+Para un botón con contador, usa `badgeValue: 3` y `badgeSemanticsLabel: '3 avisos sin leer'`. La etiqueta del botón puede venir de `semanticLabel`, de `tooltip` o del `semanticLabel` de su `Icon`, en ese orden. Android dibuja el distintivo y expone su descripción en el árbol de accesibilidad de Compose.
+
+Si tu aplicación usa un `MaterialApp` propio, puedes envolver su `builder` con `AdaptiveMaterialExpressiveTheme` para propagar tema, brillo y color semilla a las vistas Compose del paquete. Android 12+ usa por defecto la paleta dinámica del fondo de pantalla. Android 7–11 usa primero el `lightTheme` o `darkTheme` proporcionado; si indicas `seedColor`, aplica la misma paleta expresiva al contenido Flutter y a los controles nativos; en los demás casos genera una paleta expresiva desde el primario del tema. La variante expresiva puede desplazar el tono de la semilla. Configura `dynamicColoring: false` para usar el `ColorScheme` efectivo del tema Flutter en los controles nativos.
 
 ```dart
 MaterialApp(
@@ -282,7 +309,7 @@ En iOS 26+ los botones usan **Liquid Glass nativo**. Cada estilo conserva su **j
 | `glass` | Vidrio explícito | Vidrio discreto |
 | `plain` | Solo texto, sin fondo | Texto sin fondo |
 
-**En iOS 25 o anterior** los mismos estilos caen automáticamente a sus equivalentes Cupertino. **En Android** son botones Material normales.
+**En iOS 25 o anterior** los mismos estilos caen automáticamente a sus equivalentes Cupertino. **En Android** usan botones nativos Material 3 Expressive.
 
 ```dart
 // Acción primaria — glass prominente en iOS 26+
@@ -311,9 +338,13 @@ AdaptiveButton(
 ### Tamaños
 
 ```dart
-AdaptiveButton(onPressed: () {}, size: AdaptiveButtonSize.small, label: 'Small');  // 28pt
-AdaptiveButton(onPressed: () {}, size: AdaptiveButtonSize.medium, label: 'Medium'); // 36pt (default)
-AdaptiveButton(onPressed: () {}, size: AdaptiveButtonSize.large, label: 'Large');   // 44pt
+AdaptiveButton(onPressed: () {}, size: AdaptiveButtonSize.small, label: 'Small');  // iOS 28pt; Android 40dp
+AdaptiveButton(onPressed: () {}, size: AdaptiveButtonSize.medium, label: 'Medium'); // iOS 36pt; Android 56dp (default)
+AdaptiveButton(onPressed: () {}, size: AdaptiveButtonSize.large, label: 'Large');   // iOS 44pt; Android 96dp
+
+// Solo Android: acceso explícito a los cinco tamaños Material 3 Expressive.
+AdaptiveButton(onPressed: () {}, androidSize: AdaptiveAndroidButtonSize.extraSmall, label: 'XS'); // 32dp
+AdaptiveButton(onPressed: () {}, androidSize: AdaptiveAndroidButtonSize.extraLarge, label: 'XL'); // 136dp
 ```
 
 ### Estilos personalizados y deshabilitado
@@ -333,7 +364,17 @@ AdaptiveButton(
   label: 'Deshabilitado',
   enabled: false,
 )
+
+AdaptiveButton.child(
+  onPressed: () {},
+  child: Text(
+    'Guardar',
+    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+  ),
+)
 ```
+
+En Android, `AdaptiveButton.child` conserva el botón Compose y sus animaciones con `Text` de estilo compatible, incluso junto a un icono en un `Row` simple. Una fuente personalizada u otro efecto de texto que Compose no pueda representar mantiene el hijo Flutter.
 
 ---
 
@@ -381,8 +422,10 @@ AdaptiveScaffold(
   ),
   bottomNavigationBar: AdaptiveBottomNavigationBar(
     useNativeBottomBar: true, // UITabBar nativa de iOS 26 (default)
+    androidStyle: AdaptiveAndroidNavigationBarStyle.short, // Compose M3 Expressive
     items: [
       AdaptiveNavigationDestination(icon: 'house.fill', label: 'Inicio'),
+      AdaptiveNavigationDestination(icon: 'magnifyingglass', label: 'Buscar'),
       AdaptiveNavigationDestination(icon: 'person.fill', label: 'Perfil'),
     ],
     selectedIndex: 0,
@@ -569,9 +612,18 @@ AdaptiveSegmentedControl(
   selectedIndex: 0,
   onValueChanged: (index) {},
 )
+
+// Con iconos Material nativos en Android: nombres localizados obligatorios
+AdaptiveSegmentedControl(
+  labels: [],
+  sfSymbols: [AndroidM3EIcon.home, AndroidM3EIcon.favorite],
+  semanticLabels: ['Inicio', 'Favoritos'],
+  selectedIndex: 0,
+  onValueChanged: (index) {},
+)
 ```
 
-### AdaptiveSwitch y AdaptiveSlider
+### AdaptiveSwitch, AdaptiveSlider y AdaptiveRangeSlider
 
 <p align="center">
   <img src="https://github.com/ledexsoft/adaptive_liquid_glass/raw/main/img/switch.gif" alt="Adaptive Switch" width="300"/>
@@ -594,7 +646,26 @@ AdaptiveSlider(
   min: 0.0,
   max: 1.0,
 )
+
+AdaptiveSlider.vertical(
+  height: 240,
+  value: 0.5,
+  topToBottom: false, // el valor mínimo queda abajo
+  centeredTrack: true, // pista nativa que parte del centro en Android
+  onChanged: (value) => print('Vertical: $value'),
+)
+
+AdaptiveRangeSlider(
+  // selectedRange pertenece al State del widget y empieza, por ejemplo,
+  // con const RangeValues(0.2, 0.8).
+  values: selectedRange,
+  min: 0.0,
+  max: 1.0,
+  onChanged: (range) => setState(() => selectedRange = range),
+)
 ```
+
+`AdaptiveSlider.vertical` usa `VerticalSlider` real de Compose en Android, con pulgar, etiqueta, colores, pasos y estados nativos. Requiere una altura finita y reserva al menos 48 dp de ancho para el área táctil. `centeredTrack: true` también está disponible en el slider horizontal y selecciona `SliderDefaults.CenteredTrack` de Compose; por defecto se mantiene la pista normal. En iOS y otras plataformas, el slider vertical usa un control Flutter orientado verticalmente y `centeredTrack` no altera su pista.
 
 ### AdaptiveCheckbox y AdaptiveRadio
 
@@ -636,6 +707,14 @@ AdaptiveCard(
   child: Text('Contenido de la tarjeta'),
 )
 
+// Variantes Material 3 reales en Android; en Flutter se usan Card.filled,
+// Card y Card.outlined. Sin style se conserva el aspecto anterior.
+AdaptiveCard(
+  style: AdaptiveCardStyle.outlined,
+  padding: EdgeInsets.all(16),
+  child: Text('Tarjeta con contorno'),
+)
+
 // Con estilo personalizado
 AdaptiveCard(
   padding: EdgeInsets.all(16),
@@ -666,6 +745,24 @@ AdaptiveBadge(
 )
 ```
 
+### AdaptiveSearchBar
+
+```dart
+AdaptiveSearchBar(
+  hintText: 'Buscar noticias',
+  androidSuggestions: const ['Cuba', 'Economía', 'Cultura'],
+  onChanged: filtrarSugerencias,
+  onAndroidSuggestionSelected: abrirResultado,
+)
+```
+
+En Android, `androidSuggestions` activa el `SearchBar` y la vista expandida
+nativos de Compose. Si no se indica, el campo conserva su comportamiento
+compacto. En ventanas de menos de 600 dp, Compose usa
+`ExpandedFullScreenSearchBar`; desde 600 dp usa `ExpandedDockedSearchBar`.
+Si cambia el ancho mientras está abierta, conserva la vista actual hasta
+cerrarse. La selección se entrega después de la animación de cierre.
+
 ### AdaptiveTooltip
 
 ```dart
@@ -679,6 +776,24 @@ AdaptiveTooltip(
   message: 'Tooltip arriba',
   preferBelow: false,
   child: Icon(Icons.help),
+)
+
+// Android: usar la posición lateral nativa de Compose (respeta RTL).
+AdaptiveTooltip(
+  message: 'Más opciones',
+  androidPosition: AdaptiveTooltipAnchorPosition.end,
+  androidSpacing: 8,
+  child: Icon(Icons.more_vert),
+)
+
+// Android: RichTooltip nativo con título y acción opcionales.
+AdaptiveTooltip(
+  message: 'Conoce cómo funciona esta opción.',
+  androidTitle: 'Más información',
+  androidCaret: true,
+  androidActionLabel: 'Abrir guía',
+  onAndroidAction: () => abrirGuia(),
+  child: Icon(Icons.info_outline),
 )
 ```
 
@@ -760,6 +875,10 @@ AdaptiveListTile(
 )
 ```
 
+En Android, usa `androidSegmentIndex` y `androidSegmentCount` para el
+[`SegmentedListItem` nativo](docs/android-m3e-lists.md). Indica la posición y el
+total en cada fila; el paquete aplica la forma y la separación de Compose.
+
 ### AdaptiveTextField y AdaptiveTextFormField (texto y formularios)
 
 ```dart
@@ -802,15 +921,33 @@ AdaptiveTextFormField(
 ```dart
 AdaptiveFloatingActionButton(
   onPressed: () {},
+  tooltip: 'Crear',
   child: Icon(Icons.add),
 )
 
 AdaptiveFloatingActionButton(
   onPressed: () {},
   mini: true,
+  tooltip: 'Editar',
   child: Icon(Icons.edit),
 )
+
+// Tamaño expresivo mediano de Android (80 dp), con el FAB real de Compose.
+AdaptiveFloatingActionButton(
+  onPressed: () {},
+  androidSize: AdaptiveAndroidFabSize.medium,
+  tooltip: 'Crear',
+  child: Icon(Icons.add),
+)
 ```
+
+En Android, `androidSize` admite `small` (40 dp), `standard` (56 dp),
+`medium` (80 dp) y `large` (96 dp). Tiene prioridad sobre `mini`; si se omite,
+`mini` conserva su comportamiento anterior. Este ajuste no cambia iOS.
+El tamaño `small` conserva su visual de 40 dp y reserva un área de 48 dp para
+el objetivo táctil nativo.
+Cada FAB nativo de Android necesita un `tooltip` o un
+`Icon.semanticLabel` no vacío para que la acción tenga nombre accesible.
 
 ### AdaptiveFormSection y AdaptiveExpansionTile (formularios agrupados y acordeones)
 
@@ -853,6 +990,22 @@ AdaptiveTabBarView(
   },
 )
 ```
+
+En Android, las pestañas usan filas nativas de Compose Material 3. El valor
+predeterminado es la fila primaria con texto. Puedes elegir la fila secundaria,
+añadir iconos nativos o mostrar solo iconos:
+
+```dart
+AdaptiveTabBarView(
+  tabs: ['Inicio', 'Ajustes'], // Nombres accesibles, incluso sin texto visible
+  androidRowStyle: AdaptiveTabRowStyle.secondary,
+  androidIcons: [AndroidM3EIcon.home, AndroidM3EIcon.settings],
+  androidShowLabels: false,
+  children: [InicioPage(), AjustesPage()],
+)
+```
+
+Estas opciones afectan solo a Android; iOS conserva su control segmentado.
 
 ---
 
@@ -945,6 +1098,7 @@ await IOS26NativeSearchTabBar.disable();
 - ✅ **AdaptiveSegmentedControl** — Controles segmentados nativos
 - ✅ **AdaptiveSwitch** — Switches nativos
 - ✅ **AdaptiveSlider** — Sliders nativos
+- ✅ **AdaptiveRangeSlider** — Selector de rango nativo de Compose en Android
 - ✅ **AdaptiveCheckbox** — Checkboxes adaptativos
 - ✅ **AdaptiveRadio** — Radio buttons adaptativos
 - ✅ **AdaptiveCard** — Tarjetas por plataforma

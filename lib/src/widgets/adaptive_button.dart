@@ -6,7 +6,13 @@ import '../platform/platform_info.dart';
 import '../style/sf_symbol.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
+import 'android/android_m3e_text_options.dart';
 import 'ios26/ios26_button.dart';
+
+Color _contrastForeground(Color background) =>
+    background.computeLuminance() > 0.179128784747792
+    ? Colors.black
+    : Colors.white;
 
 /// An adaptive button that renders platform-specific button styles
 ///
@@ -33,6 +39,7 @@ class AdaptiveButton extends StatelessWidget {
     this.textColor,
     this.style = AdaptiveButtonStyle.filled,
     this.size = AdaptiveButtonSize.medium,
+    this.androidSize,
     this.padding,
     this.borderRadius,
     this.minSize,
@@ -42,6 +49,7 @@ class AdaptiveButton extends StatelessWidget {
   }) : child = null,
        icon = null,
        iconColor = null,
+       semanticLabel = null,
        sfSymbol = null;
 
   /// Creates an adaptive button with a custom child widget
@@ -52,6 +60,7 @@ class AdaptiveButton extends StatelessWidget {
     this.color,
     this.style = AdaptiveButtonStyle.filled,
     this.size = AdaptiveButtonSize.medium,
+    this.androidSize,
     this.padding,
     this.borderRadius,
     this.minSize,
@@ -62,6 +71,7 @@ class AdaptiveButton extends StatelessWidget {
        textColor = null,
        icon = null,
        iconColor = null,
+       semanticLabel = null,
        sfSymbol = null;
 
   /// Creates an adaptive button with an icon
@@ -71,8 +81,10 @@ class AdaptiveButton extends StatelessWidget {
     required this.icon,
     this.color,
     this.iconColor,
+    this.semanticLabel,
     this.style = AdaptiveButtonStyle.filled,
     this.size = AdaptiveButtonSize.medium,
+    this.androidSize,
     this.padding,
     this.borderRadius,
     this.minSize,
@@ -84,7 +96,8 @@ class AdaptiveButton extends StatelessWidget {
        child = null,
        sfSymbol = null;
 
-  /// Creates an adaptive button with a native SF Symbol icon (iOS only)
+  /// Creates an adaptive button with a native SF Symbol icon on iOS 26+.
+  /// Android callers must use [AdaptiveButton.icon] with a Material icon.
   const AdaptiveButton.sfSymbol({
     super.key,
     required this.onPressed,
@@ -92,6 +105,7 @@ class AdaptiveButton extends StatelessWidget {
     this.color,
     this.style = AdaptiveButtonStyle.glass,
     this.size = AdaptiveButtonSize.medium,
+    this.androidSize,
     this.padding,
     this.borderRadius,
     this.minSize,
@@ -102,7 +116,8 @@ class AdaptiveButton extends StatelessWidget {
        textColor = null,
        child = null,
        icon = null,
-       iconColor = null;
+       iconColor = null,
+       semanticLabel = null;
 
   /// The callback that is called when the button is tapped
   final VoidCallback? onPressed;
@@ -118,6 +133,13 @@ class AdaptiveButton extends StatelessWidget {
 
   /// The SF Symbol to display (used in .sfSymbol constructor)
   final SFSymbol? sfSymbol;
+
+  /// Localized accessible name for an icon-only button.
+  ///
+  /// Required on Android for [AdaptiveButton.icon] and icon-only
+  /// [AdaptiveButton.child] content. It must be nonblank and should be
+  /// localized by the caller.
+  final String? semanticLabel;
 
   /// The color of the button
   ///
@@ -136,6 +158,10 @@ class AdaptiveButton extends StatelessWidget {
 
   /// The size preset for the button
   final AdaptiveButtonSize size;
+
+  /// Optional Material 3 Expressive size on Android. The default maps
+  /// [size] to small, medium, or large; iOS keeps its existing size mapping.
+  final AdaptiveAndroidButtonSize? androidSize;
 
   /// The amount of space to surround the child inside the button
   final EdgeInsetsGeometry? padding;
@@ -202,6 +228,12 @@ class AdaptiveButton extends StatelessWidget {
     }
 
     // Android - Use the native Compose Material 3 Expressive button.
+    if (PlatformInfo.isAndroid && sfSymbol != null) {
+      throw FlutterError(
+        'SF Symbols are only available on Apple platforms. Use an Android '
+        'Material Icon in AdaptiveButton.icon on Android.',
+      );
+    }
     if (PlatformInfo.usesNativeAndroidViews) {
       if (!_canRenderAndroidNatively) return _buildMaterialButton(context);
       return _buildAndroidExpressiveButton(context);
@@ -212,33 +244,130 @@ class AdaptiveButton extends StatelessWidget {
   }
 
   bool get _canRenderAndroidNatively {
-    if (sfSymbol != null) return false;
+    final customRadius = borderRadius;
+    if (customRadius != null &&
+        [
+          customRadius.topLeft,
+          customRadius.topRight,
+          customRadius.bottomRight,
+          customRadius.bottomLeft,
+        ].any(
+          (corner) =>
+              !corner.x.isFinite ||
+              !corner.y.isFinite ||
+              corner.x < 0 ||
+              corner.y < 0,
+        )) {
+      return false;
+    }
     if (icon != null &&
         !canResolveAndroidM3EIcon(child: Icon(icon), nativeIcon: null)) {
       return false;
     }
-    if (child == null) return true;
-    if (child is Text) return (child as Text).style == null;
-    if (child is Icon) {
-      return canResolveAndroidM3EIcon(child: child, nativeIcon: null);
+    return child == null || _androidChildContent != null;
+  }
+
+  bool _canRenderAndroidButtonText(Text text) =>
+      canRenderAndroidM3EText(text) &&
+      (text.maxLines == null || text.maxLines == 1);
+
+  bool _isPlainAndroidIcon(Icon icon) =>
+      icon.icon != null &&
+      canSerializeAndroidM3EIconStyle(icon) &&
+      canResolveAndroidM3EIcon(child: icon, nativeIcon: null);
+
+  ({
+    String? label,
+    Text? text,
+    IconData? icon,
+    String? semanticLabel,
+    double? iconSize,
+    Color? iconColor,
+    bool trailingIcon,
+    double? iconSpacing,
+  })?
+  get _androidChildContent {
+    final content = child;
+    if (content is Text && _canRenderAndroidButtonText(content)) {
+      return (
+        label: content.data,
+        text: content,
+        icon: null,
+        semanticLabel: null,
+        iconSize: null,
+        iconColor: null,
+        trailingIcon: false,
+        iconSpacing: null,
+      );
     }
-    if (child is Row) {
-      for (final part in (child as Row).children) {
-        if (part is Icon &&
-            !canResolveAndroidM3EIcon(child: part, nativeIcon: null)) {
-          return false;
-        }
-        if (part is Text && part.style != null) return false;
-        if (part is! Icon &&
-            part is! Text &&
-            part is! SizedBox &&
-            part is! Padding) {
-          return false;
-        }
+    if (content is Icon && _isPlainAndroidIcon(content)) {
+      return (
+        label: null,
+        text: null,
+        icon: content.icon,
+        semanticLabel: content.semanticLabel,
+        iconSize: content.size,
+        iconColor: content.color,
+        trailingIcon: false,
+        iconSpacing: null,
+      );
+    }
+    if (content is! Row ||
+        content.textDirection != null ||
+        content.mainAxisSize != MainAxisSize.min ||
+        content.mainAxisAlignment != MainAxisAlignment.start ||
+        content.crossAxisAlignment != CrossAxisAlignment.center ||
+        !content.spacing.isFinite ||
+        content.spacing < 0) {
+      return null;
+    }
+    final children = content.children;
+    if (children.isEmpty || children.length > 3) return null;
+    double? spacing = children.length > 1 && content.spacing != 0
+        ? content.spacing
+        : null;
+    if (children.length == 3) {
+      final middle = children[1];
+      if (middle is! SizedBox ||
+          middle.child != null ||
+          middle.width == null ||
+          !middle.width!.isFinite ||
+          middle.width! < 0 ||
+          middle.height != null) {
+        return null;
       }
-      return true;
+      spacing = middle.width! + 2 * content.spacing;
+    } else if (children.length == 2 &&
+        (children[0] is SizedBox || children[1] is SizedBox)) {
+      return null;
     }
-    return false;
+    final parts = children.where((part) => part is! SizedBox).toList();
+    if (parts.isEmpty || parts.length > 2) return null;
+    final texts = parts.whereType<Text>().toList();
+    final icons = parts.whereType<Icon>().toList();
+    if (texts.length > 1 ||
+        icons.length > 1 ||
+        texts.length + icons.length != parts.length ||
+        texts.any((text) => !_canRenderAndroidButtonText(text)) ||
+        icons.any((icon) => !_isPlainAndroidIcon(icon))) {
+      return null;
+    }
+    if (spacing != null && (texts.length != 1 || icons.length != 1)) {
+      return null;
+    }
+    if (texts.isNotEmpty && icons.any((icon) => icon.semanticLabel != null)) {
+      return null;
+    }
+    return (
+      label: texts.isEmpty ? null : texts.single.data,
+      text: texts.isEmpty ? null : texts.single,
+      icon: icons.isEmpty ? null : icons.single.icon,
+      semanticLabel: icons.isEmpty ? null : icons.single.semanticLabel,
+      iconSize: icons.isEmpty ? null : icons.single.size,
+      iconColor: icons.isEmpty ? null : icons.single.color,
+      trailingIcon: parts.length == 2 && parts.first is Text,
+      iconSpacing: spacing,
+    );
   }
 
   Widget _buildIOS26Native(BuildContext context) {
@@ -292,7 +421,12 @@ class AdaptiveButton extends StatelessWidget {
           borderRadius: borderRadius,
           minSize: minSize,
           useSmoothRectangleBorder: useSmoothRectangleBorder,
-          child: Icon(icon, color: iconColor, size: 24),
+          child: Icon(
+            icon,
+            color: iconColor,
+            size: 24,
+            semanticLabel: semanticLabel,
+          ),
         ),
       );
     }
@@ -351,7 +485,11 @@ class AdaptiveButton extends StatelessWidget {
             size: sfSymbol!.size,
           );
         } else if (icon != null) {
-          buttonChild = Icon(icon, color: iconColor ?? filledTextColor);
+          buttonChild = Icon(
+            icon,
+            color: iconColor ?? filledTextColor,
+            semanticLabel: semanticLabel,
+          );
         } else if (child != null) {
           buttonChild = DefaultTextStyle(
             style: TextStyle(color: filledTextColor),
@@ -390,7 +528,11 @@ class AdaptiveButton extends StatelessWidget {
             size: sfSymbol!.size,
           );
         } else if (icon != null) {
-          buttonChild = Icon(icon, color: iconColor ?? effectiveColor);
+          buttonChild = Icon(
+            icon,
+            color: iconColor ?? effectiveColor,
+            semanticLabel: semanticLabel,
+          );
         } else if (child != null) {
           buttonChild = DefaultTextStyle(
             style: TextStyle(color: effectiveColor),
@@ -424,7 +566,11 @@ class AdaptiveButton extends StatelessWidget {
             size: sfSymbol!.size,
           );
         } else if (icon != null) {
-          buttonChild = Icon(icon, color: iconColor ?? textColorValue);
+          buttonChild = Icon(
+            icon,
+            color: iconColor ?? textColorValue,
+            semanticLabel: semanticLabel,
+          );
         } else if (child != null) {
           buttonChild = DefaultTextStyle(
             style: TextStyle(color: textColorValue),
@@ -461,7 +607,11 @@ class AdaptiveButton extends StatelessWidget {
             size: sfSymbol!.size,
           );
         } else if (icon != null) {
-          buttonChild = Icon(icon, color: iconColor ?? textColorValue);
+          buttonChild = Icon(
+            icon,
+            color: iconColor ?? textColorValue,
+            semanticLabel: semanticLabel,
+          );
         } else if (child != null) {
           buttonChild = DefaultTextStyle(
             style: TextStyle(color: textColorValue),
@@ -500,7 +650,7 @@ class AdaptiveButton extends StatelessWidget {
         size: sfSymbol!.size,
       );
     } else if (icon != null) {
-      buttonChild = Icon(icon, color: iconColor);
+      buttonChild = Icon(icon, color: iconColor, semanticLabel: semanticLabel);
     } else if (child != null) {
       buttonChild = child!;
     } else {
@@ -516,12 +666,13 @@ class AdaptiveButton extends StatelessWidget {
         // backgroundColor (p.ej. con cs.primary) y textColor es null, el
         // texto sale del MISMO color que el fondo → invisible en Android.
         // Derivar el foreground por luminancia del fondo (blanco/negro).
-        final filledColor = color ?? Theme.of(context).colorScheme.primary;
+        final scheme = Theme.of(context).colorScheme;
+        final filledColor = color ?? scheme.primary;
         final filledTextColor =
             textColor ??
-            (filledColor.computeLuminance() > 0.5
-                ? Colors.black
-                : Colors.white);
+            (color == null
+                ? scheme.onPrimary
+                : _contrastForeground(filledColor));
         return ElevatedButton(
           onPressed: effectiveOnPressed,
           style: ElevatedButton.styleFrom(
@@ -629,42 +780,40 @@ class AdaptiveButton extends StatelessWidget {
   }
 
   Widget _buildAndroidExpressiveButton(BuildContext context) {
-    String? nativeLabel = label;
-    IconData? nativeIconData = icon;
-    if (child != null) {
-      nativeLabel = null;
-      nativeIconData = null;
-      if (child is Text && (child as Text).style == null) {
-        nativeLabel = (child as Text).data;
-      } else if (child is Icon && (child as Icon).icon != null) {
-        nativeIconData = (child as Icon).icon;
-      } else if (child is Row) {
-        for (final part in (child as Row).children) {
-          if (part is Icon && part.icon != null && nativeIconData == null) {
-            nativeIconData = part.icon;
-          } else if (part is Text &&
-              part.style == null &&
-              nativeLabel == null) {
-            nativeLabel = part.data;
-          } else if (part is! SizedBox && part is! Padding) {
-            throw FlutterError(
-              'Android AdaptiveButton.child accepts plain Text, Icon, or a '
-              'Row containing those widgets. Pass a serializable native icon '
-              'for other content.',
-            );
-          }
-        }
-      } else {
-        throw FlutterError(
-          'Android AdaptiveButton uses a native Compose button. Its child '
-          'must be plain Text, Icon, or a simple Row of both.',
-        );
-      }
-    }
-    if (sfSymbol != null) {
+    final requestedMinSize = minSize;
+    if (requestedMinSize != null &&
+        (!requestedMinSize.width.isFinite ||
+            requestedMinSize.width < 0 ||
+            !requestedMinSize.height.isFinite ||
+            requestedMinSize.height < 0)) {
       throw FlutterError(
-        'SF Symbols are only available on Apple platforms. Use an Android '
-        'Material Icon in AdaptiveButton.icon on Android.',
+        'AdaptiveButton.minSize must have finite non-negative dimensions on Android.',
+      );
+    }
+    String? nativeLabel = label;
+    Text? nativeText;
+    IconData? nativeIconData = icon;
+    String? nativeSemanticLabel = semanticLabel;
+    double? nativeIconSize;
+    Color? nativeIconColor;
+    var trailingIcon = false;
+    double? customIconSpacing;
+    if (child != null) {
+      final parsed = _androidChildContent!;
+      nativeLabel = parsed.label;
+      nativeText = parsed.text;
+      nativeIconData = parsed.icon;
+      nativeSemanticLabel = parsed.semanticLabel;
+      nativeIconSize = parsed.iconSize;
+      nativeIconColor = parsed.iconColor;
+      trailingIcon = parsed.trailingIcon;
+      customIconSpacing = parsed.iconSpacing;
+    }
+    if (nativeIconData != null &&
+        (nativeLabel == null || nativeLabel.trim().isEmpty) &&
+        (nativeSemanticLabel == null || nativeSemanticLabel.trim().isEmpty)) {
+      throw FlutterError(
+        'An icon-only Android AdaptiveButton requires a nonblank semanticLabel.',
       );
     }
     final nativeIcon = nativeIconData == null
@@ -688,57 +837,198 @@ class AdaptiveButton extends StatelessWidget {
         ((style == AdaptiveButtonStyle.filled ||
                     style == AdaptiveButtonStyle.gray) &&
                 color != null
-            ? (color!.computeLuminance() > 0.5 ? Colors.black : Colors.white)
+            ? _contrastForeground(color!)
             : color);
+    final customRadius = borderRadius;
+    final ellipticalCorners =
+        customRadius != null &&
+        [
+          customRadius.topLeft,
+          customRadius.topRight,
+          customRadius.bottomRight,
+          customRadius.bottomLeft,
+        ].any((corner) => corner.x != corner.y);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final textStyle = Theme.of(context).textTheme.labelLarge;
-        final painter = TextPainter(
-          text: TextSpan(text: nativeLabel ?? '', style: textStyle),
-          maxLines: 1,
-          textDirection: Directionality.of(context),
-        )..layout();
-        final minHeight =
-            minSize?.height ??
+        final effectiveAndroidSize =
+            androidSize ??
             switch (size) {
-              AdaptiveButtonSize.small => 40.0,
-              AdaptiveButtonSize.medium => 44.0,
-              AdaptiveButtonSize.large => 48.0,
+              AdaptiveButtonSize.small => AdaptiveAndroidButtonSize.small,
+              AdaptiveButtonSize.medium => AdaptiveAndroidButtonSize.medium,
+              AdaptiveButtonSize.large => AdaptiveAndroidButtonSize.large,
             };
+        final tokenHeight = switch (effectiveAndroidSize) {
+          AdaptiveAndroidButtonSize.extraSmall => 32.0,
+          AdaptiveAndroidButtonSize.small => 40.0,
+          AdaptiveAndroidButtonSize.medium => 56.0,
+          AdaptiveAndroidButtonSize.large => 96.0,
+          AdaptiveAndroidButtonSize.extraLarge => 136.0,
+        };
+        final resolvedPadding = padding?.resolve(Directionality.of(context));
+        if (resolvedPadding != null &&
+            [
+              resolvedPadding.left,
+              resolvedPadding.top,
+              resolvedPadding.right,
+              resolvedPadding.bottom,
+            ].any((inset) => !inset.isFinite || inset < 0)) {
+          throw FlutterError(
+            'AdaptiveButton.padding must have finite non-negative insets on Android.',
+          );
+        }
+        var minHeight = math.max(tokenHeight, minSize?.height ?? 0.0);
+        late AdaptiveAndroidButtonSize measuredSize;
+        late double iconSize;
+        late double iconSpacing;
+        late TextPainter painter;
+        // Compose chooses text, icon and padding tokens from the final height,
+        // including a caller's minimum height or tall custom padding.
+        for (var pass = 0; pass < 5; pass++) {
+          measuredSize = switch (minHeight) {
+            < 40.0 => AdaptiveAndroidButtonSize.extraSmall,
+            < 56.0 => AdaptiveAndroidButtonSize.small,
+            < 96.0 => AdaptiveAndroidButtonSize.medium,
+            < 136.0 => AdaptiveAndroidButtonSize.large,
+            _ => AdaptiveAndroidButtonSize.extraLarge,
+          };
+          iconSize = switch (measuredSize) {
+            AdaptiveAndroidButtonSize.extraSmall ||
+            AdaptiveAndroidButtonSize.small => 20.0,
+            AdaptiveAndroidButtonSize.medium => 24.0,
+            AdaptiveAndroidButtonSize.large => 32.0,
+            AdaptiveAndroidButtonSize.extraLarge => 40.0,
+          };
+          final renderedIconSize = nativeIconSize ?? iconSize;
+          iconSpacing = switch (measuredSize) {
+            AdaptiveAndroidButtonSize.extraSmall => 4.0,
+            AdaptiveAndroidButtonSize.small ||
+            AdaptiveAndroidButtonSize.medium => 8.0,
+            AdaptiveAndroidButtonSize.large => 12.0,
+            AdaptiveAndroidButtonSize.extraLarge => 16.0,
+          };
+          final textStyle = switch (measuredSize) {
+            AdaptiveAndroidButtonSize.extraSmall ||
+            AdaptiveAndroidButtonSize.small => Theme.of(
+              context,
+            ).textTheme.labelLarge,
+            AdaptiveAndroidButtonSize.medium => Theme.of(
+              context,
+            ).textTheme.titleMedium,
+            AdaptiveAndroidButtonSize.large => Theme.of(
+              context,
+            ).textTheme.headlineSmall,
+            AdaptiveAndroidButtonSize.extraLarge => Theme.of(
+              context,
+            ).textTheme.headlineLarge,
+          };
+          if (pass > 0) painter.dispose();
+          painter = TextPainter(
+            text: TextSpan(
+              text: nativeLabel ?? '',
+              style: textStyle?.merge(nativeText?.style) ?? nativeText?.style,
+            ),
+            maxLines: 1,
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+          )..layout();
+          final contentHeight =
+              math.max(
+                nativeIcon == null ? 0.0 : renderedIconSize,
+                painter.height,
+              ) +
+              (resolvedPadding?.vertical ?? 0.0);
+          final nextHeight = math.max(minHeight, contentHeight);
+          if (nextHeight == minHeight) break;
+          minHeight = nextHeight;
+        }
+        final renderedIconSize = nativeIconSize ?? iconSize;
+        final effectiveIconSpacing = customIconSpacing ?? iconSpacing;
         final iconOnly = nativeLabel == null && nativeIcon != null;
         final horizontalPadding =
-            padding?.horizontal ?? (iconOnly ? 8.0 : 24.0);
-        final iconSpace = nativeIcon == null
-            ? 0.0
-            : (nativeLabel == null ? minHeight : 24.0);
+            resolvedPadding?.horizontal ??
+            (iconOnly
+                ? math.max(0.0, minHeight - renderedIconSize)
+                : switch (measuredSize) {
+                    AdaptiveAndroidButtonSize.extraSmall => 24.0,
+                    AdaptiveAndroidButtonSize.small => 32.0,
+                    AdaptiveAndroidButtonSize.medium => 48.0,
+                    AdaptiveAndroidButtonSize.large => 96.0,
+                    AdaptiveAndroidButtonSize.extraLarge => 128.0,
+                  });
+        final iconSpace = nativeIcon == null ? 0.0 : renderedIconSize;
         final desiredWidth = iconOnly
-            ? minHeight
+            ? math.max(
+                math.max(minHeight, minSize?.width ?? 0.0),
+                renderedIconSize + horizontalPadding,
+              )
             : math.max(
-                minHeight,
+                math.max(minHeight, minSize?.width ?? 0.0),
                 painter.width +
                     horizontalPadding +
                     iconSpace +
-                    (nativeIcon == null ? 0 : 8),
+                    (nativeIcon == null ? 0 : effectiveIconSpacing),
               );
         final width = constraints.maxWidth.isFinite
-            ? math.min(desiredWidth, constraints.maxWidth)
-            : desiredWidth;
+            ? math.min(math.max(48.0, desiredWidth), constraints.maxWidth)
+            : math.max(48.0, desiredWidth);
+        painter.dispose();
         return AndroidM3EPlatformView(
           component: 'button',
           width: width,
-          height: minHeight,
+          height: math.max(48.0, minHeight),
           properties: {
             'label': nativeLabel ?? '',
+            'labelTextOptions': nativeText == null
+                ? null
+                : androidM3ETextOptions(nativeText),
+            'labelColor': nativeText?.style?.color?.toARGB32(),
             'icon': nativeIcon,
+            'iconSize': nativeIconSize,
+            'iconColor': nativeIconColor?.toARGB32(),
+            'semanticLabel': nativeSemanticLabel,
+            'trailingIcon': trailingIcon,
+            'iconSpacing': customIconSpacing,
             'iconOnly': iconOnly,
             'style': style.name,
             'backgroundColor': backgroundColor?.toARGB32(),
             'foregroundColor': foregroundColor?.toARGB32(),
+            'borderColor': style == AdaptiveButtonStyle.bordered
+                ? color?.toARGB32()
+                : null,
             'enabled': enabled && onPressed != null,
             'hasCallback': onPressed != null,
             'minHeight': minHeight,
-            'horizontalPadding': horizontalPadding,
-            'borderRadius': borderRadius?.topLeft.x,
+            'padding': resolvedPadding == null
+                ? null
+                : [
+                    Directionality.of(context) == TextDirection.rtl
+                        ? resolvedPadding.right
+                        : resolvedPadding.left,
+                    resolvedPadding.top,
+                    Directionality.of(context) == TextDirection.rtl
+                        ? resolvedPadding.left
+                        : resolvedPadding.right,
+                    resolvedPadding.bottom,
+                  ],
+            'borderRadii': customRadius == null
+                ? null
+                : ellipticalCorners
+                ? [
+                    customRadius.topLeft.x,
+                    customRadius.topLeft.y,
+                    customRadius.topRight.x,
+                    customRadius.topRight.y,
+                    customRadius.bottomRight.x,
+                    customRadius.bottomRight.y,
+                    customRadius.bottomLeft.x,
+                    customRadius.bottomLeft.y,
+                  ]
+                : [
+                    customRadius.topLeft.x,
+                    customRadius.topRight.x,
+                    customRadius.bottomRight.x,
+                    customRadius.bottomLeft.x,
+                  ],
           },
           onEvent: (event, _) {
             if (event == 'pressed' && enabled) onPressed?.call();
@@ -830,3 +1120,6 @@ enum AdaptiveButtonSize {
   /// Large button (44pt height on iOS)
   large,
 }
+
+/// Material 3 Expressive container sizes used by native Android buttons.
+enum AdaptiveAndroidButtonSize { extraSmall, small, medium, large, extraLarge }

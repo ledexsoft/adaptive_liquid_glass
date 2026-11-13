@@ -1,5 +1,17 @@
 import 'package:flutter/material.dart';
 
+/// Cupertino's minute wheel requires a positive factor of 60. Validate at the
+/// adaptive entry point so Android and iOS accept the same minute intervals.
+void validateMinuteInterval(int interval) {
+  if (interval <= 0 || 60 % interval != 0) {
+    throw ArgumentError.value(
+      interval,
+      'minuteInterval',
+      'must be a positive divisor of 60',
+    );
+  }
+}
+
 /// Helpers to snap picked times onto a fixed minute grid (e.g. 15-minute
 /// steps), keeping the iOS Cupertino and Android Material pickers consistent.
 ///
@@ -12,7 +24,12 @@ import 'package:flutter/material.dart';
 /// no-op, preserving the default per-minute behaviour.
 DateTime alignDateTimeToInterval(DateTime dateTime, int interval) {
   if (interval <= 1) return dateTime;
-  final base = DateTime(dateTime.year, dateTime.month, dateTime.day, dateTime.hour);
+  final base = DateTime(
+    dateTime.year,
+    dateTime.month,
+    dateTime.day,
+    dateTime.hour,
+  );
   final roundedMinutes = (dateTime.minute / interval).round() * interval;
   return base.add(Duration(minutes: roundedMinutes));
 }

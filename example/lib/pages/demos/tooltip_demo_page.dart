@@ -84,6 +84,7 @@ class _TooltipDemoPageState extends State<TooltipDemoPage> {
                 child: _buildIconButton(
                   context,
                   icon: PlatformInfo.isIOS ? CupertinoIcons.add : Icons.add,
+                  semanticLabel: 'Add new item',
                   onPressed: () {},
                 ),
               ),
@@ -92,6 +93,7 @@ class _TooltipDemoPageState extends State<TooltipDemoPage> {
                 child: _buildIconButton(
                   context,
                   icon: PlatformInfo.isIOS ? CupertinoIcons.pencil : Icons.edit,
+                  semanticLabel: 'Edit selected',
                   onPressed: () {},
                 ),
               ),
@@ -102,6 +104,7 @@ class _TooltipDemoPageState extends State<TooltipDemoPage> {
                   icon: PlatformInfo.isIOS
                       ? CupertinoIcons.delete
                       : Icons.delete,
+                  semanticLabel: 'Delete item',
                   onPressed: () {},
                 ),
               ),
@@ -110,6 +113,7 @@ class _TooltipDemoPageState extends State<TooltipDemoPage> {
                 child: _buildIconButton(
                   context,
                   icon: PlatformInfo.isIOS ? CupertinoIcons.share : Icons.share,
+                  semanticLabel: 'Share with others',
                   onPressed: () {},
                 ),
               ),
@@ -381,6 +385,7 @@ class _TooltipDemoPageState extends State<TooltipDemoPage> {
   Widget _buildIconButton(
     BuildContext context, {
     required IconData icon,
+    required String semanticLabel,
     required VoidCallback onPressed,
   }) {
     return SizedBox(
@@ -391,6 +396,7 @@ class _TooltipDemoPageState extends State<TooltipDemoPage> {
             ? AdaptiveButtonStyle.tinted
             : AdaptiveButtonStyle.filled,
         icon: icon,
+        semanticLabel: semanticLabel,
         onPressed: onPressed,
       ),
     );

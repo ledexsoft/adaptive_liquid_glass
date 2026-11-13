@@ -3,8 +3,10 @@ package com.ledexsoft.adaptive_liquid_glass
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Matrix
@@ -21,24 +23,25 @@ internal fun NativeM3EExpressiveShape(properties: Map<String, Any?>) {
   val progress = ((properties["morphProgress"] as? Number)?.toFloat() ?: 0f)
     .coerceIn(0f, 1f)
   val color = (properties["color"] as? Number)?.toInt()?.let(::Color)
-    ?: Color(0xFF6750A4)
+    ?: MaterialTheme.colorScheme.primary
+  val morph = remember(start, end) { end?.let { Morph(start, it) } }
 
   Canvas(Modifier.fillMaxSize()) {
-    val path = if (end == null) {
+    val path = if (morph == null) {
       start.toPath().asComposePath()
     } else {
-      Morph(start, end).toPath(progress).asComposePath()
+      morph.toPath(progress).asComposePath()
     }
+    // MaterialShapes are normalized to the unit square, not a -1..1 radius.
     val matrix = Matrix()
-    matrix.scale(size.width / 2f, size.height / 2f)
-    matrix.translate(1f, 1f)
+    matrix.scale(size.width, size.height)
     path.transform(matrix)
     drawPath(path, color)
   }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-private fun materialShape(name: String?): RoundedPolygon = when (name) {
+internal fun materialShape(name: String?): RoundedPolygon = when (name) {
   "arch" -> MaterialShapes.Arch
   "arrow" -> MaterialShapes.Arrow
   "boom" -> MaterialShapes.Boom

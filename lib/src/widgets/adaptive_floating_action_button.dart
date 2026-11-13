@@ -9,7 +9,7 @@ import 'android/android_m3e_platform_view.dart';
 ///
 /// On iOS 26+: Uses circular button with native iOS 26 design and shadow
 /// On iOS <26: Uses CupertinoButton with circular shape and shadow
-/// On Android: Uses Material FloatingActionButton
+/// On Android: Uses the native Compose Material 3 floating action button.
 ///
 /// Example:
 /// ```dart
@@ -17,6 +17,7 @@ import 'android/android_m3e_platform_view.dart';
 ///   onPressed: () {
 ///     print('FAB pressed');
 ///   },
+///   tooltip: 'Add item',
 ///   child: Icon(Icons.add),
 /// )
 /// ```
@@ -30,6 +31,7 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
     this.foregroundColor,
     this.elevation,
     this.mini = false,
+    this.androidSize,
     this.tooltip,
     this.heroTag,
     this.nativeIcon,
@@ -63,7 +65,16 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
   /// Whether to use a mini (smaller) floating action button
   final bool mini;
 
-  /// Tooltip text for the button
+  /// Native Android FAB size. Overrides [mini] on Android only.
+  ///
+  /// `standard` is 56 dp, while the expressive `medium` size is 80 dp.
+  /// The default remains `small` when [mini] is true, otherwise `standard`.
+  final AdaptiveAndroidFabSize? androidSize;
+
+  /// Tooltip text for the button. On Android, this uses a native Material
+  /// tooltip and names the button for accessibility unless the [Icon] child
+  /// supplies its own semantic label. A native Android FAB requires one of
+  /// these two nonblank names, including when [onPressed] is null.
   final String? tooltip;
 
   /// Hero tag for page transitions
@@ -84,22 +95,59 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
 
     // Android - use the official Compose Material 3 Expressive FAB.
     if (PlatformInfo.usesNativeAndroidViews) {
+      final fabChild = child;
+      final iconSemanticLabel = fabChild is Icon
+          ? fabChild.semanticLabel
+          : null;
+      if ((iconSemanticLabel?.trim().isEmpty ?? true) &&
+          (tooltip?.trim().isEmpty ?? true)) {
+        throw FlutterError(
+          'AdaptiveFloatingActionButton on Android requires a non-blank '
+          'tooltip or Icon.semanticLabel to name its icon action.',
+        );
+      }
+      if (!canSerializeAndroidM3EIconStyle(fabChild)) {
+        return _buildMaterialFAB(context);
+      }
+      final effectiveSize =
+          androidSize ??
+          (mini
+              ? AdaptiveAndroidFabSize.small
+              : AdaptiveAndroidFabSize.standard);
+      final defaultFabSize = switch (effectiveSize) {
+        AdaptiveAndroidFabSize.small => 40.0,
+        AdaptiveAndroidFabSize.standard => 56.0,
+        AdaptiveAndroidFabSize.medium => 80.0,
+        AdaptiveAndroidFabSize.large => 96.0,
+      };
+      // Compose Surface reserves 48 dp for a clickable 40 dp small FAB.
+      final minimumHostSize = defaultFabSize < 48.0 ? 48.0 : defaultFabSize;
+      final explicitIconSize = fabChild is Icon ? fabChild.size : null;
+      final hostSize =
+          explicitIconSize != null && explicitIconSize > minimumHostSize
+          ? explicitIconSize
+          : minimumHostSize;
       Widget fab = AndroidM3EPlatformView(
         component: 'fab',
-        width: mini ? 40 : 56,
-        height: mini ? 40 : 56,
+        width: hostSize,
+        height: hostSize,
         properties: {
           'icon': resolveAndroidM3EIcon(
             child: child,
             nativeIcon: nativeIcon,
             parameterName: 'nativeIcon',
           ),
+          'iconSizeOverride': fabChild is Icon ? fabChild.size : null,
+          'iconColorOverride': fabChild is Icon
+              ? fabChild.color?.toARGB32()
+              : null,
           'aiPowered': aiPowered,
-          'size': mini ? 'small' : 'medium',
+          'size': effectiveSize.name,
           'backgroundColor': backgroundColor?.toARGB32(),
           'foregroundColor': foregroundColor?.toARGB32(),
           'elevation': elevation,
           'tooltip': tooltip,
+          'semanticLabel': iconSemanticLabel,
           'enabled': onPressed != null,
         },
         onEvent: (event, _) {
@@ -162,17 +210,45 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
   }
 
   Widget _buildMaterialFAB(BuildContext context) {
+    final effectiveSize = PlatformInfo.usesNativeAndroidViews
+        ? androidSize ??
+              (mini
+                  ? AdaptiveAndroidFabSize.small
+                  : AdaptiveAndroidFabSize.standard)
+        : (mini
+              ? AdaptiveAndroidFabSize.small
+              : AdaptiveAndroidFabSize.standard);
+    if (effectiveSize == AdaptiveAndroidFabSize.medium) {
+      throw FlutterError(
+        'The 80 dp Android FAB requires a native-compatible Icon or nativeIcon. '
+        'Remove unsupported Icon paint effects to use MediumFloatingActionButton.',
+      );
+    }
     Widget fab;
     final displayedChild = aiPowered
         ? AdaptiveAiSparkleIcon(
             icon: child,
             nativeIcon: nativeIcon,
-            size: mini ? 20 : 24,
+            size: switch (effectiveSize) {
+              AdaptiveAndroidFabSize.small => 20,
+              AdaptiveAndroidFabSize.large => 36,
+              _ => 24,
+            },
           )
         : child;
 
-    if (mini) {
+    if (effectiveSize == AdaptiveAndroidFabSize.small) {
       fab = FloatingActionButton.small(
+        onPressed: onPressed,
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        elevation: elevation,
+        tooltip: tooltip,
+        heroTag: heroTag,
+        child: displayedChild,
+      );
+    } else if (effectiveSize == AdaptiveAndroidFabSize.large) {
+      fab = FloatingActionButton.large(
         onPressed: onPressed,
         backgroundColor: backgroundColor,
         foregroundColor: foregroundColor,

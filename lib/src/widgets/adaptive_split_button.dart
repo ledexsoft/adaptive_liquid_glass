@@ -1,9 +1,14 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../platform/platform_info.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
+import 'native_occurrence_ids.dart';
+
+final _nativeSplitButtonItemIds = NativeOccurrenceIds<Object>();
 
 enum AdaptiveSplitButtonStyle { filled, tonal, outlined, elevated }
 
@@ -57,6 +62,8 @@ class AdaptiveSplitButton<T> extends StatelessWidget {
     this.size = AdaptiveSplitButtonSize.small,
     this.style = AdaptiveSplitButtonStyle.filled,
     this.menuButtonSemanticLabel,
+    this.expandedStateLabel,
+    this.collapsedStateLabel,
   });
 
   final List<AdaptiveSplitButtonItem<T>> items;
@@ -70,13 +77,57 @@ class AdaptiveSplitButton<T> extends StatelessWidget {
   final AdaptiveSplitButtonSize size;
   final AdaptiveSplitButtonStyle style;
 
-  /// Accessible name for the trailing menu button, localized by the caller.
+  /// Accessible name for the trailing menu button. Defaults to the host's
+  /// localized Material "more" tooltip; callers can provide a contextual name.
   /// The native toggle semantics announce whether the menu is expanded.
   final String? menuButtonSemanticLabel;
 
+  /// Optional localized description of the open menu state on Android.
+  final String? expandedStateLabel;
+
+  /// Optional localized description of the closed menu state on Android.
+  final String? collapsedStateLabel;
+
   @override
   Widget build(BuildContext context) {
+    final menuEnabled =
+        enabled && onSelected != null && items.any((item) => item.enabled);
     if (PlatformInfo.usesNativeAndroidViews) {
+      if (label.trim().isEmpty) {
+        throw ArgumentError.value(
+          label,
+          'label',
+          'Native split button actions require a visible label.',
+        );
+      }
+      for (final (index, item) in items.indexed) {
+        if (item.label.trim().isEmpty) {
+          throw ArgumentError.value(
+            item.label,
+            'items[$index].label',
+            'Native split button menu actions require a visible label.',
+          );
+        }
+      }
+      for (final (name, value) in <(String, String?)>[
+        ('menuButtonSemanticLabel', menuButtonSemanticLabel),
+        ('expandedStateLabel', expandedStateLabel),
+        ('collapsedStateLabel', collapsedStateLabel),
+      ]) {
+        if (value != null && value.trim().isEmpty) {
+          throw ArgumentError.value(
+            value,
+            name,
+            'Native split button accessibility labels cannot be blank.',
+          );
+        }
+      }
+      final itemIds = _nativeSplitButtonItemIds.forItems(items);
+      final primaryEnabled = enabled && onPressed != null;
+      final localizations = Localizations.of<MaterialLocalizations>(
+        context,
+        MaterialLocalizations,
+      );
       final leadingIconName = leadingIcon == null && nativeLeadingIcon == null
           ? null
           : resolveAndroidM3EIcon(
@@ -84,37 +135,112 @@ class AdaptiveSplitButton<T> extends StatelessWidget {
               nativeIcon: nativeLeadingIcon,
               parameterName: 'nativeLeadingIcon',
             );
-      return AndroidM3EPlatformView(
-        component: 'splitButton',
-        height: size.minimumTouchTargetHeight,
-        properties: {
-          'label': label,
-          'menuButtonSemanticLabel': menuButtonSemanticLabel,
-          'leadingIcon': leadingIconName,
-          'enabled': enabled && (onPressed != null || onSelected != null),
-          'primaryEnabled': enabled && onPressed != null,
-          'style': style.name,
-          'size': size.name,
-          'selectedIndex': items.indexWhere(
-            (item) => item.value == selectedValue,
-          ),
-          'items': [
-            for (final item in items)
-              {
-                'label': item.label,
-                'icon': item.nativeIcon?.name,
-                'enabled': item.enabled,
-              },
-          ],
-        },
-        onEvent: (event, value) {
-          if (event == 'primaryPressed') onPressed?.call();
-          if (event == 'selected' &&
-              value is int &&
-              value >= 0 &&
-              value < items.length) {
-            onSelected?.call(items[value].value);
-          }
+      final properties = <String, Object?>{
+        'label': label,
+        'menuButtonSemanticLabel':
+            menuButtonSemanticLabel ?? localizations?.moreButtonTooltip,
+        'expandedStateLabel':
+            expandedStateLabel ?? localizations?.collapsedHint ?? 'Expanded',
+        'collapsedStateLabel':
+            collapsedStateLabel ?? localizations?.expandedHint ?? 'Collapsed',
+        'leadingIcon': leadingIconName,
+        'enabled': primaryEnabled || menuEnabled,
+        'primaryEnabled': primaryEnabled,
+        'menuEnabled': menuEnabled,
+        'style': style.name,
+        'size': size.name,
+        'selectedIndex': items.indexWhere(
+          (item) => item.value == selectedValue,
+        ),
+        'items': [
+          for (var index = 0; index < items.length; index++)
+            {
+              'id': itemIds[index],
+              'label': items[index].label,
+              'icon': items[index].nativeIcon?.name,
+              'enabled': items[index].enabled,
+            },
+        ],
+      };
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final textStyle = switch (size) {
+            AdaptiveSplitButtonSize.extraSmall ||
+            AdaptiveSplitButtonSize.small => Theme.of(
+              context,
+            ).textTheme.labelLarge,
+            AdaptiveSplitButtonSize.medium => Theme.of(
+              context,
+            ).textTheme.titleMedium,
+            AdaptiveSplitButtonSize.large => Theme.of(
+              context,
+            ).textTheme.headlineSmall,
+            AdaptiveSplitButtonSize.extraLarge => Theme.of(
+              context,
+            ).textTheme.headlineLarge,
+          };
+          final painter = TextPainter(
+            text: TextSpan(text: label, style: textStyle),
+            maxLines: 1,
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+          )..layout();
+          final labelWidth = painter.width;
+          final labelHeight = painter.height;
+          painter.dispose();
+          final (
+            leadingPadding,
+            trailingWidth,
+            iconSize,
+            iconSpacing,
+          ) = switch (size) {
+            AdaptiveSplitButtonSize.extraSmall => (22.0, 48.0, 20.0, 4.0),
+            AdaptiveSplitButtonSize.small => (28.0, 48.0, 20.0, 8.0),
+            AdaptiveSplitButtonSize.medium => (48.0, 56.0, 24.0, 8.0),
+            AdaptiveSplitButtonSize.large => (96.0, 96.0, 32.0, 12.0),
+            AdaptiveSplitButtonSize.extraLarge => (128.0, 136.0, 40.0, 16.0),
+          };
+          final leadingWidth = math.max(
+            48.0,
+            labelWidth +
+                leadingPadding +
+                (leadingIconName == null ? 0.0 : iconSize + iconSpacing),
+          );
+          final estimatedWidth = leadingWidth + 2.0 + trailingWidth;
+          final maxWidth = constraints.maxWidth;
+          final initialWidth = maxWidth.isFinite
+              ? math.min(estimatedWidth, maxWidth)
+              : estimatedWidth;
+          return _NativeSplitButtonHost(
+            initialWidth: initialWidth,
+            maxWidth: maxWidth,
+            initialHeight: math.max(size.minimumTouchTargetHeight, labelHeight),
+            properties: {
+              ...properties,
+              'allowIntrinsicWidth': estimatedWidth <= maxWidth,
+            },
+            onEvent: (event, value) {
+              if (event == 'primaryPressed' && primaryEnabled) {
+                onPressed?.call();
+              }
+              if (event == 'selected' && menuEnabled) {
+                int? index;
+                if (value is Map) {
+                  final id = value['id'];
+                  if (id is! int) return;
+                  index = itemIds.indexOf(id);
+                } else if (value is int) {
+                  index = value;
+                }
+                if (index != null &&
+                    index >= 0 &&
+                    index < items.length &&
+                    items[index].enabled) {
+                  onSelected?.call(items[index].value);
+                }
+              }
+            },
+          );
         },
       );
     }
@@ -150,7 +276,7 @@ class AdaptiveSplitButton<T> extends StatelessWidget {
           primaryButton,
           CupertinoButton(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            onPressed: enabled ? () => _showIOSMenu(context) : null,
+            onPressed: menuEnabled ? () => _showIOSMenu(context) : null,
             child: const Icon(CupertinoIcons.chevron_down),
           ),
         ],
@@ -161,7 +287,7 @@ class AdaptiveSplitButton<T> extends StatelessWidget {
       children: [
         primaryButton,
         PopupMenuButton<int>(
-          enabled: enabled,
+          enabled: menuEnabled,
           initialValue: items.indexWhere((item) => item.value == selectedValue),
           tooltip: 'More options',
           onSelected: (index) => onSelected?.call(items[index].value),
@@ -201,6 +327,68 @@ class AdaptiveSplitButton<T> extends StatelessWidget {
           child: const Text('Cancel'),
         ),
       ),
+    );
+  }
+}
+
+class _NativeSplitButtonHost extends StatefulWidget {
+  const _NativeSplitButtonHost({
+    required this.initialWidth,
+    required this.maxWidth,
+    required this.initialHeight,
+    required this.properties,
+    required this.onEvent,
+  });
+
+  final double initialWidth;
+  final double maxWidth;
+  final double initialHeight;
+  final Map<String, Object?> properties;
+  final void Function(String, Object?) onEvent;
+
+  @override
+  State<_NativeSplitButtonHost> createState() => _NativeSplitButtonHostState();
+}
+
+class _NativeSplitButtonHostState extends State<_NativeSplitButtonHost> {
+  double? _measuredWidth;
+  double? _measuredHeight;
+
+  @override
+  void didUpdateWidget(covariant _NativeSplitButtonHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialWidth != widget.initialWidth) _measuredWidth = null;
+    if (oldWidget.initialHeight != widget.initialHeight) _measuredHeight = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = _measuredWidth ?? widget.initialWidth;
+    return AndroidM3EPlatformView(
+      component: 'splitButton',
+      width: widget.maxWidth.isFinite
+          ? math.min(width, widget.maxWidth)
+          : width,
+      height: math.max(widget.initialHeight, _measuredHeight ?? 0),
+      properties: widget.properties,
+      onEvent: (event, value) {
+        if (event == 'measuredWidth' || event == 'measuredHeight') {
+          if (value is! num) return;
+          final measured = value.toDouble();
+          if (!measured.isFinite || measured <= 0) return;
+          if (event == 'measuredWidth' &&
+              (_measuredWidth == null ||
+                  (_measuredWidth! - measured).abs() > 0.5)) {
+            setState(() => _measuredWidth = measured);
+          } else if (event == 'measuredHeight' &&
+              (_measuredHeight == null ||
+                  (_measuredHeight! - measured).abs() > 0.5)) {
+            setState(() => _measuredHeight = measured);
+          }
+          return;
+        }
+        widget.onEvent(event, value);
+      },
     );
   }
 }

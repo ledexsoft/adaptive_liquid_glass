@@ -11,6 +11,7 @@ class SearchDividerSwitchDemoPage extends StatefulWidget {
 
 class _SearchDividerSwitchDemoPageState
     extends State<SearchDividerSwitchDemoPage> {
+  static const _products = ['Auriculares', 'Cámara', 'Portátil', 'Reloj'];
   bool _notifications = true;
   bool _darkMode = false;
   bool _autoUpdates = true;
@@ -26,8 +27,17 @@ class _SearchDividerSwitchDemoPageState
           const SizedBox(height: 24),
           AdaptiveSearchBar(
             hintText: 'Buscar productos…',
+            androidSuggestions: _products
+                .where(
+                  (product) =>
+                      _query.isEmpty ||
+                      product.toLowerCase().contains(_query.toLowerCase()),
+                )
+                .toList(),
             onChanged: (value) => setState(() => _query = value),
             onClear: () => setState(() => _query = ''),
+            onAndroidSuggestionSelected: (value) =>
+                setState(() => _query = value),
           ),
           if (_query.isNotEmpty)
             Padding(

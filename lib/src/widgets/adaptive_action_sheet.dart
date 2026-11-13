@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_overlay.dart';
+import 'android/android_m3e_text_options.dart';
 
 /// An action item for [showAdaptiveActionSheet].
 class AdaptiveActionSheetAction {
@@ -38,8 +39,12 @@ class AdaptiveActionSheetAction {
 /// Shows an adaptive action sheet matching the platform design.
 ///
 /// On iOS & macOS: Displays a [CupertinoActionSheet] with native blur and spring animations.
-/// On Android: Displays a native Compose Material 3 bottom sheet.
+/// On Android: Displays a native Compose Material 3 bottom sheet when its
+/// content can be represented natively. Other content uses a Material sheet.
 /// Other platforms use the Material bottom sheet fallback.
+///
+/// Android sheets close before an action callback runs. Cupertino and other
+/// Flutter bottom-sheet actions leave dismissal to the callback.
 ///
 /// Example:
 /// ```dart
@@ -51,20 +56,24 @@ class AdaptiveActionSheetAction {
 ///     AdaptiveActionSheetAction(
 ///       child: const Text('Share'),
 ///       onPressed: () {
-///         Navigator.pop(context);
+///         if (!PlatformInfo.usesNativeAndroidViews) Navigator.pop(context);
+///         // Share the selected item.
 ///       },
 ///     ),
 ///     AdaptiveActionSheetAction(
 ///       isDestructiveAction: true,
 ///       child: const Text('Delete'),
 ///       onPressed: () {
-///         Navigator.pop(context);
+///         if (!PlatformInfo.usesNativeAndroidViews) Navigator.pop(context);
+///         // Delete the selected item.
 ///       },
 ///     ),
 ///   ],
 ///   cancelButton: AdaptiveActionSheetAction(
 ///     child: const Text('Cancel'),
-///     onPressed: () => Navigator.pop(context),
+///     onPressed: () {
+///       if (!PlatformInfo.usesNativeAndroidViews) Navigator.pop(context);
+///     },
 ///   ),
 /// );
 /// ```
@@ -103,21 +112,50 @@ Future<T?> showAdaptiveActionSheet<T>({
     );
   }
 
-  if (PlatformInfo.usesNativeAndroidViews) {
+  if (PlatformInfo.usesNativeAndroidViews &&
+      _canRenderNativeActionSheet(title, message, actions, cancelButton)) {
     final allActions = [...actions, if (cancelButton != null) cancelButton];
+    final nativeTitle = _nativeText(title, 'title');
+    final nativeMessage = _nativeText(message, 'message');
+    final nativeLabels = [
+      for (final action in allActions)
+        _nativeText(action.child, 'action.child')!,
+    ];
+    for (var index = 0; index < nativeLabels.length; index++) {
+      if (nativeLabels[index].data!.trim().isEmpty) {
+        throw FlutterError(
+          'Android native action sheet action ${index + 1} requires a nonblank Text label.',
+        );
+      }
+    }
     final result = showAndroidM3EOverlay(
       context: context,
       component: 'actionSheet',
       properties: {
-        'title': _plainText(title, 'title'),
-        'message': _plainText(message, 'message'),
+        'title': nativeTitle?.data,
+        'titleTextOptions': nativeTitle == null
+            ? null
+            : androidM3ETextOptions(nativeTitle),
+        'titleColor': nativeTitle?.style?.color?.toARGB32(),
+        'message': nativeMessage?.data,
+        'messageTextOptions': nativeMessage == null
+            ? null
+            : androidM3ETextOptions(nativeMessage),
+        'messageColor': nativeMessage?.style?.color?.toARGB32(),
         'actions': [
           for (var index = 0; index < allActions.length; index++)
             {
-              'label': _plainText(allActions[index].child, 'action.child'),
+              'label': nativeLabels[index].data,
+              'labelTextOptions': androidM3ETextOptions(nativeLabels[index]),
+              'labelColor': nativeLabels[index].style?.color?.toARGB32(),
               'icon': _nativeIcon(
                 allActions[index].icon,
                 allActions[index].androidIcon,
+              ),
+              'iconColor': _nativeIconColor(allActions[index].icon)?.toARGB32(),
+              'iconSize': _nativeIconSize(allActions[index].icon),
+              'iconSemanticLabel': _nativeIconSemanticLabel(
+                allActions[index].icon,
               ),
               'default': allActions[index].isDefaultAction,
               'destructive': allActions[index].isDestructiveAction,
@@ -125,21 +163,23 @@ Future<T?> showAdaptiveActionSheet<T>({
             },
         ],
       },
-      onEvent: (event, value) {
-        if (event != 'selected' ||
-            value is! int ||
-            value < 0 ||
-            value >= allActions.length) {
-          return;
-        }
-        allActions[value].onPressed();
-      },
     );
-    return result.then<T?>((value) => value is T ? value : null);
+    return result.then<T?>((value) {
+      if (value is AndroidM3EOverlayResult &&
+          value.event == 'selected' &&
+          value.value is int) {
+        final index = value.value! as int;
+        if (index >= 0 && index < allActions.length) {
+          allActions[index].onPressed();
+        }
+      }
+      return value is T ? value : null;
+    });
   }
 
-  // Other platforms use a Flutter Material bottom sheet.
+  // Unsupported Android content and other platforms use a Material sheet.
   final theme = Theme.of(context);
+  final closeBeforeAction = PlatformInfo.usesNativeAndroidViews;
   return showModalBottomSheet<T>(
     context: context,
     showDragHandle: true,
@@ -148,6 +188,20 @@ Future<T?> showAdaptiveActionSheet<T>({
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     builder: (BuildContext sheetContext) {
+      void onActionPressed(AdaptiveActionSheetAction action) {
+        if (!closeBeforeAction) {
+          action.onPressed();
+          return;
+        }
+        final route = ModalRoute.of(sheetContext);
+        if (route == null) {
+          action.onPressed();
+          return;
+        }
+        route.completed.then((_) => action.onPressed());
+        Navigator.of(sheetContext).pop();
+      }
+
       return SafeArea(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
@@ -201,7 +255,7 @@ Future<T?> showAdaptiveActionSheet<T>({
                     ),
                     child: action.child,
                   ),
-                  onTap: action.onPressed,
+                  onTap: () => onActionPressed(action),
                 ),
               if (cancelButton != null) ...[
                 const Divider(),
@@ -216,7 +270,7 @@ Future<T?> showAdaptiveActionSheet<T>({
                       child: cancelButton.child,
                     ),
                   ),
-                  onTap: cancelButton.onPressed,
+                  onTap: () => onActionPressed(cancelButton),
                 ),
               ],
             ],
@@ -227,14 +281,35 @@ Future<T?> showAdaptiveActionSheet<T>({
   );
 }
 
-String? _plainText(Widget? widget, String parameter) {
+Text? _nativeText(Widget? widget, String parameter) {
   if (widget == null) return null;
-  if (widget is Text && widget.data != null && widget.style == null) {
-    return widget.data;
+  if (widget is Text && canRenderAndroidM3EText(widget)) {
+    return widget;
   }
   throw FlutterError(
-    'Android native action sheets require $parameter to be a plain Text widget.',
+    'Android native action sheets require $parameter to be Text with styling supported by Compose.',
   );
+}
+
+bool _canRenderNativeActionSheet(
+  Widget? title,
+  Widget? message,
+  List<AdaptiveActionSheetAction> actions,
+  AdaptiveActionSheetAction? cancelButton,
+) {
+  if (title != null && !canRenderAndroidM3EText(title)) return false;
+  if (message != null && !canRenderAndroidM3EText(message)) return false;
+  for (final action in [...actions, if (cancelButton != null) cancelButton]) {
+    if (!canRenderAndroidM3EText(action.child)) return false;
+    if (action.icon != null &&
+        !canResolveAndroidM3EIcon(
+          child: action.icon,
+          nativeIcon: action.androidIcon,
+        )) {
+      return false;
+    }
+  }
+  return true;
 }
 
 String? _nativeIcon(Widget? widget, AndroidM3EIcon? nativeIcon) {
@@ -251,3 +326,10 @@ String? _nativeIcon(Widget? widget, AndroidM3EIcon? nativeIcon) {
     parameterName: 'action.icon',
   );
 }
+
+Color? _nativeIconColor(Widget? widget) => widget is Icon ? widget.color : null;
+
+double? _nativeIconSize(Widget? widget) => widget is Icon ? widget.size : null;
+
+String? _nativeIconSemanticLabel(Widget? widget) =>
+    widget is Icon ? widget.semanticLabel : null;

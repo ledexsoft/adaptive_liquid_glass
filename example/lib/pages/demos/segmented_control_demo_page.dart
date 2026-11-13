@@ -173,6 +173,7 @@ class _SegmentedControlDemoPageState extends State<SegmentedControlDemoPage> {
             Center(
               child: AdaptiveSegmentedControl(
                 labels: const [],
+                semanticLabels: const ['Home', 'Nature', 'Walking'],
                 sfSymbols: [
                   PlatformInfo.isIOS26OrHigher() ? 'house.fill' : Icons.house,
                   PlatformInfo.isIOS26OrHigher()

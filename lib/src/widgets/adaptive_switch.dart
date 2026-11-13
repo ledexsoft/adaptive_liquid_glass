@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
+import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
 import 'ios26/ios26_switch.dart';
 
@@ -31,6 +32,9 @@ class AdaptiveSwitch extends StatelessWidget {
     required this.onChanged,
     this.activeColor,
     this.thumbColor,
+    this.androidCheckedThumbIcon,
+    this.androidUncheckedThumbIcon,
+    this.semanticLabel,
   });
 
   /// Whether this switch is on or off
@@ -56,6 +60,17 @@ class AdaptiveSwitch extends StatelessWidget {
   /// On iOS: The color of the circular knob
   /// On Android: The color of the circular knob
   final Color? thumbColor;
+
+  /// Optional native icon inside the checked Compose switch thumb on Android.
+  /// Compose supplies the icon's size and state-dependent tint.
+  final AndroidM3EIcon? androidCheckedThumbIcon;
+
+  /// Optional native icon inside the unchecked Compose switch thumb on Android.
+  final AndroidM3EIcon? androidUncheckedThumbIcon;
+
+  /// Localized name for this switch when it has no adjacent text label.
+  /// Android forwards it to the real Compose switch semantics.
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +99,7 @@ class AdaptiveSwitch extends StatelessWidget {
     if (PlatformInfo.usesNativeAndroidViews) {
       return AndroidM3EPlatformView(
         component: 'switch',
-        width: 64,
+        width: 52,
         height: 48,
         properties: {
           'value': value,
@@ -92,9 +107,12 @@ class AdaptiveSwitch extends StatelessWidget {
           'hasCallback': onChanged != null,
           'activeColor': activeColor?.toARGB32(),
           'thumbColor': thumbColor?.toARGB32(),
+          'checkedThumbIcon': androidCheckedThumbIcon?.name,
+          'uncheckedThumbIcon': androidUncheckedThumbIcon?.name,
+          'semanticLabel': semanticLabel,
         },
         onEvent: (event, nextValue) {
-          if (event == 'changed' && nextValue is bool) {
+          if (event == 'changed' && nextValue is bool && nextValue != value) {
             onChanged?.call(nextValue);
           }
         },
@@ -102,7 +120,7 @@ class AdaptiveSwitch extends StatelessWidget {
     }
 
     // Fallback for other platforms (web, desktop, etc.)
-    return Switch(
+    final control = Switch(
       value: value,
       onChanged: onChanged,
       thumbColor: thumbColor != null
@@ -117,5 +135,8 @@ class AdaptiveSwitch extends StatelessWidget {
             })
           : null,
     );
+    return semanticLabel == null
+        ? control
+        : Semantics(label: semanticLabel, child: control);
   }
 }

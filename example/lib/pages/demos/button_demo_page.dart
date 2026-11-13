@@ -23,6 +23,7 @@ class _ButtonDemoPageState extends State<ButtonDemoPage> {
                 ? CupertinoIcons.info_circle
                 : Icons.info_outline,
             iosSymbol: "info.circle",
+            semanticLabel: 'Information',
             onPressed: () => _showMessage(context, 'Info button pressed'),
           ),
         ],
@@ -178,6 +179,7 @@ class _ButtonDemoPageState extends State<ButtonDemoPage> {
                 icon: PlatformInfo.isIOS
                     ? CupertinoIcons.heart_fill
                     : Icons.favorite,
+                semanticLabel: 'Favorite',
               ),
             ),
             const SizedBox(height: 16),
@@ -570,6 +572,7 @@ class _ButtonDemoPageState extends State<ButtonDemoPage> {
             onPressed: () => _showMessage(context, '$label pressed'),
             style: AdaptiveButtonStyle.bordered,
             icon: icon,
+            semanticLabel: label,
           ),
         ),
         const SizedBox(height: 4),

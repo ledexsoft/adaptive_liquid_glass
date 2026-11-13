@@ -60,14 +60,14 @@ class AdaptiveAppBar {
     this.androidLogoBytes,
     this.androidLogoContentDescription,
     this.androidLogoReplacesSmallTitle = true,
-    this.searchHint = 'Search',
+    String? searchHint,
     this.searchSuggestions = const [],
     this.onSearchQueryChanged,
     this.onSearchSubmitted,
     this.onSearchResultSelected,
     this.scrollBehavior = AdaptiveAppBarScrollBehavior.pinned,
     this.transparentWhenScrolled = false,
-  });
+  }) : _searchHintOverride = searchHint;
 
   /// Title for the app bar
   final String? title;
@@ -118,10 +118,13 @@ class AdaptiveAppBar {
   /// Ignored when [useNativeToolbar] is true or on non-iOS platforms.
   final PreferredSizeWidget? cupertinoNavigationBar;
 
-  /// Custom AppBar for Android
+  /// Custom AppBar for Android.
   ///
   /// When provided, this custom app bar will be used instead of building one
-  /// from [title], [actions], and [leading].
+  /// from [title], [actions], and [leading]. It also bypasses the native M3
+  /// app bar's status-inset and body-height handling. Size a custom native
+  /// bar for both its content and window insets; use the built-in bar when
+  /// possible.
   ///
   /// Ignored on iOS platforms.
   final PreferredSizeWidget? appBar;
@@ -143,8 +146,15 @@ class AdaptiveAppBar {
   /// Whether the Android logo replaces the title in the small variant.
   final bool androidLogoReplacesSmallTitle;
 
-  /// Search-field hint for [AdaptiveAppBarVariant.search]. Include “Search”.
-  final String searchHint;
+  /// Search-field hint for [AdaptiveAppBarVariant.search].
+  /// Defaults to the current Material localization when rendered.
+  String get searchHint => _searchHintOverride ?? 'Search';
+
+  final String? _searchHintOverride;
+
+  /// Resolves the hint while preserving an explicit caller override.
+  String resolveSearchHint(String? localizedHint) =>
+      _searchHintOverride ?? localizedHint ?? 'Search';
 
   /// Native Compose suggestions shown in the expanded search view.
   final List<String> searchSuggestions;
@@ -207,7 +217,7 @@ class AdaptiveAppBar {
           androidLogoContentDescription ?? this.androidLogoContentDescription,
       androidLogoReplacesSmallTitle:
           androidLogoReplacesSmallTitle ?? this.androidLogoReplacesSmallTitle,
-      searchHint: searchHint ?? this.searchHint,
+      searchHint: searchHint ?? _searchHintOverride,
       searchSuggestions: searchSuggestions ?? this.searchSuggestions,
       onSearchQueryChanged: onSearchQueryChanged ?? this.onSearchQueryChanged,
       onSearchSubmitted: onSearchSubmitted ?? this.onSearchSubmitted,

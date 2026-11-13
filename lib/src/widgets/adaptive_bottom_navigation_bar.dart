@@ -1,6 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'adaptive_scaffold.dart';
 
+/// Native Material 3 navigation bar layout used on Android.
+enum AdaptiveAndroidNavigationBarStyle {
+  /// The 80 dp Material 3 navigation bar.
+  tall,
+
+  /// The 64 dp expressive short bar, with responsive item arrangement.
+  short,
+}
+
 /// Configuration for an adaptive bottom navigation bar
 ///
 /// This class holds the configuration for the bottom navigation bar in [AdaptiveScaffold].
@@ -26,6 +35,7 @@ class AdaptiveBottomNavigationBar {
     this.selectedItemColor,
     this.unselectedItemColor,
     this.hideLabels = false,
+    this.androidStyle = AdaptiveAndroidNavigationBarStyle.tall,
   });
 
   /// Navigation items for bottom navigation bar
@@ -33,8 +43,11 @@ class AdaptiveBottomNavigationBar {
   /// bars are not provided.
   final List<AdaptiveNavigationDestination>? items;
 
-  /// Currently selected item index
-  /// If null, no item will be selected
+  /// Currently selected item index. Out-of-range values are bounded to the
+  /// current destination list after it changes.
+  ///
+  /// Null leaves the native Android bar without a selected item. Flutter's
+  /// Material fallback requires an index and shows the first item instead.
   final int? selectedIndex;
 
   /// Called when a navigation item is tapped
@@ -84,13 +97,20 @@ class AdaptiveBottomNavigationBar {
   ///
   /// When provided:
   /// - iOS (native/CupertinoTabBar): Sets inactiveColor
-  /// - Android (NavigationBar): Not directly supported, but can affect icon colors
+  /// - Android (NavigationBar): Sets unselected icon and label colors
   ///
   /// If null, uses platform defaults.
   final Color? unselectedItemColor;
 
-  /// Solo iconos (sin texto) en pantallas pequeñas (iOS 26+ nativo).
+  /// Hides item labels on Android and on the native iOS 26+ bottom bar.
   final bool hideLabels;
+
+  /// Native Android navigation bar style. Ignored on iOS and by custom bars.
+  ///
+  /// [AdaptiveAndroidNavigationBarStyle.short] uses Compose's real
+  /// `ShortNavigationBar`. Items are equally spaced on compact widths and
+  /// centered with leading icons on medium widths.
+  final AdaptiveAndroidNavigationBarStyle androidStyle;
 
   /// Creates a copy of this bottom navigation bar with the given fields replaced
   AdaptiveBottomNavigationBar copyWith({
@@ -103,6 +123,7 @@ class AdaptiveBottomNavigationBar {
     Color? selectedItemColor,
     Color? unselectedItemColor,
     bool? hideLabels,
+    AdaptiveAndroidNavigationBarStyle? androidStyle,
   }) {
     return AdaptiveBottomNavigationBar(
       items: items ?? this.items,
@@ -114,6 +135,7 @@ class AdaptiveBottomNavigationBar {
       selectedItemColor: selectedItemColor ?? this.selectedItemColor,
       unselectedItemColor: unselectedItemColor ?? this.unselectedItemColor,
       hideLabels: hideLabels ?? this.hideLabels,
+      androidStyle: androidStyle ?? this.androidStyle,
     );
   }
 }

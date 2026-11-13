@@ -36,6 +36,7 @@ export 'src/utils/animation.dart';
 // Styles
 export 'src/style/sf_symbol.dart';
 export 'src/theme/adaptive_expressive_typography.dart';
+export 'src/theme/adaptive_expressive_shape_scale.dart';
 export 'src/theme/adaptive_material_expressive_theme.dart';
 
 // Widgets
@@ -44,6 +45,9 @@ export 'src/widgets/adaptive_app_bar.dart';
 export 'src/widgets/adaptive_bottom_navigation_bar.dart';
 export 'src/widgets/adaptive_button.dart';
 export 'src/widgets/adaptive_button_group.dart';
+export 'src/widgets/adaptive_filter_chip.dart';
+export 'src/widgets/adaptive_action_chips.dart';
+export 'src/widgets/adaptive_input_chip.dart';
 export 'src/widgets/android/android_m3e_native_icon.dart';
 export 'src/widgets/adaptive_carousel.dart';
 export 'src/widgets/adaptive_switch.dart';
@@ -54,6 +58,7 @@ export 'src/widgets/adaptive_badge.dart';
 export 'src/widgets/adaptive_tooltip.dart';
 export 'src/widgets/adaptive_toolbar.dart';
 export 'src/widgets/adaptive_slider.dart';
+export 'src/widgets/adaptive_range_slider.dart';
 export 'src/widgets/adaptive_segmented_control.dart';
 export 'src/widgets/adaptive_alert_dialog.dart';
 export 'src/widgets/adaptive_popup_menu_button.dart';

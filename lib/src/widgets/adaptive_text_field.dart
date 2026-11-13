@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../platform/platform_info.dart';
 import 'android/android_m3e_native_icon.dart';
+import 'android/android_m3e_text_options.dart';
 import 'android/android_m3e_text_field.dart';
 
 /// An adaptive text field that renders platform-specific styles
@@ -38,6 +39,8 @@ class AdaptiveTextField extends StatelessWidget {
     this.onChanged,
     this.onSubmitted,
     this.onTap,
+    this.onTapOutside,
+    this.autofillHints,
     this.inputFormatters,
     this.padding,
     this.decoration,
@@ -121,6 +124,12 @@ class AdaptiveTextField extends StatelessWidget {
   /// Called when the text field is tapped.
   final VoidCallback? onTap;
 
+  /// Called when a tap is detected outside the text field.
+  final TapRegionCallback? onTapOutside;
+
+  /// Optional autofill hints for the text field.
+  final Iterable<String>? autofillHints;
+
   /// Optional input validation and formatting overrides.
   final List<TextInputFormatter>? inputFormatters;
 
@@ -147,25 +156,198 @@ class AdaptiveTextField extends StatelessWidget {
     }
 
     if (PlatformInfo.isAndroid && PlatformInfo.usesNativeAndroidViews) {
-      final inputDecoration = decoration;
+      final inputDecoration = (decoration ?? const InputDecoration())
+          .applyDefaults(InputDecorationTheme.of(context));
       if (!_canUseAndroidM3ETextField(inputDecoration)) {
+        return _buildMaterialTextField(context);
+      }
+      final outlineBorders = <OutlineInputBorder>[
+        for (final border in [
+          inputDecoration.border,
+          inputDecoration.enabledBorder,
+          inputDecoration.focusedBorder,
+          inputDecoration.errorBorder,
+          inputDecoration.focusedErrorBorder,
+          inputDecoration.disabledBorder,
+        ])
+          if (border is OutlineInputBorder) border,
+      ];
+      final underlineBorders = <UnderlineInputBorder>[
+        for (final border in [
+          inputDecoration.border,
+          inputDecoration.enabledBorder,
+          inputDecoration.focusedBorder,
+          inputDecoration.errorBorder,
+          inputDecoration.focusedErrorBorder,
+          inputDecoration.disabledBorder,
+        ])
+          if (border is UnderlineInputBorder) border,
+      ];
+      final stateBorders = <String, InputBorder?>{
+        'unfocused': inputDecoration.enabledBorder,
+        'focused': inputDecoration.focusedBorder,
+        'disabled': inputDecoration.disabledBorder,
+        'error': inputDecoration.errorBorder,
+        'focusedError': inputDecoration.focusedErrorBorder,
+      };
+      final borderless =
+          inputDecoration.border == InputBorder.none ||
+          (inputDecoration.border == null &&
+              stateBorders.values.every(
+                (border) => border == InputBorder.none,
+              ));
+      if ((borderless &&
+              stateBorders.values.any(
+                (border) => border != null && border != InputBorder.none,
+              )) ||
+          (!borderless &&
+              stateBorders.values.any(
+                (border) => border == InputBorder.none,
+              ))) {
+        return _buildMaterialTextField(context);
+      }
+      if (outlineBorders.isNotEmpty) {
+        // The same native outlined control is used in every state. A missing
+        // base border or a different state-border type changes Flutter's
+        // geometry when focus/error/availability changes.
+        if ((inputDecoration.border != null &&
+                inputDecoration.border is! OutlineInputBorder) ||
+            (inputDecoration.border == null &&
+                stateBorders.values.any((border) => border == null)) ||
+            stateBorders.values.any(
+              (border) => border != null && border is! OutlineInputBorder,
+            ) ||
+            outlineBorders.any(
+              (border) => border.borderSide.style == BorderStyle.none,
+            )) {
+          return _buildMaterialTextField(context);
+        }
+        for (final entry in stateBorders.entries) {
+          final border = entry.value;
+          if (border is! OutlineInputBorder) continue;
+          final expectedWidth =
+              entry.key == 'focused' || entry.key == 'focusedError' ? 2.0 : 1.0;
+          if (border.borderSide.width != expectedWidth ||
+              border.borderSide.strokeAlign != BorderSide.strokeAlignInside) {
+            return _buildMaterialTextField(context);
+          }
+        }
+        final errorBorder = inputDecoration.errorBorder;
+        final focusedErrorBorder = inputDecoration.focusedErrorBorder;
+        if ((errorBorder == null) != (focusedErrorBorder == null) ||
+            (errorBorder is OutlineInputBorder &&
+                focusedErrorBorder is OutlineInputBorder &&
+                errorBorder.borderSide.color !=
+                    focusedErrorBorder.borderSide.color)) {
+          // Compose exposes one error border color for both focus states.
+          return _buildMaterialTextField(context);
+        }
+        if (!enabled &&
+            inputDecoration.errorText != null &&
+            errorBorder == null) {
+          // Flutter selects the error border before the disabled border;
+          // Compose selects the disabled color first.
+          return _buildMaterialTextField(context);
+        }
+      }
+      if (underlineBorders.isNotEmpty) {
+        if ((inputDecoration.border != null &&
+                inputDecoration.border is! UnderlineInputBorder) ||
+            stateBorders.values.any(
+              (border) => border != null && border is! UnderlineInputBorder,
+            ) ||
+            underlineBorders.any(
+              (border) => border.borderSide.style == BorderStyle.none,
+            )) {
+          return _buildMaterialTextField(context);
+        }
+        for (final entry in stateBorders.entries) {
+          final border = entry.value;
+          if (border is! UnderlineInputBorder) continue;
+          final expectedWidth =
+              entry.key == 'focused' || entry.key == 'focusedError' ? 2.0 : 1.0;
+          if (border.borderSide.width != expectedWidth ||
+              border.borderSide.strokeAlign != BorderSide.strokeAlignInside) {
+            return _buildMaterialTextField(context);
+          }
+        }
+        final errorBorder = inputDecoration.errorBorder;
+        final focusedErrorBorder = inputDecoration.focusedErrorBorder;
+        if ((errorBorder == null) != (focusedErrorBorder == null) ||
+            (errorBorder is UnderlineInputBorder &&
+                focusedErrorBorder is UnderlineInputBorder &&
+                errorBorder.borderSide.color !=
+                    focusedErrorBorder.borderSide.color) ||
+            (!enabled &&
+                inputDecoration.errorText != null &&
+                errorBorder == null)) {
+          return _buildMaterialTextField(context);
+        }
+      }
+      final outlineRadius = outlineBorders.isEmpty
+          ? null
+          : outlineBorders.first.borderRadius;
+      final corners = outlineRadius == null
+          ? <Radius>[]
+          : [
+              outlineRadius.topLeft,
+              outlineRadius.topRight,
+              outlineRadius.bottomRight,
+              outlineRadius.bottomLeft,
+            ];
+      if ((outlineRadius != null &&
+              outlineBorders.any(
+                (border) => border.borderRadius != outlineRadius,
+              )) ||
+          corners.any(
+            (corner) =>
+                !corner.x.isFinite || corner.x < 0 || corner.x != corner.y,
+          )) {
+        return _buildMaterialTextField(context);
+      }
+      final underlineRadius = underlineBorders.isEmpty
+          ? null
+          : underlineBorders.first.borderRadius;
+      final underlineCorners = underlineRadius == null
+          ? <Radius>[]
+          : [
+              underlineRadius.topLeft,
+              underlineRadius.topRight,
+              underlineRadius.bottomRight,
+              underlineRadius.bottomLeft,
+            ];
+      if ((underlineRadius != null &&
+              (underlineBorders.any(
+                    (border) => border.borderRadius != underlineRadius,
+                  ) ||
+                  (inputDecoration.border == null &&
+                      underlineRadius !=
+                          const UnderlineInputBorder().borderRadius))) ||
+          underlineCorners.any(
+            (corner) =>
+                !corner.x.isFinite || corner.x < 0 || corner.x != corner.y,
+          )) {
         return _buildMaterialTextField(context);
       }
       return AndroidM3ETextField(
         controller: controller,
         focusNode: focusNode,
-        label: inputDecoration?.labelText ?? placeholder,
-        placeholder: inputDecoration?.hintText,
-        helperText: inputDecoration?.helperText,
-        errorText: inputDecoration?.errorText,
+        label: inputDecoration.labelText,
+        placeholder: decoration == null
+            ? placeholder
+            : inputDecoration.hintText,
+        helperText: inputDecoration.helperText,
+        errorText: inputDecoration.errorText,
         prefixText:
-            inputDecoration?.prefixText ??
+            inputDecoration.prefixText ??
             _plainDecorationText(prefix, 'prefix'),
         suffixText:
-            inputDecoration?.suffixText ??
+            inputDecoration.suffixText ??
             _plainDecorationText(suffix, 'suffix'),
-        prefixIcon: inputDecoration?.prefixIcon ?? prefixIcon,
-        suffixIcon: inputDecoration?.suffixIcon ?? suffixIcon,
+        prefixIcon: inputDecoration.prefixIcon ?? prefixIcon,
+        suffixIcon: inputDecoration.suffixIcon ?? suffixIcon,
+        prefixIconColor: inputDecoration.prefixIconColor,
+        suffixIconColor: inputDecoration.suffixIconColor,
         nativePrefixIcon: nativePrefixIcon,
         nativeSuffixIcon: nativeSuffixIcon,
         keyboardType: keyboardType,
@@ -181,13 +363,54 @@ class AdaptiveTextField extends StatelessWidget {
         autofocus: autofocus,
         enabled: enabled,
         readOnly: readOnly,
-        padding: inputDecoration?.contentPadding ?? padding,
-        filled: inputDecoration?.filled ?? false,
-        fillColor: inputDecoration?.fillColor,
+        contentPadding: inputDecoration.contentPadding ?? padding,
+        filled: inputDecoration.filled ?? false,
+        fillColor: inputDecoration.fillColor,
+        outlined: outlineBorders.isNotEmpty,
+        underlined: underlineBorders.isNotEmpty,
+        borderless: borderless,
+        outlineRadii: corners.isEmpty
+            ? null
+            : [for (final corner in corners) corner.x],
+        outlineBorderColors: outlineBorders.isEmpty
+            ? null
+            : {
+                for (final entry in stateBorders.entries)
+                  if (entry.key != 'focusedError' &&
+                      entry.value is OutlineInputBorder)
+                    entry.key:
+                        (entry.value as OutlineInputBorder).borderSide.color,
+                if (!enabled && inputDecoration.errorText != null)
+                  'disabled':
+                      (inputDecoration.errorBorder as OutlineInputBorder)
+                          .borderSide
+                          .color,
+              },
+        underlineRadii:
+            underlineRadius == null ||
+                underlineRadius == const UnderlineInputBorder().borderRadius
+            ? null
+            : [for (final corner in underlineCorners) corner.x],
+        underlineIndicatorColors: underlineBorders.isEmpty
+            ? null
+            : {
+                for (final entry in stateBorders.entries)
+                  if (entry.key != 'focusedError' &&
+                      entry.value is UnderlineInputBorder)
+                    entry.key:
+                        (entry.value as UnderlineInputBorder).borderSide.color,
+                if (!enabled && inputDecoration.errorText != null)
+                  'disabled':
+                      (inputDecoration.errorBorder as UnderlineInputBorder)
+                          .borderSide
+                          .color,
+              },
         inputFormatters: inputFormatters,
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         onTap: onTap,
+        onTapOutside: onTapOutside,
+        autofillHints: autofillHints,
       );
     }
 
@@ -206,6 +429,14 @@ class AdaptiveTextField extends StatelessWidget {
   }
 
   bool _canUseAndroidM3ETextField(InputDecoration? inputDecoration) {
+    if (keyboardType == TextInputType.none) return false;
+    if (inputDecoration?.isCollapsed == true) return false;
+    // Compose's secure text field is editable and single-line only. Preserve
+    // Flutter's read-only and multiline contracts for those combinations.
+    if (obscureText && (readOnly || maxLines != 1)) return false;
+    if (!canRenderAndroidM3ETextStyle(style) || style?.overflow != null) {
+      return false;
+    }
     bool plainText(Widget? value) =>
         value == null ||
         (value is Text && value.data != null && value.style == null);
@@ -213,7 +444,9 @@ class AdaptiveTextField extends StatelessWidget {
       if (value == null) return true;
       // Compose can render the glyph but cannot forward callbacks from a
       // Flutter IconButton. Keep the Material widget tree for those fields.
-      if (value is IconButton) return false;
+      if (value is IconButton || !canSerializeAndroidM3EIconStyle(value)) {
+        return false;
+      }
       if (nativeIcon != null) return true;
       return canResolveAndroidM3EIcon(child: value, nativeIcon: null);
     }
@@ -226,6 +459,12 @@ class AdaptiveTextField extends StatelessWidget {
         plainText(effectiveSuffix) &&
         serializableIcon(effectivePrefixIcon, nativePrefixIcon) &&
         serializableIcon(effectiveSuffixIcon, nativeSuffixIcon) &&
+        canSerializeAndroidM3ETextFieldIconColor(
+          inputDecoration?.prefixIconColor,
+        ) &&
+        canSerializeAndroidM3ETextFieldIconColor(
+          inputDecoration?.suffixIconColor,
+        ) &&
         (inputDecoration?.icon == null);
   }
 
@@ -276,6 +515,8 @@ class AdaptiveTextField extends StatelessWidget {
       onChanged: onChanged,
       onSubmitted: onSubmitted,
       onTap: onTap,
+      onTapOutside: onTapOutside,
+      autofillHints: autofillHints,
       inputFormatters: inputFormatters,
       padding:
           padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -310,6 +551,8 @@ class AdaptiveTextField extends StatelessWidget {
       onChanged: onChanged,
       onSubmitted: onSubmitted,
       onTap: onTap,
+      onTapOutside: onTapOutside,
+      autofillHints: autofillHints,
       inputFormatters: inputFormatters,
       decoration:
           decoration ??

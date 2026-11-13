@@ -16,7 +16,14 @@ class _BlurViewDemoPageState extends State<BlurViewDemoPage> {
     return AdaptiveScaffold(
       appBar: AdaptiveAppBar(
         title: 'Blur View Demo',
-        actions: [AdaptiveAppBarAction(iosSymbol: "clear", onPressed: () {})],
+        actions: [
+          AdaptiveAppBarAction(
+            iosSymbol: "clear",
+            icon: Icons.close,
+            semanticLabel: 'Close',
+            onPressed: () {},
+          ),
+        ],
       ),
       body: Stack(
         children: [

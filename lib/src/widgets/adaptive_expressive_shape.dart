@@ -80,6 +80,21 @@ class AdaptiveExpressiveShapeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!width.isFinite || width < 0) {
+      throw FlutterError(
+        'AdaptiveExpressiveShapeView.width must be finite and non-negative.',
+      );
+    }
+    if (!height.isFinite || height < 0) {
+      throw FlutterError(
+        'AdaptiveExpressiveShapeView.height must be finite and non-negative.',
+      );
+    }
+    if (!morphProgress.isFinite || morphProgress < 0 || morphProgress > 1) {
+      throw FlutterError(
+        'AdaptiveExpressiveShapeView.morphProgress must be finite and between 0 and 1.',
+      );
+    }
     final shapeView = PlatformInfo.usesNativeAndroidViews
         ? AndroidM3EPlatformView(
             component: 'expressiveShape',
@@ -106,11 +121,15 @@ class AdaptiveExpressiveShapeView extends StatelessWidget {
     return Semantics(
       label: semanticLabel,
       image: semanticLabel != null,
-      child: ExcludeSemantics(
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: Stack(fit: StackFit.expand, children: [shapeView, ?child]),
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ExcludeSemantics(child: shapeView),
+            ?child,
+          ],
         ),
       ),
     );

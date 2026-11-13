@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
+import 'android/android_m3e_text_options.dart';
 
 /// An adaptive list tile with a trailing switch.
 ///
@@ -22,6 +23,8 @@ class AdaptiveSwitchListTile extends StatelessWidget {
     this.enabled = true,
     this.secondary,
     this.androidLeadingIcon,
+    this.androidCheckedThumbIcon,
+    this.androidUncheckedThumbIcon,
   });
 
   /// A widget to display before the title.
@@ -55,6 +58,12 @@ class AdaptiveSwitchListTile extends StatelessWidget {
   /// Native Android icon for Compose. Use this when [leading] is not a
   /// standard Flutter Material [Icon].
   final AndroidM3EIcon? androidLeadingIcon;
+
+  /// Optional native icon inside the checked Compose switch thumb on Android.
+  final AndroidM3EIcon? androidCheckedThumbIcon;
+
+  /// Optional native icon inside the unchecked Compose switch thumb on Android.
+  final AndroidM3EIcon? androidUncheckedThumbIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -108,26 +117,19 @@ class AdaptiveSwitchListTile extends StatelessWidget {
     }
 
     if (PlatformInfo.usesNativeAndroidViews) {
-      final titleText = title is Text ? title as Text : null;
-      final subtitleText = subtitle is Text ? subtitle as Text : null;
-      if (titleText?.data == null || titleText!.style != null) {
-        throw FlutterError(
-          'Android AdaptiveSwitchListTile uses a native Compose ListItem. '
-          'Pass a plain Text title so it can be serialized.',
-        );
-      }
-      if (subtitle != null &&
-          (subtitleText?.data == null || subtitleText!.style != null)) {
-        throw FlutterError(
-          'Android AdaptiveSwitchListTile requires subtitle to be a plain Text.',
-        );
-      }
       if (secondary != null) {
         throw FlutterError(
           'Android AdaptiveSwitchListTile cannot render the deprecated '
           'secondary widget in Compose; use androidLeadingIcon or omit it.',
         );
       }
+      if (!canRenderAndroidM3EText(title) ||
+          (subtitle != null && !canRenderAndroidM3EText(subtitle!)) ||
+          !canSerializeAndroidM3EIconStyle(leading)) {
+        return _buildMaterialListTile();
+      }
+      final titleText = title as Text;
+      final subtitleText = subtitle as Text?;
       final iconName = androidLeadingIcon != null
           ? androidLeadingIcon!.name
           : leading is Icon && (leading as Icon).icon != null
@@ -143,39 +145,72 @@ class AdaptiveSwitchListTile extends StatelessWidget {
           'Pass androidLeadingIcon: AndroidM3EIcon.<value>.',
         );
       }
-      return AndroidM3EPlatformView(
+      final textScaler = MediaQuery.textScalerOf(context);
+      final scaledTitleExtra = textScaler.scale(16.0) - 16.0;
+      final scaledSubtitleExtra = subtitleText == null
+          ? 0.0
+          : textScaler.scale(14.0) - 14.0;
+      return AndroidM3EMeasuredHeightView(
         component: 'switchListTile',
-        height: subtitleText == null ? 72 : 88,
+        initialHeight:
+            (subtitleText != null
+                ? 72.0
+                : onTap != null && enabled && onChanged != null
+                ? 64.0
+                : 56.0) +
+            (scaledTitleExtra > 0 ? scaledTitleExtra : 0.0) +
+            (scaledSubtitleExtra > 0 ? scaledSubtitleExtra : 0.0),
         properties: {
           'title': titleText.data,
+          'titleTextOptions': androidM3ETextOptions(titleText),
+          'titleColor': titleText.style?.color?.toARGB32(),
           'subtitle': subtitleText?.data,
+          'subtitleTextOptions': subtitleText == null
+              ? null
+              : androidM3ETextOptions(subtitleText),
+          'subtitleColor': subtitleText?.style?.color?.toARGB32(),
           'leadingIcon': iconName,
+          'leadingIconSize': leading is Icon ? (leading as Icon).size : null,
+          'leadingIconColor': leading is Icon
+              ? (leading as Icon).color?.toARGB32()
+              : null,
+          'leadingIconSemanticLabel': leading is Icon
+              ? (leading as Icon).semanticLabel
+              : null,
           'value': value,
           'enabled': enabled,
           'activeColor': activeColor?.toARGB32(),
+          'checkedThumbIcon': androidCheckedThumbIcon?.name,
+          'uncheckedThumbIcon': androidUncheckedThumbIcon?.name,
           'hasOnTap': onTap != null,
+          'hasOnChanged': onChanged != null,
         },
-        onEvent: (event, value) {
-          if (event == 'changed' && value is bool) onChanged?.call(value);
+        onEvent: (event, nextValue) {
+          if (!enabled) return;
+          if (event == 'changed' && nextValue is bool && nextValue != value) {
+            onChanged?.call(nextValue);
+          }
           if (event == 'tapped') onTap?.call();
         },
       );
     }
 
     // Android & other platforms - Material 3 ListTile with Switch
-    return ListTile(
-      leading: leading,
-      title: title,
-      subtitle: subtitle,
-      trailing: Switch(
-        value: value,
-        onChanged: enabled ? onChanged : null,
-        activeThumbColor: activeColor,
-      ),
-      onTap: enabled ? onTap : null,
-      enabled: enabled,
-    );
+    return _buildMaterialListTile();
   }
+
+  Widget _buildMaterialListTile() => ListTile(
+    leading: leading,
+    title: title,
+    subtitle: subtitle,
+    trailing: Switch(
+      value: value,
+      onChanged: enabled ? onChanged : null,
+      activeTrackColor: activeColor,
+    ),
+    onTap: enabled ? onTap : null,
+    enabled: enabled,
+  );
 
   static String? _stringify(Widget widget) {
     if (widget is Text) return widget.data;

@@ -32,7 +32,8 @@ class AdaptiveCheckbox extends StatelessWidget {
     this.checkColor,
     this.focusColor,
     this.hoverColor,
-  });
+    this.semanticLabel,
+  }) : assert(tristate || value != null);
 
   /// Whether this checkbox is checked
   ///
@@ -65,11 +66,17 @@ class AdaptiveCheckbox extends StatelessWidget {
   /// On Android: The color of the checkmark
   final Color? checkColor;
 
-  /// The color for the checkbox's Material when it has the input focus
+  /// The color for the checkbox's Material when it has the input focus.
+  /// Explicit focus/hover colors use Flutter's Checkbox on Android because
+  /// Compose's Checkbox does not expose separate overlay-color parameters.
   final Color? focusColor;
 
   /// The color for the checkbox's Material when a pointer is hovering over it
   final Color? hoverColor;
+
+  /// Localized name for this checkbox when it has no adjacent text label.
+  /// Android forwards it to the real Compose checkbox semantics.
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +92,9 @@ class AdaptiveCheckbox extends StatelessWidget {
     }
 
     // Android - Use Material Design Checkbox
-    if (PlatformInfo.usesNativeAndroidViews) {
+    if (PlatformInfo.usesNativeAndroidViews &&
+        focusColor == null &&
+        hoverColor == null) {
       return AndroidM3EPlatformView(
         component: 'checkbox',
         width: 48,
@@ -97,10 +106,20 @@ class AdaptiveCheckbox extends StatelessWidget {
           'hasCallback': onChanged != null,
           'activeColor': activeColor?.toARGB32(),
           'checkColor': checkColor?.toARGB32(),
+          'semanticLabel': semanticLabel,
         },
         onEvent: (event, nextValue) {
           if (event == 'changed' && (nextValue == null || nextValue is bool)) {
-            onChanged?.call(nextValue as bool?);
+            final expectedValue = tristate
+                ? (value == false
+                      ? true
+                      : value == true
+                      ? null
+                      : false)
+                : !value!;
+            if (nextValue == expectedValue) {
+              onChanged?.call(nextValue as bool?);
+            }
           }
         },
       );
@@ -115,6 +134,7 @@ class AdaptiveCheckbox extends StatelessWidget {
       checkColor: checkColor,
       focusColor: focusColor,
       hoverColor: hoverColor,
+      semanticLabel: semanticLabel,
     );
   }
 }

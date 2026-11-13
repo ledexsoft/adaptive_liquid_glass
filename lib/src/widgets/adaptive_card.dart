@@ -2,8 +2,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import '../platform/platform_info.dart';
+import '../theme/adaptive_material_expressive_theme.dart';
 import 'adaptive_blur_view.dart';
 import 'android/android_m3e_platform_view.dart';
+
+/// Official Material 3 card variants available on Android and Flutter.
+enum AdaptiveCardStyle { filled, elevated, outlined }
 
 /// An adaptive card that renders platform-specific card styles.
 ///
@@ -40,6 +44,7 @@ class AdaptiveCard extends StatelessWidget {
     this.padding,
     this.borderRadius,
     this.onTap,
+    this.style,
   }) : isGlass = false;
 
   /// Creates an adaptive card with Liquid Glass visual effect.
@@ -60,7 +65,8 @@ class AdaptiveCard extends StatelessWidget {
   }) : isGlass = true,
        elevation = null,
        shape = null,
-       borderOnForeground = true;
+       borderOnForeground = true,
+       style = AdaptiveCardStyle.elevated;
 
   /// The card's background color
   final Color? color;
@@ -97,6 +103,10 @@ class AdaptiveCard extends StatelessWidget {
 
   /// Called when the card is tapped.
   final VoidCallback? onTap;
+
+  /// Material 3 card variant. When omitted, existing platform defaults are
+  /// preserved. Specify a value to use the matching native Android variant.
+  final AdaptiveCardStyle? style;
 
   @override
   Widget build(BuildContext context) {
@@ -135,18 +145,46 @@ class AdaptiveCard extends StatelessWidget {
 
     // Other platforms - Use Material Design Card
     final cardRadius = borderRadius ?? BorderRadius.circular(12);
-    Widget card = Card(
-      color: color,
-      elevation: elevation,
-      shape: shape ?? RoundedRectangleBorder(borderRadius: cardRadius),
-      borderOnForeground: borderOnForeground,
-      margin: margin,
-      clipBehavior: clipBehavior ?? Clip.antiAlias,
-      semanticContainer: semanticContainer,
-      child: onTap != null
-          ? InkWell(onTap: onTap, borderRadius: cardRadius, child: content)
-          : content,
-    );
+    final cardShape =
+        shape ??
+        (style == null || borderRadius != null
+            ? RoundedRectangleBorder(borderRadius: cardRadius)
+            : null);
+    final cardContent = onTap != null
+        ? InkWell(onTap: onTap, borderRadius: cardRadius, child: content)
+        : content;
+    final card = switch (style) {
+      AdaptiveCardStyle.filled => Card.filled(
+        color: color,
+        elevation: elevation,
+        shape: cardShape,
+        borderOnForeground: borderOnForeground,
+        margin: margin,
+        clipBehavior: clipBehavior ?? Clip.antiAlias,
+        semanticContainer: semanticContainer,
+        child: cardContent,
+      ),
+      AdaptiveCardStyle.outlined => Card.outlined(
+        color: color,
+        elevation: elevation,
+        shape: cardShape,
+        borderOnForeground: borderOnForeground,
+        margin: margin,
+        clipBehavior: clipBehavior ?? Clip.antiAlias,
+        semanticContainer: semanticContainer,
+        child: cardContent,
+      ),
+      AdaptiveCardStyle.elevated || null => Card(
+        color: color,
+        elevation: elevation,
+        shape: cardShape,
+        borderOnForeground: borderOnForeground,
+        margin: margin,
+        clipBehavior: clipBehavior ?? Clip.antiAlias,
+        semanticContainer: semanticContainer,
+        child: cardContent,
+      ),
+    };
 
     return card;
   }
@@ -156,42 +194,81 @@ class AdaptiveCard extends StatelessWidget {
     Widget content, {
     bool glass = false,
   }) {
+    if (elevation != null && (!elevation!.isFinite || elevation! < 0)) {
+      throw FlutterError(
+        'AdaptiveCard.elevation must be finite and nonnegative on Android.',
+      );
+    }
     final shapeRadius = shape is RoundedRectangleBorder
         ? (shape as RoundedRectangleBorder).borderRadius.resolve(
             Directionality.of(context),
           )
         : null;
+    final shapeSide = shape is RoundedRectangleBorder
+        ? (shape as RoundedRectangleBorder).side
+        : BorderSide.none;
+    final foregroundBorder =
+        borderOnForeground && shapeSide.style == BorderStyle.solid;
+    final explicitRadius =
+        shapeRadius ??
+        borderRadius ??
+        (glass ? BorderRadius.circular(16) : null);
     final effectiveRadius =
-        shapeRadius ?? borderRadius ?? BorderRadius.circular(glass ? 16 : 12);
-    final theme = Theme.of(context);
-    final background =
-        color ??
-        (glass
-            ? theme.colorScheme.surfaceContainerHigh
-            : theme.colorScheme.surfaceContainerLow);
-    Widget cardContent = GestureDetector(
+        explicitRadius ??
+        BorderRadius.circular(
+          adaptiveMaterialExpressiveShapeScaleOf(
+                context,
+              )?.toNativeRadii()['medium'] ??
+              12,
+        );
+    final uniformRadius = explicitRadius?.topLeft.x;
+    final isUniformCircularRadius =
+        explicitRadius != null &&
+        explicitRadius.topLeft.y == uniformRadius &&
+        explicitRadius.topRight.x == uniformRadius &&
+        explicitRadius.topRight.y == uniformRadius &&
+        explicitRadius.bottomRight.x == uniformRadius &&
+        explicitRadius.bottomRight.y == uniformRadius &&
+        explicitRadius.bottomLeft.x == uniformRadius &&
+        explicitRadius.bottomLeft.y == uniformRadius;
+    Widget cardContent = _AndroidCardPressBridge(
       onTap: onTap,
-      behavior: onTap == null
-          ? HitTestBehavior.deferToChild
-          : HitTestBehavior.opaque,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: AndroidM3EPlatformView(
-              component: 'cardSurface',
-              hitTestBehavior: PlatformViewHitTestBehavior.transparent,
-              properties: {
-                'color': background.toARGB32(),
-                'elevation': elevation ?? (glass ? 1.0 : 1.0),
-                'radius': effectiveRadius.topLeft.x,
-                'clip': (clipBehavior ?? Clip.antiAlias) != Clip.none,
-              },
-              onEvent: (_, __) {},
-            ),
-          ),
-          content,
-        ],
+      child: content,
+      surfaceBuilder: (pressController) => AndroidM3EPlatformView(
+        component: 'cardSurface',
+        hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+        cardPressController: onTap == null ? null : pressController,
+        properties: {
+          'interactive': onTap != null,
+          'style': (style ?? AdaptiveCardStyle.filled).name,
+          'color': color?.toARGB32(),
+          'glass': glass,
+          'elevation': elevation ?? (glass ? 1.0 : null),
+          'radius': isUniformCircularRadius ? uniformRadius : null,
+          'cornerRadii': explicitRadius != null && !isUniformCircularRadius
+              ? {
+                  'topLeftX': explicitRadius.topLeft.x,
+                  'topLeftY': explicitRadius.topLeft.y,
+                  'topRightX': explicitRadius.topRight.x,
+                  'topRightY': explicitRadius.topRight.y,
+                  'bottomRightX': explicitRadius.bottomRight.x,
+                  'bottomRightY': explicitRadius.bottomRight.y,
+                  'bottomLeftX': explicitRadius.bottomLeft.x,
+                  'bottomLeftY': explicitRadius.bottomLeft.y,
+                }
+              : null,
+          'borderWidth':
+              shapeSide.style == BorderStyle.solid && !foregroundBorder
+              ? shapeSide.width
+              : null,
+          'borderColor':
+              shapeSide.style == BorderStyle.solid && !foregroundBorder
+              ? shapeSide.color.toARGB32()
+              : null,
+          'foregroundBorder': foregroundBorder,
+          'clip': (clipBehavior ?? Clip.antiAlias) != Clip.none,
+        },
+        onEvent: (_, __) {},
       ),
     );
     if ((clipBehavior ?? Clip.antiAlias) != Clip.none) {
@@ -199,6 +276,22 @@ class AdaptiveCard extends StatelessWidget {
         borderRadius: effectiveRadius,
         clipBehavior: clipBehavior ?? Clip.antiAlias,
         child: cardContent,
+      );
+    }
+    if (foregroundBorder) {
+      cardContent = Stack(
+        children: [
+          cardContent,
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  shape: shape as RoundedRectangleBorder,
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     }
     final withMargin = Padding(
@@ -275,6 +368,89 @@ class AdaptiveCard extends StatelessWidget {
 }
 
 /// iOS-style card widget
+class _AndroidCardPressBridge extends StatefulWidget {
+  const _AndroidCardPressBridge({
+    required this.child,
+    required this.surfaceBuilder,
+    required this.onTap,
+  });
+
+  final Widget child;
+  final Widget Function(AndroidM3ECardPressController) surfaceBuilder;
+  final VoidCallback? onTap;
+
+  @override
+  State<_AndroidCardPressBridge> createState() =>
+      _AndroidCardPressBridgeState();
+}
+
+class _AndroidCardPressBridgeState extends State<_AndroidCardPressBridge> {
+  final AndroidM3ECardPressController _pressController =
+      AndroidM3ECardPressController();
+
+  @override
+  void didUpdateWidget(covariant _AndroidCardPressBridge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.onTap != null && widget.onTap == null) {
+      _pressController.pressEnd(cancelled: true);
+      _pressController.hoverEnd();
+      _pressController.focusEnd();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pressController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FocusableActionDetector(
+    enabled: widget.onTap != null,
+    onFocusChange: (focused) =>
+        focused ? _pressController.focusStart() : _pressController.focusEnd(),
+    actions: <Type, Action<Intent>>{
+      ActivateIntent: CallbackAction<ActivateIntent>(
+        onInvoke: (_) {
+          widget.onTap?.call();
+          return null;
+        },
+      ),
+    },
+    child: MouseRegion(
+      cursor: widget.onTap == null
+          ? MouseCursor.defer
+          : SystemMouseCursors.click,
+      onEnter: widget.onTap == null
+          ? null
+          : (_) => _pressController.hoverStart(),
+      onExit: widget.onTap == null ? null : (_) => _pressController.hoverEnd(),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        onTapDown: widget.onTap == null
+            ? null
+            : (details) => _pressController.pressStart(details.localPosition),
+        onTapUp: widget.onTap == null
+            ? null
+            : (_) => _pressController.pressEnd(cancelled: false),
+        onTapCancel: widget.onTap == null
+            ? null
+            : () => _pressController.pressEnd(cancelled: true),
+        behavior: widget.onTap == null
+            ? HitTestBehavior.deferToChild
+            : HitTestBehavior.opaque,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(child: widget.surfaceBuilder(_pressController)),
+            widget.child,
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class _IOSCard extends StatelessWidget {
   const _IOSCard({
     required this.color,

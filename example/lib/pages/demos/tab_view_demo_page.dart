@@ -16,8 +16,16 @@ class TabViewDemoPage extends StatelessWidget {
           ),
           child: AdaptiveTabBarView(
             tabs: const ['Latest', 'Popular', 'Trending', 'Featured'],
-            selectedColor: Colors.white,
-            unselectedColor: Colors.white.withValues(alpha: 0.6),
+            androidIcons: const [
+              AndroidM3EIcon.home,
+              AndroidM3EIcon.favorite,
+              AndroidM3EIcon.search,
+              AndroidM3EIcon.person,
+            ],
+            selectedColor: PlatformInfo.isAndroid ? null : Colors.white,
+            unselectedColor: PlatformInfo.isAndroid
+                ? null
+                : Colors.white.withValues(alpha: 0.6),
             onTabChanged: (index) {
               // Tab changed callback
             },

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
 import 'android/android_m3e_native_icon.dart';
+import 'android/android_m3e_keyboard_type.dart';
 import 'android/android_m3e_overlay.dart';
 import 'ios26/ios26_alert_dialog.dart';
 
@@ -60,6 +61,7 @@ class AdaptiveAlertDialog {
     Color? iconColor,
     String? oneTimeCode,
   }) {
+    _validateActions(actions);
     // iOS 26+ - Use native iOS 26 alert dialog
     if (PlatformInfo.isIOS26OrHigher()) {
       // Convert icon to String if needed for iOS 26 (expects SF Symbol)
@@ -187,6 +189,7 @@ class AdaptiveAlertDialog {
     }
 
     if (PlatformInfo.usesNativeAndroidViews) {
+      final presentedActions = List<AlertAction>.of(actions, growable: false);
       return showAndroidM3EOverlay(
         context: context,
         component: 'alertDialog',
@@ -199,7 +202,7 @@ class AdaptiveAlertDialog {
           'iconColor': iconColor?.toARGB32(),
           'oneTimeCode': oneTimeCode,
           'actions': [
-            for (final action in actions)
+            for (final action in presentedActions)
               {
                 'title': action.title,
                 'style': action.style.name,
@@ -207,14 +210,19 @@ class AdaptiveAlertDialog {
               },
           ],
         },
-        onEvent: (event, value) {
-          if (event != 'selected' || value is! List || value.isEmpty) return;
-          final index = value.first;
-          if (index is int && index >= 0 && index < actions.length) {
-            actions[index].onPressed();
-          }
-        },
-      ).then((_) {});
+      ).then((result) {
+        if (result is! AndroidM3EOverlayResult ||
+            result.event != 'selected' ||
+            result.value is! List) {
+          return;
+        }
+        final selected = result.value! as List;
+        if (selected.isEmpty) return;
+        final index = selected.first;
+        if (index is int && index >= 0 && index < presentedActions.length) {
+          presentedActions[index].onPressed();
+        }
+      });
     }
 
     // Android - Use the native Compose Material 3 dialog.
@@ -245,6 +253,7 @@ class AdaptiveAlertDialog {
     double? iconSize,
     Color? iconColor,
   }) {
+    _validateActions(actions);
     // iOS 26+ - Use native iOS 26 alert dialog with input
     if (PlatformInfo.isIOS26OrHigher()) {
       // Convert icon to String if needed for iOS 26 (expects SF Symbol)
@@ -349,9 +358,9 @@ class AdaptiveAlertDialog {
       );
     }
 
-    if (PlatformInfo.usesNativeAndroidViews) {
-      int? selectedActionIndex;
-      String? enteredText;
+    if (PlatformInfo.usesNativeAndroidViews &&
+        input.keyboardType != TextInputType.none) {
+      final presentedActions = List<AlertAction>.of(actions, growable: false);
       return showAndroidM3EOverlay(
         context: context,
         component: 'alertDialog',
@@ -366,9 +375,11 @@ class AdaptiveAlertDialog {
           'placeholder': input.placeholder,
           'obscureText': input.obscureText,
           'maxLength': input.maxLength,
-          'keyboardType': input.keyboardType?.index,
+          'keyboardType': input.keyboardType == null
+              ? null
+              : androidM3EKeyboardTypeName(input.keyboardType),
           'actions': [
-            for (final action in actions)
+            for (final action in presentedActions)
               {
                 'title': action.title,
                 'style': action.style.name,
@@ -376,23 +387,26 @@ class AdaptiveAlertDialog {
               },
           ],
         },
-        onEvent: (event, value) {
-          if (event != 'selected' || value is! List || value.length < 2) return;
-          final index = value[0];
-          if (index is! int || index < 0 || index >= actions.length) return;
-          selectedActionIndex = index;
-          final text = value[1];
-          enteredText = text is String && text.trim().isNotEmpty
-              ? text.trim()
-              : null;
-          actions[index].onPressed();
-        },
-      ).then((_) {
-        final index = selectedActionIndex;
-        if (index == null || actions[index].style == AlertActionStyle.cancel) {
+      ).then((result) {
+        if (result is! AndroidM3EOverlayResult ||
+            result.event != 'selected' ||
+            result.value is! List) {
           return null;
         }
-        return enteredText;
+        final selected = result.value! as List;
+        if (selected.length < 2) return null;
+        final index = selected[0];
+        if (index is! int || index < 0 || index >= presentedActions.length) {
+          return null;
+        }
+        final text = selected[1];
+        final enteredText = text is String && text.trim().isNotEmpty
+            ? text.trim()
+            : null;
+        presentedActions[index].onPressed();
+        return presentedActions[index].style == AlertActionStyle.cancel
+            ? null
+            : enteredText;
       });
     }
 
@@ -423,6 +437,16 @@ class AdaptiveAlertDialog {
     throw FlutterError(
       'Android native alert dialog requires AndroidM3EIcon or a mapped IconData.',
     );
+  }
+
+  static void _validateActions(List<AlertAction> actions) {
+    for (var index = 0; index < actions.length; index++) {
+      if (actions[index].title.trim().isEmpty) {
+        throw FlutterError(
+          'AdaptiveAlertDialog.actions[$index].title must be nonempty.',
+        );
+      }
+    }
   }
 
   /// Internal helper method for showing Material dialogs

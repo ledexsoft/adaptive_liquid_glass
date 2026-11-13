@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../platform/platform_info.dart';
+import '../theme/adaptive_expressive_typography.dart';
+import '../theme/adaptive_expressive_shape_scale.dart';
 import '../theme/adaptive_material_expressive_theme.dart';
 
 /// Platform-specific configuration for MaterialApp
@@ -94,6 +96,7 @@ class AdaptiveApp extends StatelessWidget {
     this.themeMode,
     this.materialLightTheme,
     this.materialDarkTheme,
+    this.expressiveShapeScale,
     this.cupertinoLightTheme,
     this.cupertinoDarkTheme,
     this.locale,
@@ -124,6 +127,7 @@ class AdaptiveApp extends StatelessWidget {
     this.themeMode,
     this.materialLightTheme,
     this.materialDarkTheme,
+    this.expressiveShapeScale,
     this.cupertinoLightTheme,
     this.cupertinoDarkTheme,
     this.locale,
@@ -191,6 +195,9 @@ class AdaptiveApp extends StatelessWidget {
   final ThemeMode? themeMode;
   final ThemeData? materialLightTheme;
   final ThemeData? materialDarkTheme;
+
+  /// Optional radius overrides for Compose's eight Material 3 shape roles.
+  final AdaptiveExpressiveShapeScale? expressiveShapeScale;
 
   /// The light theme for iOS (CupertinoApp)
   ///
@@ -395,6 +402,8 @@ class AdaptiveApp extends StatelessWidget {
 
     Widget expressiveBuilder(BuildContext context, Widget? child) {
       final themedChild = AdaptiveMaterialExpressiveTheme(
+        typography: Theme.of(context).extension<AdaptiveExpressiveTypography>(),
+        shapeScale: expressiveShapeScale,
         child: child ?? const SizedBox.shrink(),
       );
       return builder?.call(context, themedChild) ?? themedChild;

@@ -61,6 +61,7 @@ class _FormSectionDemoPageState extends State<FormSectionDemoPage> {
               onPressed: _saveForm,
               iosSymbol: 'checkmark.circle.fill',
               icon: Icons.check_circle,
+              semanticLabel: 'Save form',
             ),
           ],
         ),

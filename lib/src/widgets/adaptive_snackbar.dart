@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'adaptive_blur_view.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
 import 'android/android_m3e_overlay.dart';
@@ -26,12 +28,17 @@ enum AdaptiveSnackBarType {
 /// - iOS: Shows a banner-style notification at the top
 /// - Android: Uses a native Compose Material 3 Snackbar.
 class AdaptiveSnackBar {
+  static final Expando<_NativeSnackbarQueue> _nativeQueues =
+      Expando<_NativeSnackbarQueue>();
+
   /// Shows an adaptive snackbar
   ///
   /// [context] - Build context
   /// [message] - Message to display
   /// [type] - Type of snackbar (info, success, warning, error)
-  /// [duration] - How long to show the snackbar (default: 4 seconds)
+  /// [duration] - How long to show a snackbar without an action (default: 4 seconds).
+  /// On Android, an actionable snackbar remains until its action, close button,
+  /// or a later snackbar request dismisses it.
   /// [action] - Optional action button
   /// [onActionPressed] - Callback for action button
   static void show(
@@ -43,28 +50,80 @@ class AdaptiveSnackBar {
     VoidCallback? onActionPressed,
   }) {
     if (PlatformInfo.usesNativeAndroidViews) {
-      unawaited(
-        showAndroidM3EOverlay(
-          context: context,
-          component: 'snackbar',
-          rootNavigator: true,
-          terminalEvents: const {'dismissed', 'actionPressed'},
-          properties: {
-            'message': message,
-            'action': action,
-            'durationMs': duration.inMilliseconds,
-            'type': type.name,
-            'backgroundColor': _getAndroidBackgroundColor(
-              context,
-              type,
-            ).toARGB32(),
-            'contentColor': _getAndroidTextColor(type).toARGB32(),
-          },
-          onEvent: (event, _) {
-            if (event == 'actionPressed') onActionPressed?.call();
-          },
-        ),
-      );
+      final actionLabel = action?.trim();
+      final effectiveAction = actionLabel?.isNotEmpty == true
+          ? actionLabel
+          : null;
+      final overlay = Overlay.of(context, rootOverlay: true);
+      final queue = _nativeQueues[overlay] ?? _NativeSnackbarQueue();
+      _nativeQueues[overlay] = queue;
+      final request = _NativeSnackbarRequest(effectiveAction != null);
+      queue.last?.dismissForNext();
+      queue.last = request;
+      Future<void> present() async {
+        try {
+          if (!context.mounted) return;
+          final bottomAnchor = _androidBottomAnchor(context);
+          try {
+            await bottomAnchor.ready;
+            if (!context.mounted) return;
+            final snackbarTheme = Theme.of(context).snackBarTheme;
+            final nativeBackground = type == AdaptiveSnackBarType.info
+                ? snackbarTheme.backgroundColor
+                : _getAndroidBackgroundColor(context, type);
+            final nativeContent = type == AdaptiveSnackBarType.info
+                ? snackbarTheme.contentTextStyle?.color
+                : _getAndroidTextColor(type);
+            final nativeAction = type == AdaptiveSnackBarType.info
+                ? snackbarTheme.actionTextColor
+                : _getAndroidTextColor(type);
+            await showAndroidM3ENonModalOverlay(
+              context: context,
+              component: 'snackbar',
+              dismissalSignal: request.dismissalSignal,
+              bottomInsetSignal: bottomAnchor.inset,
+              terminalEvents: const {'dismissed', 'actionPressed'},
+              properties: {
+                'message': message,
+                'action': effectiveAction,
+                'durationMs': duration.inMilliseconds,
+                'type': type.name,
+                'accessibleNavigation': MediaQuery.accessibleNavigationOf(
+                  context,
+                ),
+                'bottomInset': bottomAnchor.inset.value,
+                'backgroundColor': nativeBackground?.toARGB32(),
+                'contentColor': nativeContent?.toARGB32(),
+                'actionColor': nativeAction?.toARGB32(),
+              },
+              onEvent: (event, _) {
+                if (event == 'actionPressed') onActionPressed?.call();
+              },
+            );
+          } finally {
+            bottomAnchor.dispose();
+          }
+        } finally {
+          request.dispose();
+          if (identical(queue.last, request)) queue.last = null;
+        }
+      }
+
+      final next = queue.tail.then<void>((_) => present()).catchError((
+        Object error,
+        StackTrace stack,
+      ) {
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            stack: stack,
+            library: 'adaptive_liquid_glass',
+            context: ErrorDescription('while showing an Android snackbar'),
+          ),
+        );
+      });
+      queue.tail = next;
+      unawaited(next);
       return;
     }
 
@@ -159,8 +218,142 @@ class AdaptiveSnackBar {
   }
 
   static Color _getAndroidTextColor(AdaptiveSnackBarType type) {
-    return Colors.white;
+    return switch (type) {
+      AdaptiveSnackBarType.success ||
+      AdaptiveSnackBarType.warning => Colors.black,
+      AdaptiveSnackBarType.error || AdaptiveSnackBarType.info => Colors.white,
+    };
   }
+
+  static _SnackbarBottomAnchor _androidBottomAnchor(BuildContext context) {
+    final systemInset = MediaQuery.viewPaddingOf(context).bottom;
+    final inset = ValueNotifier<double>(systemInset);
+    final scaffold = Scaffold.maybeOf(context);
+    if (scaffold == null ||
+        (scaffold.widget.bottomNavigationBar == null &&
+            scaffold.widget.floatingActionButton == null)) {
+      return _SnackbarBottomAnchor(inset: inset, ready: Future<void>.value());
+    }
+    final scaffoldBox = scaffold.context.findRenderObject();
+    final overlayBox = Overlay.of(
+      context,
+      rootOverlay: true,
+    ).context.findRenderObject();
+    if (scaffoldBox is! RenderBox ||
+        !scaffoldBox.hasSize ||
+        overlayBox is! RenderBox ||
+        !overlayBox.hasSize) {
+      return _SnackbarBottomAnchor(inset: inset, ready: Future<void>.value());
+    }
+    final geometry = Scaffold.geometryOf(context);
+    final ready = Completer<void>();
+    late final OverlayEntry measurement;
+    var scheduled = false;
+    var active = true;
+    var pendingInset = systemInset;
+    final painter = _SnackbarGeometryPainter(
+      geometry: geometry,
+      onPaint: (value) {
+        if (!active) return;
+        final obstacleTops = <double>[
+          if (scaffold.widget.bottomNavigationBar != null)
+            if (value.bottomNavigationBarTop case final top?) top,
+          if (scaffold.widget.floatingActionButton != null)
+            if (value.floatingActionButtonArea case final area?) area.top,
+        ];
+        pendingInset = systemInset;
+        if (obstacleTops.isNotEmpty &&
+            scaffoldBox.attached &&
+            overlayBox.attached) {
+          final obstacleTop = obstacleTops.reduce(math.min);
+          final overlayBottom = overlayBox
+              .localToGlobal(Offset(0, overlayBox.size.height))
+              .dy;
+          final obstacleTopGlobal = scaffoldBox
+              .localToGlobal(Offset(0, obstacleTop))
+              .dy;
+          final gap = overlayBottom - obstacleTopGlobal;
+          if (gap.isFinite) pendingInset = math.max(systemInset, gap);
+        }
+        if (scheduled) return;
+        scheduled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          scheduled = false;
+          if (!active) return;
+          if (inset.value != pendingInset) inset.value = pendingInset;
+          if (!ready.isCompleted) ready.complete();
+        });
+      },
+    );
+    measurement = OverlayEntry(
+      builder: (_) => Positioned(
+        left: 0,
+        top: 0,
+        width: 1,
+        height: 1,
+        child: IgnorePointer(child: CustomPaint(painter: painter)),
+      ),
+    );
+    Overlay.of(context, rootOverlay: true).insert(measurement);
+    return _SnackbarBottomAnchor(
+      inset: inset,
+      ready: ready.future,
+      onDispose: () {
+        active = false;
+        measurement.remove();
+        measurement.dispose();
+      },
+    );
+  }
+}
+
+class _NativeSnackbarQueue {
+  Future<void> tail = Future<void>.value();
+  _NativeSnackbarRequest? last;
+}
+
+class _NativeSnackbarRequest {
+  _NativeSnackbarRequest(this.hasAction);
+
+  final bool hasAction;
+  final ValueNotifier<bool> dismissalSignal = ValueNotifier<bool>(false);
+
+  void dismissForNext() {
+    if (hasAction) dismissalSignal.value = true;
+  }
+
+  void dispose() => dismissalSignal.dispose();
+}
+
+class _SnackbarBottomAnchor {
+  _SnackbarBottomAnchor({
+    required this.inset,
+    required this.ready,
+    this.onDispose,
+  });
+
+  final ValueNotifier<double> inset;
+  final Future<void> ready;
+  final VoidCallback? onDispose;
+
+  void dispose() {
+    onDispose?.call();
+    inset.dispose();
+  }
+}
+
+class _SnackbarGeometryPainter extends CustomPainter {
+  _SnackbarGeometryPainter({required this.geometry, required this.onPaint})
+    : super(repaint: geometry);
+
+  final ValueListenable<ScaffoldGeometry> geometry;
+  final void Function(ScaffoldGeometry) onPaint;
+
+  @override
+  void paint(Canvas canvas, Size size) => onPaint(geometry.value);
+
+  @override
+  bool shouldRepaint(_SnackbarGeometryPainter oldDelegate) => false;
 }
 
 class _IOSSnackBar extends StatefulWidget {

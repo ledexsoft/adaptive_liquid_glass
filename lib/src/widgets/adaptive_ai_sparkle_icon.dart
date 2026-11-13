@@ -30,6 +30,7 @@ class AdaptiveAiSparkleIcon extends StatelessWidget {
   /// Common Flutter Material icons are mapped automatically.
   final AndroidM3EIcon? nativeIcon;
 
+  /// Square icon size in logical pixels; must be finite and positive.
   final double size;
   final Color? color;
   final Color? sparkleColor;
@@ -37,6 +38,11 @@ class AdaptiveAiSparkleIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!size.isFinite || size <= 0) {
+      throw FlutterError(
+        'AdaptiveAiSparkleIcon.size must be finite and positive.',
+      );
+    }
     if (PlatformInfo.usesNativeAndroidViews) {
       final iconName = resolveAndroidM3EIcon(
         child: icon,

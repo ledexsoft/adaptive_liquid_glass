@@ -15,9 +15,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: AdaptiveCard.glass(
-              child: Text('Glass Card Content'),
-            ),
+            body: AdaptiveCard.glass(child: Text('Glass Card Content')),
           ),
         ),
       );
@@ -42,6 +40,10 @@ void main() {
       );
 
       expect(find.text('Tap Me'), findsOneWidget);
+      final properties =
+          tester.widget<AndroidView>(find.byType(AndroidView)).creationParams!
+              as Map<Object?, Object?>;
+      expect(properties['style'], 'elevated');
       await tester.tap(find.text('Tap Me'));
       await tester.pump();
       expect(tapped, isTrue);

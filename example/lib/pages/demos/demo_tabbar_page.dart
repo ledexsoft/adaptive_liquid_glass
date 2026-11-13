@@ -69,6 +69,7 @@ class _DemoTabbarPageState extends State<DemoTabbarPage> {
             onPressed: () {},
             icon: Icons.info,
             iosSymbol: "info.circle",
+            semanticLabel: 'Information',
           ),
         ],
       ),

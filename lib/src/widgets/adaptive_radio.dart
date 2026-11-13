@@ -34,6 +34,7 @@ class AdaptiveRadio<T> extends StatelessWidget {
     this.focusColor,
     this.hoverColor,
     this.toggleable = false,
+    this.semanticLabel,
   });
 
   /// The value represented by this radio button
@@ -56,7 +57,9 @@ class AdaptiveRadio<T> extends StatelessWidget {
   /// On Android: Uses the color for the radio button
   final Color? activeColor;
 
-  /// The color for the radio's Material when it has the input focus
+  /// The color for the radio's Material when it has the input focus.
+  /// Explicit focus/hover colors use Flutter's Radio on Android because
+  /// Compose's RadioButton does not expose separate overlay-color parameters.
   final Color? focusColor;
 
   /// The color for the radio's Material when a pointer is hovering over it
@@ -66,6 +69,10 @@ class AdaptiveRadio<T> extends StatelessWidget {
   ///
   /// To indicate returning to an indeterminate state, [onChanged] will be called with null
   final bool toggleable;
+
+  /// Localized name for this radio option when it has no adjacent text label.
+  /// Android forwards it to the real Compose radio semantics.
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +88,9 @@ class AdaptiveRadio<T> extends StatelessWidget {
     }
 
     // Android - Use Material Design Radio
-    if (PlatformInfo.usesNativeAndroidViews) {
+    if (PlatformInfo.usesNativeAndroidViews &&
+        focusColor == null &&
+        hoverColor == null) {
       return AndroidM3EPlatformView(
         component: 'radio',
         width: 48,
@@ -90,13 +99,16 @@ class AdaptiveRadio<T> extends StatelessWidget {
           'selected': value == groupValue,
           'toggleable': toggleable,
           'enabled': onChanged != null,
-          'hasCallback':
-              onChanged != null && (value != groupValue || toggleable),
+          'hasCallback': onChanged != null,
           'activeColor': activeColor?.toARGB32(),
+          'semanticLabel': semanticLabel,
         },
         onEvent: (event, nextValue) {
           if (event == 'changed' && nextValue is bool) {
-            onChanged?.call(nextValue ? value : null);
+            final selected = value == groupValue;
+            if (nextValue == !selected && (!selected || toggleable)) {
+              onChanged?.call(nextValue ? value : null);
+            }
           }
         },
       );
@@ -104,7 +116,7 @@ class AdaptiveRadio<T> extends StatelessWidget {
 
     // Fallback for other platforms (web, desktop, etc.)
     // ignore: deprecated_member_use
-    return Radio<T>(
+    final radio = Radio<T>(
       value: value,
       // ignore: deprecated_member_use
       groupValue: groupValue,
@@ -115,6 +127,9 @@ class AdaptiveRadio<T> extends StatelessWidget {
       hoverColor: hoverColor,
       toggleable: toggleable,
     );
+    return semanticLabel == null
+        ? radio
+        : Semantics(label: semanticLabel, child: radio);
   }
 }
 

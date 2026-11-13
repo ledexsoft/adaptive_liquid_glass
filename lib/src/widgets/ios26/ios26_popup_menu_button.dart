@@ -39,6 +39,7 @@ class AdaptivePopupMenuItem<T> extends AdaptivePopupMenuEntry {
 
   /// Optional image bytes (e.g. an avatar) displayed as the item's image,
   /// clipped to a circle. Takes precedence over [icon] when both are set.
+  /// Treat the bytes as immutable; provide a new buffer to update the image.
   final Uint8List? imageBytes;
 
   /// Whether the item can be selected

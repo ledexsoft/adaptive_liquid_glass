@@ -46,6 +46,7 @@ class AdaptiveAppBarAction {
     this.androidStyle = AdaptiveAppBarActionStyle.standard,
     this.wide = false,
     this.insideSearchField = false,
+    this.enabled = true,
   }) : assert(
          iosSymbol != null ||
              icon != null ||
@@ -71,13 +72,17 @@ class AdaptiveAppBarAction {
   final Widget? iconWidget;
 
   /// Explicit serializable icon for the native Android M3 Expressive app bar.
-  /// Keep [icon] or [iconWidget] for other platforms. If omitted and the
-  /// Android icon cannot be serialized, [AdaptiveScaffold] uses a Flutter
-  /// Material app bar fallback so custom widgets and callbacks keep working.
+  /// Keep [icon], [iconWidget], or a visible [title] for Flutter-rendered
+  /// app bars. A native-only icon cannot render in that fallback.
+  /// [AdaptiveScaffold] uses the Flutter fallback when an Android icon or
+  /// another app-bar element cannot be serialized to Compose.
   final AndroidM3EIcon? androidIcon;
 
-  /// Text title for the action (optional)
-  /// If provided along with icons, title takes precedence
+  /// Text title for the action (optional).
+  /// When an icon is present, Android displays the icon and uses this title
+  /// as its accessible name and tooltip unless [semanticLabel] or the nested
+  /// [Icon.semanticLabel] is supplied.
+  /// Without an icon, Android displays the title as a text button.
   final String? title;
 
   /// Callback when the action is tapped
@@ -111,7 +116,8 @@ class AdaptiveAppBarAction {
   final Color? tintColor;
 
   /// Accessible action name used by Android screen readers and tooltips.
-  /// Set this for icon-only actions; [title] is used when omitted.
+  /// Set this for icon-only actions; [title] or an [Icon.semanticLabel] is
+  /// used when omitted. Native Android rejects an icon action without a name.
   final String? semanticLabel;
 
   /// Android native M3 Expressive button treatment.
@@ -123,6 +129,10 @@ class AdaptiveAppBarAction {
 
   /// Place this Android action inside the native search field, when used.
   final bool insideSearchField;
+
+  /// Whether this action accepts input. Native controls display their disabled
+  /// state and remove the action from keyboard activation.
+  final bool enabled;
 
   @override
   bool operator ==(Object other) {
@@ -138,7 +148,8 @@ class AdaptiveAppBarAction {
         other.semanticLabel == semanticLabel &&
         other.androidStyle == androidStyle &&
         other.wide == wide &&
-        other.insideSearchField == insideSearchField;
+        other.insideSearchField == insideSearchField &&
+        other.enabled == enabled;
   }
 
   @override
@@ -154,24 +165,37 @@ class AdaptiveAppBarAction {
     androidStyle,
     wide,
     insideSearchField,
+    enabled,
   );
 
   /// Convert this action to the serializable properties used by Android M3E.
-  Map<String, dynamic> toAndroidMap() => {
-    if (androidIcon != null || iconWidget != null || icon != null)
-      'icon': resolveAndroidM3EIcon(
-        child: iconWidget ?? (icon == null ? null : Icon(icon)),
-        nativeIcon: androidIcon,
-        parameterName: 'AdaptiveAppBarAction.androidIcon',
-      ),
-    if (title != null) 'title': title,
-    'tooltip': semanticLabel ?? title,
-    'semanticLabel': semanticLabel ?? title,
-    'enabled': true,
-    'style': androidStyle.name,
-    'wide': wide,
-    'insideSearchField': insideSearchField,
-  };
+  Map<String, dynamic> toAndroidMap() {
+    final styledIcon = iconWidget is Icon ? iconWidget as Icon : null;
+    if (!canSerializeAndroidM3EIconStyle(styledIcon)) {
+      throw FlutterError(
+        'AdaptiveAppBarAction.iconWidget has an Icon style that cannot be '
+        'rendered by native Compose.',
+      );
+    }
+    final description = semanticLabel ?? styledIcon?.semanticLabel ?? title;
+    return {
+      if (androidIcon != null || iconWidget != null || icon != null)
+        'icon': resolveAndroidM3EIcon(
+          child: iconWidget ?? (icon == null ? null : Icon(icon)),
+          nativeIcon: androidIcon,
+          parameterName: 'AdaptiveAppBarAction.androidIcon',
+        ),
+      if (title != null) 'title': title,
+      'iconSize': styledIcon?.size,
+      'iconColor': styledIcon?.color?.toARGB32(),
+      'tooltip': description,
+      'semanticLabel': description,
+      'enabled': enabled,
+      'style': androidStyle.name,
+      'wide': wide,
+      'insideSearchField': insideSearchField,
+    };
+  }
 
   /// Convert action to map for native platform channel (iOS 26+ only)
   Map<String, dynamic> toNativeMap() {
@@ -179,6 +203,7 @@ class AdaptiveAppBarAction {
       if (iosSymbol != null) 'icon': iosSymbol!,
       if (title != null) 'title': title!,
       'spacerAfter': spacerAfter.index, // 0=none, 1=fixed, 2=flexible
+      if (!enabled) 'enabled': false,
       if (prominent) 'prominent': true,
       if (tintColor != null) 'tint': tintColor!.toARGB32(),
     };

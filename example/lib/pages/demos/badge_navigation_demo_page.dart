@@ -100,6 +100,7 @@ class _BadgeNavigationDemoPageState extends State<BadgeNavigationDemoPage> {
           context.pop();
         },
         icon: Icons.arrow_back,
+        semanticLabel: MaterialLocalizations.of(context).backButtonTooltip,
       ),
     );
   }

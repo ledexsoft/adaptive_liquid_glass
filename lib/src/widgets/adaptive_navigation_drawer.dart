@@ -4,6 +4,14 @@ import '../platform/platform_info.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_overlay.dart';
 import 'android/android_m3e_platform_view.dart';
+import 'native_occurrence_ids.dart';
+
+final NativeOccurrenceIds<AdaptiveNavigationDrawerDestination>
+_nativeDrawerDestinationIds =
+    NativeOccurrenceIds<AdaptiveNavigationDrawerDestination>();
+
+String? _nonBlankDrawerText(String? value) =>
+    value?.trim().isNotEmpty == true ? value : null;
 
 /// Serializable destination rendered by the native Android navigation drawer.
 class AdaptiveNavigationDrawerDestination {
@@ -13,14 +21,19 @@ class AdaptiveNavigationDrawerDestination {
     this.selectedIcon,
     this.supportingText,
     this.badge,
+    this.badgeSemanticsLabel,
     this.enabled = true,
   });
 
+  /// Visible destination name. Must contain a non-whitespace character.
   final String label;
   final AndroidM3EIcon icon;
   final AndroidM3EIcon? selectedIcon;
   final String? supportingText;
   final String? badge;
+
+  /// Localized description of the badge, such as "8 unread messages".
+  final String? badgeSemanticsLabel;
   final bool enabled;
 }
 
@@ -46,6 +59,9 @@ class AdaptiveNavigationDrawer extends StatelessWidget {
   final ValueChanged<int> onDestinationSelected;
   final String? header;
   final String? supportingHeader;
+
+  /// Requested drawer width. It must be finite and follows the native
+  /// Material width limits on Android.
   final double? width;
   final Color? backgroundColor;
 
@@ -54,6 +70,7 @@ class AdaptiveNavigationDrawer extends StatelessWidget {
     BuildContext context, {
     required bool isEndDrawer,
     required VoidCallback onClose,
+    AdaptiveNavigationDrawer? Function()? currentDrawer,
   }) {
     var closed = false;
     void closeOnce() {
@@ -66,61 +83,135 @@ class AdaptiveNavigationDrawer extends StatelessWidget {
       context: context,
       component: 'navigationDrawerOverlay',
       rootNavigator: true,
-      properties: {..._nativeProperties(), 'isEndDrawer': isEndDrawer},
-      onEvent: (event, value) {
-        if (event == 'destinationSelected' &&
-            value is int &&
-            value >= 0 &&
-            value < destinations.length) {
-          onDestinationSelected(value);
-          closeOnce();
-        } else if (event == 'dismissed') {
-          closeOnce();
-        }
+      terminalEvents: const {'dismissed', 'destinationSelected'},
+      properties: {
+        ..._nativeProperties(effectiveWidth: _effectiveNativeWidth(context)),
+        'isEndDrawer': isEndDrawer,
       },
-    );
+    ).then((result) {
+      closeOnce();
+      if (result is! AndroidM3EOverlayResult ||
+          result.event != 'destinationSelected') {
+        return;
+      }
+      final value = result.value;
+      final drawer = currentDrawer == null ? this : currentDrawer();
+      if (drawer == null) return;
+      final index = drawer._selectedNativeDestinationIndex(value);
+      if (index != null) drawer.onDestinationSelected(index);
+    });
   }
 
   /// Invisible drawer slot used only to receive Flutter's open gesture/state.
-  Widget buildAndroidScaffoldPlaceholder() =>
-      SizedBox(width: width ?? 304, child: const SizedBox.shrink());
+  Widget buildAndroidScaffoldPlaceholder([BuildContext? context]) {
+    _validateConfiguration();
+    return SizedBox(
+      width: context == null
+          ? _requestedNativeWidth
+          : _effectiveNativeWidth(context),
+      child: const SizedBox.shrink(),
+    );
+  }
 
-  Map<String, Object?> _nativeProperties() => {
-    'selectedIndex': selectedIndex,
-    'header': header,
-    'supportingHeader': supportingHeader,
-    'backgroundColor': backgroundColor?.toARGB32(),
-    'destinations': [
-      for (final destination in destinations)
-        {
-          'label': destination.label,
-          'icon': destination.icon.name,
-          'selectedIcon': destination.selectedIcon?.name,
-          'supportingText': destination.supportingText,
-          'badge': destination.badge,
-          'enabled': destination.enabled,
-        },
-    ],
-  };
+  void _validateConfiguration() {
+    if (width != null && !width!.isFinite) {
+      throw FlutterError('AdaptiveNavigationDrawer.width must be finite.');
+    }
+    for (final (index, destination) in destinations.indexed) {
+      if (destination.label.trim().isEmpty) {
+        throw FlutterError(
+          'AdaptiveNavigationDrawer.destinations[$index].label must not be blank.',
+        );
+      }
+    }
+  }
+
+  double get _requestedNativeWidth =>
+      (width ?? 304.0).clamp(240.0, 360.0).toDouble();
+
+  double _effectiveNativeWidth(BuildContext context) {
+    final availableWidth = MediaQuery.sizeOf(context).width;
+    final requestedWidth = width == null
+        ? (availableWidth * .88).clamp(240.0, 360.0).toDouble()
+        : _requestedNativeWidth;
+    if (!availableWidth.isFinite || availableWidth <= 0) {
+      return requestedWidth;
+    }
+    return requestedWidth.clamp(0.0, availableWidth).toDouble();
+  }
+
+  int? _selectedNativeDestinationIndex(Object? value) {
+    int? index;
+    final destinationIds = _nativeDrawerDestinationIds.forItems(destinations);
+    if (value is Map) {
+      final id = value['id'];
+      if (id is! int) return null;
+      final reportedIndex = value['index'];
+      if (reportedIndex is int &&
+          reportedIndex >= 0 &&
+          reportedIndex < destinations.length &&
+          destinationIds[reportedIndex] == id) {
+        index = reportedIndex;
+      } else {
+        for (var candidate = 0; candidate < destinations.length; candidate++) {
+          if (destinationIds[candidate] == id) {
+            index = candidate;
+            break;
+          }
+        }
+      }
+    } else if (value is int) {
+      index = value;
+    }
+    if (index == null || index < 0 || index >= destinations.length) return null;
+    return destinations[index].enabled ? index : null;
+  }
+
+  Map<String, Object?> _nativeProperties({double? effectiveWidth}) {
+    _validateConfiguration();
+    final destinationIds = _nativeDrawerDestinationIds.forItems(destinations);
+    return {
+      'selectedIndex': selectedIndex,
+      'width': effectiveWidth ?? _requestedNativeWidth,
+      'header': _nonBlankDrawerText(header),
+      'supportingHeader': _nonBlankDrawerText(supportingHeader),
+      'backgroundColor': backgroundColor?.toARGB32(),
+      'destinations': [
+        for (var index = 0; index < destinations.length; index++)
+          {
+            'id': destinationIds[index],
+            'label': destinations[index].label,
+            'icon': destinations[index].icon.name,
+            'selectedIcon': destinations[index].selectedIcon?.name,
+            'supportingText': _nonBlankDrawerText(
+              destinations[index].supportingText,
+            ),
+            'badge': _nonBlankDrawerText(destinations[index].badge),
+            'badgeSemanticsLabel':
+                _nonBlankDrawerText(destinations[index].badge) == null
+                ? null
+                : _nonBlankDrawerText(destinations[index].badgeSemanticsLabel),
+            'enabled': destinations[index].enabled,
+          },
+      ],
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
+    _validateConfiguration();
     if (PlatformInfo.usesNativeAndroidViews) {
-      final effectiveWidth =
-          width ?? (MediaQuery.sizeOf(context).width * .88).clamp(280, 360);
+      final effectiveWidth = _effectiveNativeWidth(context);
       return SizedBox(
         width: effectiveWidth,
         child: AndroidM3EPlatformView(
           component: 'navigationDrawer',
-          properties: _nativeProperties(),
+          properties: _nativeProperties(effectiveWidth: effectiveWidth),
           onEvent: (event, value) {
-            if (event != 'destinationSelected' ||
-                value is! int ||
-                value < 0 ||
-                value >= destinations.length) {
-              return;
-            }
-            onDestinationSelected(value);
+            if (event != 'destinationSelected') return;
+            final index = _selectedNativeDestinationIndex(value);
+            if (index == null) return;
+            onDestinationSelected(index);
             Scaffold.maybeOf(context)?.closeDrawer();
           },
         ),
@@ -133,7 +224,7 @@ class AdaptiveNavigationDrawer extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.symmetric(vertical: 20),
         children: [
-          if (header != null)
+          if (_nonBlankDrawerText(header) != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(28, 12, 20, 4),
               child: Text(
@@ -141,21 +232,35 @@ class AdaptiveNavigationDrawer extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
-          if (supportingHeader != null)
+          if (_nonBlankDrawerText(supportingHeader) != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(28, 0, 20, 16),
               child: Text(supportingHeader!),
             ),
           for (var index = 0; index < destinations.length; index++)
             ListTile(
-              leading: Icon(_drawerFlutterIcon(destinations[index].icon)),
+              leading: Icon(
+                _drawerFlutterIcon(
+                  index == selectedIndex
+                      ? destinations[index].selectedIcon ??
+                            destinations[index].icon
+                      : destinations[index].icon,
+                ),
+              ),
               title: Text(destinations[index].label),
-              subtitle: destinations[index].supportingText == null
+              subtitle:
+                  _nonBlankDrawerText(destinations[index].supportingText) ==
+                      null
                   ? null
                   : Text(destinations[index].supportingText!),
-              trailing: destinations[index].badge == null
+              trailing: _nonBlankDrawerText(destinations[index].badge) == null
                   ? null
-                  : Text(destinations[index].badge!),
+                  : Text(
+                      destinations[index].badge!,
+                      semanticsLabel: _nonBlankDrawerText(
+                        destinations[index].badgeSemanticsLabel,
+                      ),
+                    ),
               selected: index == selectedIndex,
               enabled: destinations[index].enabled,
               onTap: destinations[index].enabled

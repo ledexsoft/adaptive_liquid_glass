@@ -19,13 +19,14 @@ class AdaptiveTimePicker {
   /// [minuteInterval] restricts results to a fixed minute grid (e.g. 15-minute
   /// steps). On iOS the Cupertino wheel only offers interval minutes; on
   /// Android the Material picker stays unrestricted and the confirmed value is
-  /// snapped to the nearest interval.
+  /// snapped to the nearest interval. It must be a positive divisor of 60.
   static Future<TimeOfDay?> show({
     required BuildContext context,
     required TimeOfDay initialTime,
     bool use24HourFormat = false,
     int minuteInterval = 1,
   }) async {
+    validateMinuteInterval(minuteInterval);
     if (PlatformInfo.isIOS) {
       return _showCupertinoTimePicker(
         context: context,
@@ -36,30 +37,11 @@ class AdaptiveTimePicker {
     }
 
     if (PlatformInfo.usesNativeAndroidViews) {
-      final result = await showAndroidM3EOverlay(
+      return showAndroidM3ETimePicker(
         context: context,
-        rootNavigator: true,
-        component: 'timePicker',
-        properties: {
-          'initialHour': initialTime.hour,
-          'initialMinute': initialTime.minute,
-          'use24HourFormat': use24HourFormat,
-          'minuteInterval': minuteInterval,
-        },
-      );
-      if (result is! AndroidM3EOverlayResult ||
-          result.event != 'submitted' ||
-          result.value is! List ||
-          (result.value! as List).length < 2) {
-        return null;
-      }
-      final values = result.value! as List;
-      final hour = values[0];
-      final minute = values[1];
-      if (hour is! int || minute is! int) return null;
-      return alignTimeOfDayToInterval(
-        TimeOfDay(hour: hour, minute: minute),
-        minuteInterval,
+        initialTime: initialTime,
+        use24HourFormat: use24HourFormat,
+        minuteInterval: minuteInterval,
       );
     }
 
@@ -136,6 +118,92 @@ class AdaptiveTimePicker {
     if (picked == null) return null;
     return alignTimeOfDayToInterval(picked, minuteInterval);
   }
+}
+
+/// Shared bridge for the real Compose time dialog. Date-time callers may
+/// constrain its minute grid to the date selected in the native calendar.
+Future<TimeOfDay?> showAndroidM3ETimePicker({
+  required BuildContext context,
+  required TimeOfDay initialTime,
+  required bool use24HourFormat,
+  required int minuteInterval,
+  int? minimumMinuteOfDay,
+  int? maximumMinuteOfDay,
+  bool keepSelectedDay = false,
+}) async {
+  validateMinuteInterval(minuteInterval);
+  final localizations = MaterialLocalizations.of(context);
+  final alignedInitialTime = keepSelectedDay
+      ? _alignTimeWithinDay(initialTime, minuteInterval)
+      : alignTimeOfDayToInterval(initialTime, minuteInterval);
+  var initialMinuteOfDay =
+      alignedInitialTime.hour * 60 + alignedInitialTime.minute;
+  // Date boundaries may fall between selectable minute ticks. Start the
+  // native picker on a tick that can actually be confirmed.
+  final lowerBound = minimumMinuteOfDay ?? 0;
+  final upperBound = maximumMinuteOfDay ?? 24 * 60 - 1;
+  final firstSelectableMinute =
+      ((lowerBound + minuteInterval - 1) ~/ minuteInterval) * minuteInterval;
+  final lastSelectableMinute = (upperBound ~/ minuteInterval) * minuteInterval;
+  if (firstSelectableMinute > lastSelectableMinute) return null;
+  initialMinuteOfDay = initialMinuteOfDay.clamp(
+    firstSelectableMinute,
+    lastSelectableMinute,
+  );
+  final result = await showAndroidM3EOverlay(
+    context: context,
+    rootNavigator: true,
+    component: 'timePicker',
+    properties: {
+      'initialHour': initialMinuteOfDay ~/ 60,
+      'initialMinute': initialMinuteOfDay % 60,
+      'use24HourFormat': use24HourFormat,
+      'minuteInterval': minuteInterval,
+      if (keepSelectedDay) 'keepSelectedDay': true,
+      if (minimumMinuteOfDay != null) 'minimumMinuteOfDay': minimumMinuteOfDay,
+      if (maximumMinuteOfDay != null) 'maximumMinuteOfDay': maximumMinuteOfDay,
+      'localeTag': Localizations.localeOf(context).toLanguageTag(),
+      'confirmLabel': localizations.okButtonLabel,
+      'dismissLabel': localizations.cancelButtonLabel,
+    },
+  );
+  if (result is! AndroidM3EOverlayResult ||
+      result.event != 'submitted' ||
+      result.value is! List ||
+      (result.value! as List).length < 2) {
+    return null;
+  }
+  final values = result.value! as List;
+  final hour = values[0];
+  final minute = values[1];
+  if (hour is! int ||
+      hour < 0 ||
+      hour > 23 ||
+      minute is! int ||
+      minute < 0 ||
+      minute > 59) {
+    return null;
+  }
+  final selectedTime = TimeOfDay(hour: hour, minute: minute);
+  final aligned = keepSelectedDay
+      ? _alignTimeWithinDay(selectedTime, minuteInterval)
+      : alignTimeOfDayToInterval(selectedTime, minuteInterval);
+  final selectedMinuteOfDay = aligned.hour * 60 + aligned.minute;
+  if ((minimumMinuteOfDay != null &&
+          selectedMinuteOfDay < minimumMinuteOfDay) ||
+      (maximumMinuteOfDay != null &&
+          selectedMinuteOfDay > maximumMinuteOfDay)) {
+    return null;
+  }
+  return aligned;
+}
+
+TimeOfDay _alignTimeWithinDay(TimeOfDay time, int interval) {
+  if (interval <= 1) return time;
+  final selectedMinute = time.hour * 60 + time.minute;
+  final rounded = ((selectedMinute + interval ~/ 2) ~/ interval) * interval;
+  final alignedMinute = rounded < 24 * 60 ? rounded : 24 * 60 - interval;
+  return TimeOfDay(hour: alignedMinute ~/ 60, minute: alignedMinute % 60);
 }
 
 /// Internal widget that properly updates when theme changes

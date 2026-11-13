@@ -7,7 +7,10 @@ class AdaptivePlatformUiPlugin: FlutterPlugin {
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     flutterPluginBinding.platformViewRegistry.registerViewFactory(
       M3EPlatformViewFactory.VIEW_TYPE,
-      M3EPlatformViewFactory(flutterPluginBinding.binaryMessenger),
+      M3EPlatformViewFactory(
+        flutterPluginBinding.binaryMessenger,
+        flutterPluginBinding.flutterAssets::getAssetFilePathByName,
+      ),
     )
   }
 

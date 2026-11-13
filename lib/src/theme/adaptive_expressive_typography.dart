@@ -13,8 +13,10 @@ enum AdaptiveTypographySize { large, medium, small }
 /// tracking, and weight values, so they must not be synthesized by blindly
 /// increasing the baseline weight.
 ///
-/// Register this extension in [ThemeData.extensions]. It does not replace the
-/// theme's normal [TextTheme] or change any package widget by itself.
+/// Register this extension in [ThemeData.extensions] for direct use, or pass
+/// it to `AdaptiveMaterialExpressiveTheme(typography: ...)` to register and
+/// apply it. `AdaptiveApp` applies a registered scale from its active Material
+/// theme through its built-in expressive wrapper.
 @immutable
 class AdaptiveExpressiveTypography
     extends ThemeExtension<AdaptiveExpressiveTypography> {

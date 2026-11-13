@@ -5,6 +5,7 @@ import 'package:adaptive_liquid_glass/src/platform/platform_info.dart';
 import '../utils/animation.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
+import 'android/android_m3e_text_options.dart';
 
 /// A platform-adaptive expansion tile widget that provides expandable/collapsible content.
 ///
@@ -44,10 +45,13 @@ class AdaptiveExpansionTile extends StatefulWidget {
     this.shape,
     this.collapsedShape,
     this.enabled = true,
-    this.clipBehavior = Clip.none,
+    this.clipBehavior,
     this.expandedAlignment,
     this.expandedCrossAxisAlignment,
-  });
+  }) : assert(
+         expandedCrossAxisAlignment != CrossAxisAlignment.baseline,
+         'CrossAxisAlignment.baseline is not supported for column children.',
+       );
 
   /// A widget to display before the title.
   final Widget? leading;
@@ -106,12 +110,14 @@ class AdaptiveExpansionTile extends StatefulWidget {
   /// Whether the tile is interactive.
   final bool enabled;
 
-  /// The content will be clipped (or not) according to this option.
-  final Clip clipBehavior;
+  /// The content will be clipped (or not) according to this option. On
+  /// Android, a null value inherits [ExpansionTileThemeData.clipBehavior].
+  final Clip? clipBehavior;
 
   /// Specifies the alignment of [children], which are arranged in a column when
-  /// the tile is expanded.
-  final Alignment? expandedAlignment;
+  /// the tile is expanded. Directional alignments follow the current text
+  /// direction.
+  final AlignmentGeometry? expandedAlignment;
 
   /// Specifies the alignment of each child within [children] when the tile is expanded.
   final CrossAxisAlignment? expandedCrossAxisAlignment;
@@ -193,6 +199,13 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
       return _buildIOSExpansionTile(context);
     }
     if (PlatformInfo.usesNativeAndroidViews) {
+      if (!canRenderAndroidM3EText(widget.title) ||
+          (widget.subtitle != null &&
+              !canRenderAndroidM3EText(widget.subtitle!)) ||
+          !canSerializeAndroidM3EIconStyle(widget.leading) ||
+          !canSerializeAndroidM3EIconStyle(widget.trailing)) {
+        return _buildMaterialExpansionTile(context);
+      }
       return _buildAndroidExpansionTile(context);
     }
     return _buildMaterialExpansionTile(context);
@@ -220,76 +233,190 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
       );
     }
 
-    final theme = Theme.of(context);
     final titleText = widget.title as Text?;
     final subtitleText = widget.subtitle as Text?;
-    final headerHeight = widget.subtitle == null ? 64.0 : 80.0;
-    final header = AndroidM3EPlatformView(
+    final expansionTheme = ExpansionTileTheme.of(context);
+    final nativePadding = (widget.tilePadding ?? expansionTheme.tilePadding)
+        ?.resolve(Directionality.of(context));
+    if (nativePadding != null &&
+        [
+          nativePadding.left,
+          nativePadding.top,
+          nativePadding.right,
+          nativePadding.bottom,
+        ].any((value) => !value.isFinite || value < 0)) {
+      throw FlutterError(
+        'AdaptiveExpansionTile.tilePadding must be finite and nonnegative on Android.',
+      );
+    }
+    final verticalPadding = nativePadding?.vertical ?? 20.0;
+    final paddingExtra = verticalPadding > 20.0 ? verticalPadding - 20.0 : 0.0;
+    final textScaler = MediaQuery.textScalerOf(context);
+    final scaledTitleExtra = textScaler.scale(16.0) - 16.0;
+    final scaledSubtitleExtra = subtitleText == null
+        ? 0.0
+        : textScaler.scale(14.0) - 14.0;
+    final headerHeight =
+        (subtitleText == null ? 56.0 : 72.0) +
+        paddingExtra +
+        (scaledTitleExtra > 0 ? scaledTitleExtra : 0.0) +
+        (scaledSubtitleExtra > 0 ? scaledSubtitleExtra : 0.0);
+    final headerTextColor = _isExpanded
+        ? widget.textColor ?? expansionTheme.textColor
+        : widget.collapsedTextColor ?? expansionTheme.collapsedTextColor;
+    final headerIconColor = _isExpanded
+        ? widget.iconColor ?? expansionTheme.iconColor
+        : widget.collapsedIconColor ?? expansionTheme.collapsedIconColor;
+    final headerBackgroundColor = _isExpanded
+        ? widget.backgroundColor ?? expansionTheme.backgroundColor
+        : widget.collapsedBackgroundColor ??
+              expansionTheme.collapsedBackgroundColor;
+    final header = AndroidM3EMeasuredHeightView(
       component: 'expansionTile',
-      height: headerHeight,
+      initialHeight: headerHeight,
       properties: {
         'title': text(widget.title, 'title'),
+        'titleTextOptions': androidM3ETextOptions(titleText!),
         'subtitle': widget.subtitle == null
             ? null
             : text(widget.subtitle!, 'subtitle'),
+        'subtitleTextOptions': subtitleText == null
+            ? null
+            : androidM3ETextOptions(subtitleText),
         'leadingIcon': iconName(widget.leading, 'leading'),
+        'leadingIconSize': widget.leading is Icon
+            ? (widget.leading as Icon).size
+            : null,
+        'leadingIconColor': widget.leading is Icon
+            ? (widget.leading as Icon).color?.toARGB32()
+            : null,
+        'leadingIconSemanticLabel': widget.leading is Icon
+            ? (widget.leading as Icon).semanticLabel
+            : null,
         'trailingIcon': iconName(widget.trailing, 'trailing'),
+        'trailingIconSize': widget.trailing is Icon
+            ? (widget.trailing as Icon).size
+            : null,
+        'trailingIconColor': widget.trailing is Icon
+            ? (widget.trailing as Icon).color?.toARGB32()
+            : null,
+        'trailingIconSemanticLabel': widget.trailing is Icon
+            ? (widget.trailing as Icon).semanticLabel
+            : null,
         'expanded': _isExpanded,
+        'stateDescription': _isExpanded
+            ? MaterialLocalizations.of(context).collapsedHint
+            : MaterialLocalizations.of(context).expandedHint,
         'enabled': widget.enabled,
-        'primaryColor': theme.colorScheme.primary.toARGB32(),
-        'textColor': (titleText?.style?.color ?? widget.textColor)?.toARGB32(),
-        'subtitleColor': subtitleText?.style?.color?.toARGB32(),
-        'iconColor': (widget.iconColor ?? widget.collapsedIconColor)
+        'textColor': (titleText.style?.color ?? headerTextColor)?.toARGB32(),
+        'subtitleColor': (subtitleText?.style?.color ?? headerTextColor)
             ?.toARGB32(),
-        'backgroundColor':
-            (widget.backgroundColor ?? widget.collapsedBackgroundColor)
-                ?.toARGB32(),
+        'iconColor': headerIconColor?.toARGB32(),
+        'backgroundColor': headerBackgroundColor?.toARGB32(),
+        'padding': nativePadding == null
+            ? null
+            : [
+                nativePadding.left,
+                nativePadding.top,
+                nativePadding.right,
+                nativePadding.bottom,
+              ],
       },
       onEvent: (event, _) {
         if (event == 'tapped') _handleTap();
       },
     );
-    final children = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment:
-          widget.expandedCrossAxisAlignment ?? CrossAxisAlignment.stretch,
-      children: [
-        if (widget.childrenPadding != null)
-          Padding(
-            padding: widget.childrenPadding!,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: widget.children,
-            ),
-          )
-        else
-          ...widget.children,
-      ],
+    final children = Align(
+      alignment:
+          widget.expandedAlignment ??
+          expansionTheme.expandedAlignment ??
+          Alignment.center,
+      child: Padding(
+        padding:
+            widget.childrenPadding ??
+            expansionTheme.childrenPadding ??
+            EdgeInsets.zero,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment:
+              widget.expandedCrossAxisAlignment ?? CrossAxisAlignment.center,
+          children: widget.children,
+        ),
+      ),
     );
-    return Padding(
-      padding: widget.tilePadding ?? EdgeInsets.zero,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          header,
-          AnimatedBuilder(
-            animation: _androidExpansionController,
-            child: TickerMode(
-              enabled: _isExpanded || widget.maintainState,
-              child: children,
-            ),
-            builder: (context, child) => ClipRect(
+    final tile = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        header,
+        AnimatedBuilder(
+          animation: _androidExpansionController,
+          child: children,
+          builder: (context, child) {
+            final closed =
+                !_isExpanded && !_androidExpansionController.isAnimating;
+            if (closed && !widget.maintainState) {
+              return const SizedBox.shrink();
+            }
+            return ClipRect(
               child: Align(
                 alignment: Alignment.topCenter,
                 heightFactor: _androidExpansionController.value
                     .clamp(0.0, double.infinity)
                     .toDouble(),
-                child: child,
+                child: Offstage(
+                  offstage: closed,
+                  child: ExcludeFocus(
+                    excluding: closed,
+                    child: TickerMode(enabled: !closed, child: child!),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        ),
+      ],
+    );
+    final collapsedShape =
+        widget.collapsedShape ?? expansionTheme.collapsedShape;
+    final expandedShape = widget.shape ?? expansionTheme.shape;
+    if (collapsedShape == null && expandedShape == null) {
+      return headerBackgroundColor == null
+          ? tile
+          : ColoredBox(color: headerBackgroundColor, child: tile);
+    }
+
+    final collapsedBorder =
+        collapsedShape ??
+        const Border(
+          top: BorderSide(color: Colors.transparent),
+          bottom: BorderSide(color: Colors.transparent),
+        );
+    final expandedBorder =
+        expandedShape ??
+        Border(
+          top: BorderSide(color: Theme.of(context).dividerColor),
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        );
+    return AnimatedBuilder(
+      animation: _androidExpansionController,
+      child: tile,
+      builder: (context, child) {
+        final shape = ShapeBorder.lerp(
+          collapsedBorder,
+          expandedBorder,
+          _androidExpansionController.value.clamp(0.0, 1.0),
+        )!;
+        return Material(
+          color: headerBackgroundColor ?? Colors.transparent,
+          shape: shape,
+          clipBehavior:
+              widget.clipBehavior ??
+              expansionTheme.clipBehavior ??
+              Clip.antiAlias,
+          animationDuration: Duration.zero,
+          child: Padding(padding: shape.dimensions, child: child),
+        );
+      },
     );
   }
 
@@ -484,19 +611,22 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
                 ),
               ),
             ClipRect(
-              clipBehavior: widget.clipBehavior,
+              clipBehavior: widget.clipBehavior ?? Clip.none,
               child: AnimatedSize(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOutCubic,
                 child: _isExpanded
-                    ? Padding(
-                        padding: effectiveChildrenPadding,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment:
-                              widget.expandedCrossAxisAlignment ??
-                              CrossAxisAlignment.center,
-                          children: widget.children,
+                    ? Align(
+                        alignment: widget.expandedAlignment ?? Alignment.center,
+                        child: Padding(
+                          padding: effectiveChildrenPadding,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment:
+                                widget.expandedCrossAxisAlignment ??
+                                CrossAxisAlignment.center,
+                            children: widget.children,
+                          ),
                         ),
                       )
                     : const SizedBox(width: double.infinity, height: 0),
@@ -515,8 +645,12 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
       title: widget.title,
       subtitle: widget.subtitle,
       trailing: widget.trailing,
-      onExpansionChanged: widget.onExpansionChanged,
-      initiallyExpanded: widget.initiallyExpanded,
+      onExpansionChanged: (value) {
+        _isExpanded = value;
+        _androidExpansionController.value = value ? 1.0 : 0.0;
+        widget.onExpansionChanged?.call(value);
+      },
+      initiallyExpanded: _isExpanded,
       maintainState: widget.maintainState,
       tilePadding: widget.tilePadding,
       childrenPadding: widget.childrenPadding,
@@ -529,6 +663,7 @@ class _AdaptiveExpansionTileState extends State<AdaptiveExpansionTile>
       shape: widget.shape,
       collapsedShape: widget.collapsedShape,
       clipBehavior: widget.clipBehavior,
+      enabled: widget.enabled,
       expandedAlignment: widget.expandedAlignment,
       expandedCrossAxisAlignment: widget.expandedCrossAxisAlignment,
       children: widget.children,

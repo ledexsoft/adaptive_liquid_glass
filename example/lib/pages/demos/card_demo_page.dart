@@ -67,6 +67,26 @@ class _CardDemoPageState extends State<CardDemoPage> {
         const SizedBox(height: 24),
         _buildSection(
           context,
+          title: 'Material 3 Variants',
+          description: 'Filled, elevated, and outlined native cards on Android',
+          child: Column(
+            children: [
+              for (final style in AdaptiveCardStyle.values)
+                AdaptiveCard(
+                  style: style,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Text(style.name, style: _getTextStyle(context)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildSection(
+          context,
           title: 'Custom Colors',
           description: 'Cards with custom background colors',
           child: Column(

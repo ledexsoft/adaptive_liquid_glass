@@ -4,6 +4,21 @@ import 'package:flutter/rendering.dart';
 import '../platform/platform_info.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
+import 'android/android_m3e_text_options.dart';
+import 'native_occurrence_ids.dart';
+
+final _nativeToolbarActionIds = NativeOccurrenceIds<AdaptiveToolbarAction>();
+
+int? _selectedNativeToolbarActionIndex(Object? value, List<int> actionIds) {
+  if (value is Map) {
+    final id = value['id'];
+    if (id is! int) return null;
+    final index = actionIds.indexOf(id);
+    return index < 0 ? null : index;
+  }
+  if (value is int && value >= 0 && value < actionIds.length) return value;
+  return null;
+}
 
 /// Color treatment for a native Material 3 toolbar on Android.
 enum AdaptiveToolbarColorStyle { standard, vibrant }
@@ -32,6 +47,8 @@ class AdaptiveToolbarAction {
     this.onPressed,
   });
 
+  /// Localized visible name, including when the action moves into overflow.
+  /// Must contain non-whitespace text on Android.
   final String label;
   final AndroidM3EIcon icon;
   final String? tooltip;
@@ -53,7 +70,7 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
     this.axis = Axis.horizontal,
     this.scrollController,
     this.scrollBehavior = AdaptiveToolbarScrollBehavior.pinned,
-    this.scrollThreshold = 24,
+    this.scrollThreshold = 40,
     this.expanded = true,
     this.onExpandedChanged,
     this.floatingActionButton,
@@ -69,7 +86,10 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
     this.onActiveIndexChanged,
     this.nativeLeadingIcon,
     this.nativeTrailingIcon,
+    this.nativeLeadingTooltip,
+    this.nativeTrailingTooltip,
     this.nativeFabIcon,
+    this.nativeFabTooltip,
   }) : assert(scrollThreshold > 0),
        assert(
          scrollBehavior == AdaptiveToolbarScrollBehavior.pinned ||
@@ -116,13 +136,32 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onFabPressed;
   final Color? backgroundColor;
   final Color? foregroundColor;
+
+  /// Shadow elevation for a floating toolbar. Android's native docked toolbar
+  /// uses the Material default and does not support a custom elevation.
   final double? elevation;
   final bool safeArea;
   final int? activeIndex;
   final ValueChanged<int>? onActiveIndexChanged;
   final AndroidM3EIcon? nativeLeadingIcon;
   final AndroidM3EIcon? nativeTrailingIcon;
+
+  /// Localized action name for the native Android leading icon.
+  /// Takes precedence over the nested icon button's tooltip or semantic label.
+  /// One of those names is required when a leading icon is present.
+  final String? nativeLeadingTooltip;
+
+  /// Localized action name for the native Android trailing icon.
+  /// Takes precedence over the nested icon button's tooltip or semantic label.
+  /// One of those names is required when a trailing icon is present.
+  final String? nativeTrailingTooltip;
+
   final AndroidM3EIcon? nativeFabIcon;
+
+  /// Localized tooltip and accessible name for the native Android toolbar FAB.
+  /// Takes precedence over a nested FAB tooltip or icon semantic label.
+  /// One of those names is required when a FAB icon is present.
+  final String? nativeFabTooltip;
 
   @override
   Size get preferredSize =>
@@ -135,6 +174,20 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
         scrollController != null) {
       return _AdaptiveToolbarScrollHost(toolbar: this);
     }
+    if (PlatformInfo.usesNativeAndroidViews && !docked) {
+      return _AdaptiveToolbarFloatingGeometryHost(
+        vertical: axis == Axis.vertical,
+        builder: (measuringSize, onMeasuredWidth, onMeasuredHeight) =>
+            _buildWithScrollState(
+              context,
+              expanded: expanded,
+              onExpandedChanged: onExpandedChanged,
+              nativeMeasuringSize: measuringSize,
+              onNativeMeasuredWidth: onMeasuredWidth,
+              onNativeMeasuredHeight: onMeasuredHeight,
+            ),
+      );
+    }
     return _buildWithScrollState(
       context,
       expanded: expanded,
@@ -146,15 +199,45 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
     BuildContext context, {
     required bool expanded,
     required ValueChanged<bool>? onExpandedChanged,
+    Size? nativeMeasuringSize,
+    ValueChanged<double>? onNativeVisibleFractionChanged,
+    ValueChanged<double>? onNativeMeasuredWidth,
+    ValueChanged<double>? onNativeMeasuredHeight,
+    ValueChanged<int>? onNativeScrollResetApplied,
+    AndroidM3EToolbarScrollController? nativeScrollController,
   }) {
     if (PlatformInfo.usesNativeAndroidViews) {
-      final resolvedTitle =
-          titleText ?? (title is Text ? (title as Text).data : null);
-      if (title != null && title is! Text && titleText == null) {
+      for (final action in actions) {
+        if (action.label.trim().isEmpty) {
+          throw FlutterError(
+            'AdaptiveToolbarAction requires a localized nonempty label '
+            'for Android toolbar actions and overflow.',
+          );
+        }
+      }
+      if (elevation != null && (!elevation!.isFinite || elevation! < 0)) {
         throw FlutterError(
-          'AdaptiveToolbar Android needs titleText or a Text title.',
+          'AdaptiveToolbar.elevation must be finite and nonnegative on Android.',
         );
       }
+      if (docked && elevation != null) {
+        throw FlutterError(
+          'AdaptiveToolbar.elevation is not supported by the native '
+          'FlexibleBottomAppBar. Omit it to use the Material default.',
+        );
+      }
+      if (titleText == null &&
+          title != null &&
+          !canRenderAndroidM3EText(title!)) {
+        throw FlutterError(
+          'AdaptiveToolbar Android needs titleText or a Text title with '
+          'styling supported by the native Compose toolbar.',
+        );
+      }
+      final nativeTitle = titleText == null && title is Text
+          ? title as Text
+          : null;
+      final resolvedTitle = titleText ?? nativeTitle?.data;
       final leadingWidget = leading;
       final trailingWidget = trailing;
       final leadingAction = leadingWidget is IconButton
@@ -187,59 +270,110 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
       final FloatingActionButton? fabButton = fabChild is FloatingActionButton
           ? fabChild
           : null;
+      final fabEnabled =
+          onFabPressed != null ||
+          fabButton?.onPressed != null ||
+          (hasExpansionToggle && onExpandedChanged != null);
+      final fabDescription = _resolvedActionDescription(
+        nativeFabTooltip,
+        fabChild,
+      );
+      final leadingDescription = _resolvedActionDescription(
+        nativeLeadingTooltip,
+        leadingWidget,
+      );
+      final trailingDescription = _resolvedActionDescription(
+        nativeTrailingTooltip,
+        trailingWidget,
+      );
+      final resolvedFabIcon = fabChild == null && nativeFabIcon == null
+          ? null
+          : _resolveOptionalIcon(
+              _iconContent(fabChild),
+              nativeFabIcon,
+              'nativeFabIcon',
+            );
+      if (leadingIcon != null && leadingDescription == null) {
+        throw FlutterError(
+          'AdaptiveToolbar needs a localized nativeLeadingTooltip, '
+          'IconButton.tooltip, or Icon.semanticLabel for its leading action.',
+        );
+      }
+      if (trailingIcon != null && trailingDescription == null) {
+        throw FlutterError(
+          'AdaptiveToolbar needs a localized nativeTrailingTooltip, '
+          'IconButton.tooltip, or Icon.semanticLabel for its trailing action.',
+        );
+      }
+      if (resolvedFabIcon != null && fabDescription == null) {
+        throw FlutterError(
+          'AdaptiveToolbar needs a localized nativeFabTooltip, '
+          'FloatingActionButton.tooltip, or Icon.semanticLabel for its FAB.',
+        );
+      }
+      final actionIds = _nativeToolbarActionIds.forItems(actions);
       final actionItems = [
-        for (final action in actions)
+        for (final (index, action) in actions.indexed)
           {
+            'id': actionIds[index],
             'label': action.label,
             'icon': action.icon.name,
             'tooltip': action.tooltip,
-            'enabled': action.enabled && action.onPressed != null,
+            'enabled': _isActionInteractive(action),
           },
       ];
-      final safeBottomInset = docked && safeArea
-          ? MediaQuery.paddingOf(context).bottom
-          : 0.0;
+      final safePadding = docked && safeArea
+          ? MediaQuery.paddingOf(context)
+          : EdgeInsets.zero;
+      final safeBottomInset = safePadding.bottom;
       return AndroidM3EPlatformView(
         component: 'toolbar',
-        height: preferredSize.height + safeBottomInset,
+        width: nativeMeasuringSize?.width,
+        height:
+            (nativeMeasuringSize?.height ?? preferredSize.height) +
+            safeBottomInset,
+        toolbarScrollController: nativeScrollController,
         properties: {
           'docked': docked,
           'safeBottomInset': safeBottomInset,
+          'safeLeftInset': safePadding.left,
+          'safeRightInset': safePadding.right,
           'colorStyle': colorStyle.name,
           'axis': axis.name,
           'expanded': expanded,
+          'scrollBehavior': onNativeVisibleFractionChanged == null
+              ? AdaptiveToolbarScrollBehavior.pinned.name
+              : scrollBehavior.name,
           'title': resolvedTitle,
+          'titleTextOptions': nativeTitle == null
+              ? null
+              : androidM3ETextOptions(nativeTitle),
+          'titleColor': nativeTitle?.style?.color?.toARGB32(),
           'leadingIcon': leadingIcon,
           'trailingIcon': trailingIcon,
-          'leadingTooltip': leadingWidget is IconButton
-              ? leadingWidget.tooltip
-              : null,
-          'trailingTooltip': trailingWidget is IconButton
-              ? trailingWidget.tooltip
-              : null,
+          'leadingTooltip': leadingDescription,
+          'trailingTooltip': trailingDescription,
           'leadingEnabled': leadingAction != null,
           'trailingEnabled': trailingAction != null,
-          'fabIcon': fabChild == null && nativeFabIcon == null
-              ? null
-              : _resolveOptionalIcon(
-                  _iconContent(fabChild),
-                  nativeFabIcon,
-                  'nativeFabIcon',
-                ),
-          'fabTooltip': fabButton?.tooltip,
+          'fabIcon': resolvedFabIcon,
+          'fabTooltip': fabDescription,
+          'fabEnabled': fabEnabled,
           'backgroundColor': backgroundColor?.toARGB32(),
           'foregroundColor': foregroundColor?.toARGB32(),
+          'elevation': elevation,
           'activeIndex': activeIndex,
           'actions': actionItems,
         },
         onEvent: (event, value) {
-          if (event == 'actionPressed' &&
-              value is int &&
-              value >= 0 &&
-              value < actions.length) {
-            actions[value].onPressed?.call();
+          final actionIndex = _selectedNativeToolbarActionIndex(
+            value,
+            actionIds,
+          );
+          if (event == 'actionPressed' && actionIndex != null) {
+            final action = actions[actionIndex];
+            if (_isActionInteractive(action)) action.onPressed?.call();
           }
-          if (event == 'fabPressed') {
+          if (event == 'fabPressed' && fabEnabled) {
             onFabPressed?.call();
             if (fabButton != null) {
               fabButton.onPressed?.call();
@@ -255,8 +389,25 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
           if (event == 'expandedChanged' && value is bool) {
             onExpandedChanged?.call(value);
           }
-          if (event == 'activeIndexChanged' && value is int) {
-            onActiveIndexChanged?.call(value);
+          if (event == 'activeIndexChanged' && actionIndex != null) {
+            final action = actions[actionIndex];
+            if (_isActionInteractive(action) && activeIndex != null) {
+              onActiveIndexChanged?.call(actionIndex);
+            }
+          }
+          if (event == 'toolbarVisibleFraction' &&
+              value is num &&
+              value.isFinite) {
+            onNativeVisibleFractionChanged?.call(value.toDouble());
+          }
+          if (event == 'measuredHeight' && value is num && value.isFinite) {
+            onNativeMeasuredHeight?.call(value.toDouble());
+          }
+          if (event == 'measuredWidth' && value is num && value.isFinite) {
+            onNativeMeasuredWidth?.call(value.toDouble());
+          }
+          if (event == 'toolbarScrollResetApplied' && value is int) {
+            onNativeScrollResetApplied?.call(value);
           }
         },
       );
@@ -277,11 +428,16 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
           )
         else if (title == null)
           const Spacer(),
-        for (final action in actions)
+        for (var index = 0; index < actions.length; index++)
           IconButton(
-            onPressed: action.enabled ? action.onPressed : null,
-            tooltip: action.tooltip ?? action.label,
-            icon: Icon(_fallbackIcon(action.icon)),
+            onPressed: _isActionInteractive(actions[index])
+                ? () {
+                    if (activeIndex != null) onActiveIndexChanged?.call(index);
+                    actions[index].onPressed?.call();
+                  }
+                : null,
+            tooltip: actions[index].tooltip ?? actions[index].label,
+            icon: Icon(_fallbackIcon(actions[index].icon)),
           ),
         if (trailing != null) trailing!,
       ],
@@ -306,11 +462,37 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
+  bool _isActionInteractive(AdaptiveToolbarAction action) =>
+      action.enabled &&
+      (action.onPressed != null ||
+          (activeIndex != null && onActiveIndexChanged != null));
+
   Widget? _iconContent(Widget? child) => switch (child) {
     IconButton(:final icon) => icon,
     FloatingActionButton(:final child) => child,
     _ => child,
   };
+
+  String? _resolvedActionDescription(String? explicit, Widget? widget) {
+    if (explicit != null && explicit.trim().isNotEmpty) return explicit;
+    return _actionDescription(widget);
+  }
+
+  String? _actionDescription(Widget? widget) {
+    final tooltip = switch (widget) {
+      IconButton(:final tooltip) => tooltip,
+      FloatingActionButton(:final tooltip) => tooltip,
+      _ => null,
+    };
+    if (tooltip != null && tooltip.trim().isNotEmpty) return tooltip;
+    final icon = _iconContent(widget);
+    if (icon is Icon &&
+        icon.semanticLabel != null &&
+        icon.semanticLabel!.trim().isNotEmpty) {
+      return icon.semanticLabel;
+    }
+    return null;
+  }
 
   IconData _fallbackIcon(AndroidM3EIcon icon) => switch (icon) {
     AndroidM3EIcon.add => Icons.add,
@@ -341,6 +523,92 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
   };
 }
 
+class _AdaptiveToolbarFloatingGeometryHost extends StatefulWidget {
+  const _AdaptiveToolbarFloatingGeometryHost({
+    required this.vertical,
+    required this.builder,
+  });
+
+  final bool vertical;
+  final Widget Function(Size, ValueChanged<double>, ValueChanged<double>)
+  builder;
+
+  @override
+  State<_AdaptiveToolbarFloatingGeometryHost> createState() =>
+      _AdaptiveToolbarFloatingGeometryHostState();
+}
+
+class _AdaptiveToolbarFloatingGeometryHostState
+    extends State<_AdaptiveToolbarFloatingGeometryHost> {
+  double? _visibleWidth;
+  double? _visibleHeight;
+
+  @override
+  void didUpdateWidget(
+    covariant _AdaptiveToolbarFloatingGeometryHost oldWidget,
+  ) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.vertical != widget.vertical) {
+      _visibleWidth = null;
+      _visibleHeight = null;
+    }
+  }
+
+  void _handleMeasuredWidth(double value) {
+    if (!mounted || !value.isFinite || value < 0) return;
+    if (_visibleWidth != null && (_visibleWidth! - value).abs() <= 0.5) return;
+    setState(() => _visibleWidth = value);
+  }
+
+  void _handleMeasuredHeight(double value) {
+    if (!mounted || !value.isFinite || value < 0) return;
+    if (_visibleHeight != null && (_visibleHeight! - value).abs() <= 0.5) {
+      return;
+    }
+    setState(() => _visibleHeight = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final initialHeight = widget.vertical ? 288.0 : 64.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.maybeSizeOf(context)?.width ?? 320.0;
+        final maxHeight = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : initialHeight;
+        if (maxWidth <= 0 || maxHeight <= 0) return const SizedBox.shrink();
+        final visibleWidth = (_visibleWidth ?? maxWidth).clamp(0.0, maxWidth);
+        final visibleHeight = (_visibleHeight ?? initialHeight).clamp(
+          0.0,
+          maxHeight,
+        );
+        return UnconstrainedBox(
+          child: ClipRect(
+            key: Key(
+              widget.vertical
+                  ? 'native-vertical-toolbar-visible-region'
+                  : 'native-horizontal-toolbar-visible-region',
+            ),
+            child: Align(
+              alignment: Alignment.center,
+              widthFactor: visibleWidth / maxWidth,
+              heightFactor: visibleHeight / maxHeight,
+              child: widget.builder(
+                Size(maxWidth, maxHeight),
+                _handleMeasuredWidth,
+                _handleMeasuredHeight,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _AdaptiveToolbarScrollHost extends StatefulWidget {
   const _AdaptiveToolbarScrollHost({required this.toolbar});
 
@@ -357,19 +625,36 @@ class _AdaptiveToolbarScrollHostState
 
   late bool _visible;
   late bool _expanded;
+  double _nativeVisibleFraction = 1;
+  final _nativeScrollController = AndroidM3EToolbarScrollController();
+  ScrollPosition? _observedPosition;
   double _lastOffset = 0;
   double _accumulatedDelta = 0;
   ScrollDirection _lastDirection = ScrollDirection.idle;
   bool _hasOffset = false;
   bool _accessibleNavigation = false;
+  int? _pendingNativeResetToken;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final wasAccessibleNavigation = _accessibleNavigation;
     _accessibleNavigation = MediaQuery.accessibleNavigationOf(context);
     if (_accessibleNavigation) {
       _visible = true;
       _expanded = true;
+      _nativeVisibleFraction = 1;
+      _hasOffset = false;
+      _pendingNativeResetToken = _nativeScrollController.reset();
+    } else if (wasAccessibleNavigation) {
+      final controller = _toolbar.scrollController;
+      if (controller != null && controller.positions.length == 1) {
+        final position = controller.position;
+        if (position.hasPixels) {
+          _lastOffset = position.pixels;
+          _hasOffset = true;
+        }
+      }
     }
   }
 
@@ -388,8 +673,11 @@ class _AdaptiveToolbarScrollHostState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.toolbar.scrollController != _toolbar.scrollController) {
       oldWidget.toolbar.scrollController?.removeListener(_handleScroll);
+      _detachObservedPosition();
       _hasOffset = false;
       _attach(_toolbar.scrollController);
+      _nativeVisibleFraction = 1;
+      _pendingNativeResetToken = _nativeScrollController.reset();
     }
     if (oldWidget.toolbar.expanded != _toolbar.expanded) {
       _expanded = _toolbar.expanded;
@@ -399,14 +687,42 @@ class _AdaptiveToolbarScrollHostState
       _expanded = _toolbar.expanded;
       _accumulatedDelta = 0;
       _lastDirection = ScrollDirection.idle;
+      _nativeVisibleFraction = 1;
+      _pendingNativeResetToken = _nativeScrollController.reset();
     }
   }
 
   void _attach(ScrollController? controller) {
     controller?.addListener(_handleScroll);
     if (controller != null && controller.positions.length == 1) {
-      _lastOffset = controller.position.pixels;
-      _hasOffset = true;
+      _observePosition(controller.position);
+      if (controller.position.hasPixels) {
+        _lastOffset = controller.position.pixels;
+        _hasOffset = true;
+      }
+    }
+  }
+
+  void _observePosition(ScrollPosition position) {
+    if (identical(_observedPosition, position)) return;
+    _detachObservedPosition();
+    _observedPosition = position;
+    position.isScrollingNotifier.addListener(_handleScrollingChanged);
+  }
+
+  void _detachObservedPosition() {
+    _observedPosition?.isScrollingNotifier.removeListener(
+      _handleScrollingChanged,
+    );
+    _observedPosition = null;
+  }
+
+  void _handleScrollingChanged() {
+    if (!_accessibleNavigation &&
+        _toolbar.scrollBehavior == AdaptiveToolbarScrollBehavior.exitAlways &&
+        _observedPosition?.axis == Axis.vertical &&
+        _observedPosition?.isScrollingNotifier.value == false) {
+      _nativeScrollController.settle();
     }
   }
 
@@ -416,21 +732,29 @@ class _AdaptiveToolbarScrollHostState
     if (controller == null || controller.positions.length != 1) return;
     final position = controller.position;
     if (!position.hasPixels || !position.hasContentDimensions) return;
+    if (position.axis != Axis.vertical) return;
+    _observePosition(position);
 
     final offset = position.pixels;
     if (!_hasOffset) {
-      _lastOffset = offset;
+      _lastOffset = position.minScrollExtent;
       _hasOffset = true;
-      return;
     }
 
     final direction = position.userScrollDirection;
-    final delta = (offset - _lastOffset).abs();
+    final signedDelta = offset - _lastOffset;
+    final delta = signedDelta.abs();
     _lastOffset = offset;
 
     if (offset <= position.minScrollExtent + 0.5) {
       _accumulatedDelta = 0;
       _lastDirection = ScrollDirection.idle;
+      if (_toolbar.scrollBehavior == AdaptiveToolbarScrollBehavior.exitAlways) {
+        _pendingNativeResetToken = _nativeScrollController.reset();
+        if (_nativeVisibleFraction != 1) {
+          setState(() => _nativeVisibleFraction = 1);
+        }
+      }
       _setScrollState(
         visible: true,
         expanded:
@@ -438,6 +762,10 @@ class _AdaptiveToolbarScrollHostState
             ? true
             : null,
       );
+      return;
+    }
+    if (_toolbar.scrollBehavior == AdaptiveToolbarScrollBehavior.exitAlways) {
+      _nativeScrollController.scrollBy(signedDelta);
       return;
     }
     if (direction == ScrollDirection.idle || delta == 0) return;
@@ -455,7 +783,7 @@ class _AdaptiveToolbarScrollHostState
       case AdaptiveToolbarScrollBehavior.pinned:
         break;
       case AdaptiveToolbarScrollBehavior.exitAlways:
-        _setScrollState(visible: !scrollingTowardEnd);
+        break;
       case AdaptiveToolbarScrollBehavior.collapse:
         _setScrollState(expanded: !scrollingTowardEnd);
     }
@@ -480,17 +808,83 @@ class _AdaptiveToolbarScrollHostState
     _toolbar.onExpandedChanged?.call(expanded);
   }
 
+  void _handleNativeVisibleFraction(double fraction) {
+    if (!mounted ||
+        _accessibleNavigation ||
+        _pendingNativeResetToken != null ||
+        _toolbar.scrollBehavior != AdaptiveToolbarScrollBehavior.exitAlways) {
+      return;
+    }
+    final next = fraction.clamp(0.0, 1.0);
+    if ((_nativeVisibleFraction - next).abs() <= 0.001) return;
+    setState(() => _nativeVisibleFraction = next);
+  }
+
+  void _handleNativeScrollResetApplied(int token) {
+    if (_pendingNativeResetToken == token) {
+      _pendingNativeResetToken = null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final toolbar = _toolbar;
     final duration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : _animationDuration;
-    final child = toolbar._buildWithScrollState(
+    Widget buildNativeChild(
+      Size? measuringSize,
+      ValueChanged<double>? onMeasuredWidth,
+      ValueChanged<double>? onMeasuredHeight,
+    ) => toolbar._buildWithScrollState(
       context,
       expanded: _expanded,
       onExpandedChanged: _handleExpandedChanged,
+      nativeMeasuringSize: measuringSize,
+      onNativeVisibleFractionChanged:
+          toolbar.scrollBehavior == AdaptiveToolbarScrollBehavior.exitAlways
+          ? _handleNativeVisibleFraction
+          : null,
+      onNativeMeasuredWidth: onMeasuredWidth,
+      onNativeMeasuredHeight: onMeasuredHeight,
+      onNativeScrollResetApplied: _handleNativeScrollResetApplied,
+      nativeScrollController:
+          toolbar.scrollBehavior == AdaptiveToolbarScrollBehavior.exitAlways
+          ? _nativeScrollController
+          : null,
     );
+    final verticalFloating = !toolbar.docked && toolbar.axis == Axis.vertical;
+    final child = !toolbar.docked
+        ? _AdaptiveToolbarFloatingGeometryHost(
+            vertical: verticalFloating,
+            builder: (measuringSize, onMeasuredWidth, onMeasuredHeight) =>
+                buildNativeChild(
+                  measuringSize,
+                  onMeasuredWidth,
+                  onMeasuredHeight,
+                ),
+          )
+        : buildNativeChild(null, null, null);
+    if (toolbar.scrollBehavior == AdaptiveToolbarScrollBehavior.exitAlways) {
+      return ClipRect(
+        key: const Key('native-toolbar-scroll-visible-region'),
+        child: Align(
+          heightFactor: verticalFloating ? null : _nativeVisibleFraction,
+          widthFactor: verticalFloating ? _nativeVisibleFraction : null,
+          alignment: verticalFloating
+              ? Directionality.of(context) == TextDirection.rtl
+                    ? Alignment.centerLeft
+                    : Alignment.centerRight
+              : toolbar.docked
+              ? Alignment.topCenter
+              : Alignment.bottomCenter,
+          child: IgnorePointer(
+            ignoring: _nativeVisibleFraction <= 0,
+            child: child,
+          ),
+        ),
+      );
+    }
     final exitOffset = toolbar.docked || toolbar.axis == Axis.horizontal
         ? const Offset(0, 1)
         : const Offset(1, 0);
@@ -526,6 +920,8 @@ class _AdaptiveToolbarScrollHostState
   @override
   void dispose() {
     _toolbar.scrollController?.removeListener(_handleScroll);
+    _detachObservedPosition();
+    _nativeScrollController.dispose();
     super.dispose();
   }
 }

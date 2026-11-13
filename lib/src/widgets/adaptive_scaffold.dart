@@ -12,6 +12,46 @@ import 'adaptive_navigation_drawer.dart';
 import 'ios26/ios26_scaffold.dart';
 import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
+import 'android/android_m3e_text_options.dart';
+import 'native_occurrence_ids.dart';
+
+final _nativeAppBarActionIds = NativeOccurrenceIds<AdaptiveAppBarAction>();
+
+int? _selectedNativeAppBarActionIndex(
+  Object? value,
+  List<AdaptiveAppBarAction> actions,
+) {
+  int? index;
+  if (value is Map) {
+    final id = value['id'];
+    if (id is! int) return null;
+    index = _nativeAppBarActionIds.forItems(actions).indexOf(id);
+  } else if (value is int) {
+    index = value;
+  }
+  if (index == null || index < 0 || index >= actions.length) return null;
+  return actions[index].enabled ? index : null;
+}
+
+final NativeOccurrenceIds<AdaptiveNavigationDestination>
+_nativeBottomDestinationIds =
+    NativeOccurrenceIds<AdaptiveNavigationDestination>();
+
+int? _selectedNativeBottomDestinationIndex(
+  Object? value,
+  List<int> destinationIds,
+) {
+  if (value is Map) {
+    final id = value['id'];
+    if (id is! int) return null;
+    final index = destinationIds.indexOf(id);
+    return index < 0 ? null : index;
+  }
+  if (value is int && value >= 0 && value < destinationIds.length) {
+    return value;
+  }
+  return null;
+}
 
 /// Navigation destination for bottom navigation
 class AdaptiveNavigationDestination {
@@ -21,6 +61,7 @@ class AdaptiveNavigationDestination {
     this.selectedIcon,
     this.isSearch = false,
     this.badgeCount,
+    this.badgeSemanticsLabel,
     this.addSpacerAfter = false,
   });
 
@@ -33,7 +74,9 @@ class AdaptiveNavigationDestination {
   /// - `ImageProvider` such as `AssetImage`, `FileImage`, or `NetworkImage`
   final dynamic icon;
 
-  /// Label text for the destination
+  /// Label text for the destination. On native Android, an empty label uses an
+  /// icon-only item and requires a localized [Icon.semanticLabel] on the
+  /// normal and selected icons.
   final String label;
 
   /// Optional selected state icon.
@@ -49,8 +92,14 @@ class AdaptiveNavigationDestination {
 
   /// Badge count to display on the tab (null means no badge)
   /// On iOS 26+: Uses native UITabBarItem.badgeValue
-  /// On iOS <26 and Android: Uses AdaptiveBadge widget
+  /// On iOS <26: Uses AdaptiveBadge; on Android: Uses Compose Badge
+  /// (or AdaptiveBadge when native views are disabled).
   final int? badgeCount;
+
+  /// Optional localized description of the badge, such as
+  /// "8 unread messages". Android Compose and Flutter badge routes expose it
+  /// to accessibility services without replacing the destination's label.
+  final String? badgeSemanticsLabel;
 
   /// Add flexible space after this tab item (iOS 26+ only)
   /// Useful for creating grouped tabs (e.g., left group and right group)
@@ -188,30 +237,48 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
   final GlobalKey<ScaffoldState> _internalScaffoldKey =
       GlobalKey<ScaffoldState>();
   double _androidAppBarScrollOffset = 0;
-  double _androidAppBarScrollDelta = 0;
+  bool _androidAppBarScrolling = false;
+  bool _androidAppBarScrollAtStart = true;
+  int _androidAppBarScrollEndSerial = 0;
+  Object? _androidAppBarGeometryKey;
+  double? _androidAppBarNativeHeight;
 
   @override
   void didUpdateWidget(covariant AdaptiveScaffold oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.body != widget.body ||
-        oldWidget.bottomNavigationBar?.selectedIndex !=
-            widget.bottomNavigationBar?.selectedIndex) {
+    if (oldWidget.bottomNavigationBar?.selectedIndex !=
+        widget.bottomNavigationBar?.selectedIndex) {
       _androidAppBarScrollOffset = 0;
-      _androidAppBarScrollDelta = 0;
+      _androidAppBarScrolling = false;
+      _androidAppBarScrollAtStart = true;
+      _androidAppBarNativeHeight = null;
     }
   }
 
   bool _observeAndroidAppBarScroll(ScrollNotification notification) {
-    if (notification.depth != 0 ||
-        (notification.metrics.axis != Axis.vertical) ||
-        notification is! ScrollUpdateNotification) {
+    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) {
       return false;
     }
+    final nextScrolling = switch (notification) {
+      ScrollStartNotification() || ScrollUpdateNotification() => true,
+      ScrollEndNotification() => false,
+      _ => null,
+    };
+    if (nextScrolling == null) return false;
     final nextOffset = notification.metrics.pixels;
-    if ((nextOffset - _androidAppBarScrollOffset).abs() > 0.5) {
+    final nextAtStart = notification.metrics.extentBefore <= 0.5;
+    final nextEndSerial =
+        _androidAppBarScrollEndSerial +
+        (notification is ScrollEndNotification ? 1 : 0);
+    if ((nextOffset - _androidAppBarScrollOffset).abs() > 0.5 ||
+        nextScrolling != _androidAppBarScrolling ||
+        nextAtStart != _androidAppBarScrollAtStart ||
+        nextEndSerial != _androidAppBarScrollEndSerial) {
       setState(() {
-        _androidAppBarScrollDelta = nextOffset - _androidAppBarScrollOffset;
         _androidAppBarScrollOffset = nextOffset;
+        _androidAppBarScrolling = nextScrolling;
+        _androidAppBarScrollAtStart = nextAtStart;
+        _androidAppBarScrollEndSerial = nextEndSerial;
       });
     }
     return false;
@@ -237,7 +304,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         drawer is! AdaptiveNavigationDrawer) {
       return drawer;
     }
-    return drawer.buildAndroidScaffoldPlaceholder();
+    return drawer.buildAndroidScaffoldPlaceholder(context);
   }
 
   Color? get _androidDrawerScrimColor {
@@ -259,6 +326,11 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     drawer.showNativeModal(
       context,
       isEndDrawer: endDrawer,
+      currentDrawer: () {
+        if (!mounted) return null;
+        final current = endDrawer ? widget.endDrawer : widget.drawer;
+        return current is AdaptiveNavigationDrawer ? current : null;
+      },
       onClose: () {
         final scaffold = _effectiveScaffoldKey.currentState;
         if (endDrawer) {
@@ -346,6 +418,14 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     final useNativeToolbar = widget.appBar?.useNativeToolbar ?? false;
     final useNativeBottomBar =
         widget.bottomNavigationBar?.useNativeBottomBar ?? true;
+    final bottomItems = widget.bottomNavigationBar?.items;
+    final requestedBottomIndex = widget.bottomNavigationBar?.selectedIndex;
+    final selectedBottomIndex =
+        requestedBottomIndex == null ||
+            bottomItems == null ||
+            bottomItems.isEmpty
+        ? requestedBottomIndex
+        : requestedBottomIndex.clamp(0, bottomItems.length - 1);
 
     // iOS 26+ with native toolbar enabled - Use IOS26Scaffold
     if (PlatformInfo.isIOS26OrHigher() && useNativeToolbar) {
@@ -396,9 +476,11 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       return _wrapWithDrawerIfNeeded(
         IOS26Scaffold(
           key: ValueKey(
-            'ios26_scaffold_${widget.bottomNavigationBar?.selectedIndex ?? 0}_${widget.body?.runtimeType.toString() ?? "empty"}',
+            'ios26_scaffold_${selectedBottomIndex ?? 0}_${widget.body?.runtimeType.toString() ?? "empty"}',
           ),
-          bottomNavigationBar: widget.bottomNavigationBar,
+          bottomNavigationBar: widget.bottomNavigationBar?.copyWith(
+            selectedIndex: selectedBottomIndex,
+          ),
           title: widget.appBar?.title,
           actions: widget.appBar?.actions,
           leading: widget.appBar?.leading,
@@ -421,7 +503,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 
       if (widget.bottomNavigationBar?.items != null &&
           widget.bottomNavigationBar!.items!.isNotEmpty &&
-          widget.bottomNavigationBar!.selectedIndex != null &&
+          selectedBottomIndex != null &&
           widget.bottomNavigationBar!.onTap != null) {
         // Tab-based navigation
 
@@ -465,7 +547,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                       }
                       return CupertinoButton(
                         padding: EdgeInsets.zero,
-                        onPressed: action.onPressed,
+                        onPressed: action.enabled ? action.onPressed : null,
                         child: actionChild,
                       );
                     }).toList(),
@@ -482,7 +564,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         if (PlatformInfo.isIOS26OrHigher() && useNativeBottomBar) {
           tabBar = _MinimizableTabBar(
             key: _tabBarKey,
-            selectedIndex: widget.bottomNavigationBar!.selectedIndex!,
+            selectedIndex: selectedBottomIndex,
             onTap: widget.bottomNavigationBar!.onTap!,
             destinations: widget.bottomNavigationBar!.items!,
             minimizeBehavior: widget.minimizeBehavior,
@@ -506,31 +588,22 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                 widget.bottomNavigationBar!.unselectedItemColor;
 
             tabBar = CupertinoTabBar(
-              currentIndex: widget.bottomNavigationBar!.selectedIndex!,
+              currentIndex: selectedBottomIndex,
               onTap: widget.bottomNavigationBar!.onTap!,
               activeColor: widget.bottomNavigationBar!.selectedItemColor,
               items: widget.bottomNavigationBar!.items!.map((dest) {
-                Widget iconWidget = _buildNavigationIconWidget(
+                Widget iconWidget = _buildBadgedNavigationIcon(
+                  destination: dest,
                   rawIcon: dest.icon,
                   color: unselectedColor,
                   platform: TargetPlatform.iOS,
                 );
 
-                Widget activeIconWidget = _buildNavigationIconWidget(
+                Widget activeIconWidget = _buildBadgedNavigationIcon(
+                  destination: dest,
                   rawIcon: dest.selectedIcon ?? dest.icon,
                   platform: TargetPlatform.iOS,
                 );
-
-                if (dest.badgeCount != null && dest.badgeCount! > 0) {
-                  iconWidget = AdaptiveBadge(
-                    count: dest.badgeCount,
-                    child: iconWidget,
-                  );
-                  activeIconWidget = AdaptiveBadge(
-                    count: dest.badgeCount,
-                    child: activeIconWidget,
-                  );
-                }
 
                 return BottomNavigationBarItem(
                   icon: iconWidget,
@@ -667,7 +740,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                     }
                     return CupertinoButton(
                       padding: EdgeInsets.zero,
-                      onPressed: action.onPressed,
+                      onPressed: action.enabled ? action.onPressed : null,
                       child: actionChild,
                     );
                   }).toList(),
@@ -714,9 +787,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 
     // Android - Use NavigationBar if destinations provided
     if (widget.bottomNavigationBar?.items != null &&
-        widget.bottomNavigationBar!.items!.isNotEmpty &&
-        widget.bottomNavigationBar!.selectedIndex != null &&
-        widget.bottomNavigationBar!.onTap != null) {
+        widget.bottomNavigationBar!.items!.isNotEmpty) {
       // Tab-based navigation
 
       // Determine which app bar to use
@@ -743,6 +814,8 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 
       // Determine which bottom navigation bar to use
       Widget? bottomNavBar;
+      final destinations = widget.bottomNavigationBar!.items!;
+      final selectedIndex = selectedBottomIndex;
 
       // Priority 1: Custom BottomNavigationBar (if provided)
       if (widget.bottomNavigationBar!.bottomNavigationBar != null) {
@@ -750,54 +823,102 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       }
       // Priority 2: Build from items
       else if (PlatformInfo.usesNativeAndroidViews) {
-        // Compose Material 3 NavigationBar applies the system navigation-bar
+        for (final (index, destination) in destinations.indexed) {
+          if (destination.label.trim().isNotEmpty) continue;
+          final normalName = destination.icon is Icon
+              ? (destination.icon as Icon).semanticLabel
+              : null;
+          final selectedName = destination.selectedIcon is Icon
+              ? (destination.selectedIcon as Icon).semanticLabel
+              : normalName;
+          if ((normalName?.trim().isNotEmpty ?? false) &&
+              (selectedName?.trim().isNotEmpty ?? false)) {
+            continue;
+          }
+          throw FlutterError(
+            'AdaptiveBottomNavigationBar.items[$index] needs a visible label '
+            'or localized Icon.semanticLabel in both normal and selected states.',
+          );
+        }
+        final destinationIds = _nativeBottomDestinationIds.forItems(
+          destinations,
+        );
+        // Compose Material 3 navigation bars apply the system navigation-bar
         // inset itself. Reserve that same space in Flutter's Scaffold so the
         // native view is not clipped and the body does not paint underneath it.
         final bottomSystemInset = MediaQuery.viewPaddingOf(context).bottom;
+        final useShortBar =
+            widget.bottomNavigationBar!.androidStyle ==
+            AdaptiveAndroidNavigationBarStyle.short;
         bottomNavBar = AndroidM3EPlatformView(
           component: 'bottomNavigationBar',
-          height: 80 + bottomSystemInset,
+          height: (useShortBar ? 64 : 80) + bottomSystemInset,
           properties: {
-            'selectedIndex': widget.bottomNavigationBar!.selectedIndex,
+            'style': useShortBar ? 'short' : 'tall',
+            'selectedIndex': selectedIndex,
             'selectedColor': widget.bottomNavigationBar!.selectedItemColor
+                ?.toARGB32(),
+            'unselectedColor': widget.bottomNavigationBar!.unselectedItemColor
                 ?.toARGB32(),
             'hideLabels': widget.bottomNavigationBar!.hideLabels,
             'interactive': widget.bottomNavigationBar!.onTap != null,
             'destinations': [
-              for (final dest in widget.bottomNavigationBar!.items!)
+              for (var index = 0; index < destinations.length; index++)
                 {
-                  'label': dest.label,
-                  'icon': _resolveAndroidNavigationIcon(dest.icon),
-                  'selectedIcon': dest.selectedIcon == null
+                  'id': destinationIds[index],
+                  'label': destinations[index].label,
+                  'icon': _resolveAndroidNavigationIcon(
+                    destinations[index].icon,
+                  ),
+                  'iconStyle': _androidNavigationIconStyle(
+                    destinations[index].icon,
+                  ),
+                  'selectedIcon': destinations[index].selectedIcon == null
                       ? null
-                      : _resolveAndroidNavigationIcon(dest.selectedIcon),
-                  'badgeCount': dest.badgeCount,
+                      : _resolveAndroidNavigationIcon(
+                          destinations[index].selectedIcon,
+                        ),
+                  'selectedIconStyle': _androidNavigationIconStyle(
+                    destinations[index].selectedIcon,
+                  ),
+                  'badgeCount': destinations[index].badgeCount,
+                  'badgeSemanticsLabel':
+                      destinations[index].badgeSemanticsLabel,
                 },
             ],
           },
           onEvent: (event, value) {
-            if (event == 'destinationSelected' && value is int) {
-              widget.bottomNavigationBar!.onTap?.call(value);
-            }
+            if (event != 'destinationSelected') return;
+            final currentBar = widget.bottomNavigationBar;
+            final currentItems = currentBar?.items;
+            if (currentItems == null || currentBar?.onTap == null) return;
+            final index = _selectedNativeBottomDestinationIndex(
+              value,
+              _nativeBottomDestinationIds.forItems(currentItems),
+            );
+            if (index != null) currentBar!.onTap!(index);
           },
         );
       } else {
         bottomNavBar = NavigationBar(
-          selectedIndex: widget.bottomNavigationBar!.selectedIndex!,
-          onDestinationSelected: widget.bottomNavigationBar!.onTap!,
+          selectedIndex: selectedIndex ?? 0,
+          onDestinationSelected: widget.bottomNavigationBar!.onTap ?? (_) {},
           labelBehavior: widget.bottomNavigationBar!.hideLabels
               ? NavigationDestinationLabelBehavior.alwaysHide
               : NavigationDestinationLabelBehavior.alwaysShow,
           destinations: [
-            for (final destination in widget.bottomNavigationBar!.items!)
+            for (final destination in destinations)
               NavigationDestination(
-                icon: _buildNavigationIconWidget(
+                enabled: widget.bottomNavigationBar!.onTap != null,
+                icon: _buildBadgedNavigationIcon(
+                  destination: destination,
                   rawIcon: destination.icon,
                   platform: TargetPlatform.android,
                 ),
                 selectedIcon: destination.selectedIcon == null
                     ? null
-                    : _buildNavigationIconWidget(
+                    : _buildBadgedNavigationIcon(
+                        destination: destination,
                         rawIcon: destination.selectedIcon,
                         platform: TargetPlatform.android,
                       ),
@@ -849,6 +970,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       appBar: appBar,
       body: _buildAndroidObservedBody(),
       resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
+      bottomNavigationBar: widget.bottomNavigationBar?.bottomNavigationBar,
       floatingActionButton: widget.floatingActionButton,
       extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
       drawer: _drawerForAndroidScaffold(widget.drawer),
@@ -872,7 +994,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       );
     }
     final title =
-        config.title ?? (titleWidget is Text ? titleWidget.data : null) ?? '';
+        (titleWidget is Text ? titleWidget.data : null) ?? config.title ?? '';
     final leadingWidget = config.leading;
     final hasDrawer = widget.drawer != null || widget.endDrawer != null;
     final leadingAction = leadingWidget is IconButton
@@ -922,83 +1044,191 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         'An action inside an Android M3 search field must provide an icon.',
       );
     }
-    final serializedActions = actions
-        .map((action) => action.toAndroidMap())
-        .toList();
+    final actionIds = _nativeAppBarActionIds.forItems(actions);
+    final serializedActions = [
+      for (final (index, action) in actions.indexed)
+        {...action.toAndroidMap(), 'id': actionIds[index]},
+    ];
+    final hasSubtitle = config.subtitle?.trim().isNotEmpty ?? false;
     final appBarHeight = switch (config.variant) {
       AdaptiveAppBarVariant.small || AdaptiveAppBarVariant.search => 64.0,
-      AdaptiveAppBarVariant.mediumFlexible =>
-        config.subtitle == null ? 112.0 : 136.0,
-      AdaptiveAppBarVariant.largeFlexible =>
-        config.subtitle == null ? 120.0 : 152.0,
+      AdaptiveAppBarVariant.mediumFlexible => hasSubtitle ? 136.0 : 112.0,
+      AdaptiveAppBarVariant.largeFlexible => hasSubtitle ? 152.0 : 120.0,
     };
     // Flutter's Scaffold adds the status-bar padding to PreferredSize when
     // primary is true. The Compose app bar also consumes the native top
     // window inset, so its platform view needs room for both the inset and
     // the M3 app-bar content height.
     final topSystemInset = MediaQuery.viewPaddingOf(context).top;
+    final maxNativeHeight = appBarHeight + topSystemInset;
+    final geometryKey = (
+      config.variant,
+      config.scrollBehavior,
+      hasSubtitle,
+      topSystemInset,
+    );
+    if (_androidAppBarGeometryKey != geometryKey) {
+      _androidAppBarGeometryKey = geometryKey;
+      _androidAppBarNativeHeight = null;
+    }
+    final visibleNativeHeight = (_androidAppBarNativeHeight ?? maxNativeHeight)
+        .clamp(topSystemInset, maxNativeHeight)
+        .toDouble();
+    final localizations = Localizations.of<MaterialLocalizations>(
+      context,
+      MaterialLocalizations,
+    );
+    final leadingTooltip = leadingWidget is IconButton
+        ? leadingWidget.tooltip?.trim()
+        : null;
+    final leadingIconLabel = leadingIconChild is Icon
+        ? leadingIconChild.semanticLabel?.trim()
+        : null;
+    final customLeadingDescription = (leadingTooltip?.isNotEmpty ?? false)
+        ? leadingTooltip
+        : leadingIconLabel;
+    if (leadingWidget != null &&
+        (customLeadingDescription?.isNotEmpty ?? false) == false) {
+      throw FlutterError(
+        'AdaptiveAppBar.leading on native Android requires an IconButton.tooltip '
+        'or Icon.semanticLabel describing its action.',
+      );
+    }
+    final leadingDescription = leadingWidget != null
+        ? customLeadingDescription
+        : hasDrawer
+        ? (localizations?.openAppDrawerTooltip ?? 'Open navigation drawer')
+        : (localizations?.backButtonTooltip ?? 'Navigate back');
     return PreferredSize(
-      preferredSize: Size.fromHeight(appBarHeight),
-      child: AndroidM3EPlatformView(
-        component: 'topAppBar',
-        height: appBarHeight + topSystemInset,
-        properties: {
-          'title': title,
-          'subtitle': config.subtitle,
-          'variant': config.variant.name,
-          'centerAligned': config.centerAligned,
-          'logoBytes': config.androidLogoBytes,
-          'logoContentDescription': config.androidLogoContentDescription,
-          'logoReplacesSmallTitle': config.androidLogoReplacesSmallTitle,
-          'searchHint': config.searchHint,
-          'searchSuggestions': config.searchSuggestions,
-          'scrollBehavior': config.scrollBehavior.name,
-          'scrollOffset': _androidAppBarScrollOffset,
-          'scrollDelta': _androidAppBarScrollDelta,
-          'transparentWhenScrolled': config.transparentWhenScrolled,
-          'leadingIcon': leadingIcon,
-          'leadingEnabled': leadingWidget == null || leadingAction != null,
-          'leadingDescription': leadingWidget == null
-              ? (hasDrawer ? 'Open navigation drawer' : 'Navigate back')
-              : null,
-          'backgroundColor': Theme.of(context).colorScheme.surface.toARGB32(),
-          'contentColor':
-              config.tintColor?.toARGB32() ??
-              Theme.of(context).colorScheme.onSurface.toARGB32(),
-          'actions': serializedActions,
-        },
-        onEvent: (event, value) {
-          if (event == 'leadingPressed') {
-            if (leadingAction != null) {
-              leadingAction();
-            } else if (hasDrawer) {
-              if (widget.drawer != null) {
-                _effectiveScaffoldKey.currentState?.openDrawer();
-              } else {
-                _effectiveScaffoldKey.currentState?.openEndDrawer();
+      preferredSize: Size.fromHeight(visibleNativeHeight - topSystemInset),
+      child: ClipRect(
+        key: const Key('native-top-bar-visible-region'),
+        child: OverflowBox(
+          alignment: Alignment.topCenter,
+          minHeight: maxNativeHeight,
+          maxHeight: maxNativeHeight,
+          child: AndroidM3EPlatformView(
+            key: ValueKey(geometryKey),
+            component: 'topAppBar',
+            height: maxNativeHeight,
+            properties: {
+              'title': title,
+              'titleTextOptions': titleWidget is Text
+                  ? androidM3ETextOptions(titleWidget)
+                  : null,
+              'titleColor': titleWidget is Text
+                  ? titleWidget.style?.color?.toARGB32()
+                  : null,
+              'subtitle': config.subtitle,
+              'variant': config.variant.name,
+              'centerAligned': config.centerAligned,
+              'logoBytes': config.androidLogoBytes,
+              'logoContentDescription': config.androidLogoContentDescription,
+              'logoReplacesSmallTitle': config.androidLogoReplacesSmallTitle,
+              'searchHint': config.resolveSearchHint(
+                localizations?.searchFieldLabel,
+              ),
+              'searchSuggestions': config.searchSuggestions,
+              'scrollBehavior': config.scrollBehavior.name,
+              'scrollOffset': _androidAppBarScrollOffset,
+              'scrolling': _androidAppBarScrolling,
+              'scrollAtStart': _androidAppBarScrollAtStart,
+              'scrollEndSerial': _androidAppBarScrollEndSerial,
+              'transparentWhenScrolled': config.transparentWhenScrolled,
+              'leadingIcon': leadingIcon,
+              'leadingIconSize': leadingIconChild is Icon
+                  ? leadingIconChild.size
+                  : null,
+              'leadingIconColor': leadingIconChild is Icon
+                  ? leadingIconChild.color?.toARGB32()
+                  : null,
+              'leadingEnabled': leadingWidget == null || leadingAction != null,
+              'leadingDescription': leadingDescription,
+              'moreDescription':
+                  localizations?.moreButtonTooltip ?? 'More actions',
+              if (config.tintColor != null)
+                'contentColor': config.tintColor!.toARGB32(),
+              'actions': serializedActions,
+            },
+            onEvent: (event, value) {
+              if (event == 'measuredHeight' && value is num && value.isFinite) {
+                if (_androidAppBarGeometryKey != geometryKey || !mounted) {
+                  return;
+                }
+                final nextHeight = value
+                    .toDouble()
+                    .clamp(topSystemInset, maxNativeHeight)
+                    .toDouble();
+                if (((_androidAppBarNativeHeight ?? maxNativeHeight) -
+                            nextHeight)
+                        .abs() >
+                    0.5) {
+                  setState(() => _androidAppBarNativeHeight = nextHeight);
+                }
+                return;
               }
-            } else {
-              Navigator.of(context).maybePop();
-            }
-          }
-          if (event == 'actionPressed' &&
-              value is int &&
-              value >= 0 &&
-              value < actions.length) {
-            actions[value].onPressed();
-          }
-          if (event == 'searchQueryChanged' && value is String) {
-            config.onSearchQueryChanged?.call(value);
-          }
-          if (event == 'searchSubmitted' && value is String) {
-            config.onSearchSubmitted?.call(value);
-          }
-          if (event == 'searchResultSelected' && value is String) {
-            config.onSearchResultSelected?.call(value);
-          }
-        },
+              if (event == 'leadingPressed') {
+                if (leadingAction != null) {
+                  leadingAction();
+                } else if (hasDrawer) {
+                  if (widget.drawer != null) {
+                    _effectiveScaffoldKey.currentState?.openDrawer();
+                  } else {
+                    _effectiveScaffoldKey.currentState?.openEndDrawer();
+                  }
+                } else {
+                  Navigator.of(context).maybePop();
+                }
+              }
+              if (event == 'actionPressed') {
+                final index = _selectedNativeAppBarActionIndex(value, actions);
+                if (index != null) actions[index].onPressed();
+              }
+              if (event == 'searchQueryChanged' && value is String) {
+                config.onSearchQueryChanged?.call(value);
+              }
+              if (event == 'searchSubmitted' && value is String) {
+                config.onSearchSubmitted?.call(value);
+              }
+              if (event == 'searchResultSelected' && value is String) {
+                config.onSearchResultSelected?.call(value);
+              }
+            },
+          ),
+        ),
       ),
     );
+  }
+
+  void _validateAndroidAppBarActions({required bool native}) {
+    for (final (index, action)
+        in (widget.appBar?.actions ?? const <AdaptiveAppBarAction>[]).indexed) {
+      final hasVisibleTitle = action.title?.trim().isNotEmpty ?? false;
+      final hasFlutterIcon = action.icon != null || action.iconWidget != null;
+      if (hasVisibleTitle ||
+          hasFlutterIcon ||
+          (native && action.androidIcon != null)) {
+        if (native && !hasVisibleTitle) {
+          final iconLabel = action.iconWidget is Icon
+              ? (action.iconWidget as Icon).semanticLabel
+              : null;
+          final hasDescription =
+              (action.semanticLabel?.trim().isNotEmpty ?? false) ||
+              (iconLabel?.trim().isNotEmpty ?? false);
+          if (!hasDescription) {
+            throw FlutterError(
+              'AdaptiveAppBar.actions[$index] requires a localized semanticLabel or title for an Android icon action.',
+            );
+          }
+        }
+        continue;
+      }
+      throw FlutterError(
+        native
+            ? 'AdaptiveAppBar.actions[$index] requires an Android icon or visible title; iosSymbol is iOS-only.'
+            : 'AdaptiveAppBar.actions[$index] requires a Flutter icon or visible title in the Android fallback.',
+      );
+    }
   }
 
   bool get _canRenderAndroidTopAppBarNatively {
@@ -1006,17 +1236,21 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     final config = widget.appBar;
     if (config == null) return true;
     final titleWidget = config.titleWidget;
-    if (titleWidget != null && titleWidget is! Text) return false;
+    if (titleWidget != null && !canRenderAndroidM3EText(titleWidget)) {
+      return false;
+    }
 
     final leading = config.leading;
     if (leading != null) {
       final child = leading is IconButton ? leading.icon : leading;
-      if (!canResolveAndroidM3EIcon(child: child, nativeIcon: null)) {
+      if (!canSerializeAndroidM3EIconStyle(child) ||
+          !canResolveAndroidM3EIcon(child: child, nativeIcon: null)) {
         return false;
       }
     }
 
     for (final action in config.actions ?? const <AdaptiveAppBarAction>[]) {
+      if (!canSerializeAndroidM3EIconStyle(action.iconWidget)) return false;
       if (action.androidIcon != null) continue;
       if (action.icon == null && action.iconWidget == null) continue;
       final child = action.iconWidget ?? Icon(action.icon);
@@ -1024,10 +1258,12 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         return false;
       }
     }
+    _validateAndroidAppBarActions(native: true);
     return true;
   }
 
   PreferredSizeWidget _buildAndroidFlutterFallbackAppBar(BuildContext context) {
+    _validateAndroidAppBarActions(native: false);
     final config = widget.appBar!;
     final titleWidget = config.titleWidget;
     final Widget? title =
@@ -1064,12 +1300,12 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
           if (action.iconWidget != null || action.icon != null)
             IconButton(
               tooltip: action.semanticLabel ?? action.title,
-              onPressed: action.onPressed,
+              onPressed: action.enabled ? action.onPressed : null,
               icon: action.iconWidget ?? Icon(action.icon),
             )
           else
             TextButton(
-              onPressed: action.onPressed,
+              onPressed: action.enabled ? action.onPressed : null,
               child: Text(action.title ?? action.semanticLabel ?? ''),
             ),
       ],
@@ -1130,6 +1366,26 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     return color != null ? Icon(iconData, color: color) : Icon(iconData);
   }
 
+  Widget _buildBadgedNavigationIcon({
+    required AdaptiveNavigationDestination destination,
+    required dynamic rawIcon,
+    Color? color,
+    required TargetPlatform platform,
+  }) {
+    final icon = _buildNavigationIconWidget(
+      rawIcon: rawIcon,
+      color: color,
+      platform: platform,
+    );
+    final count = destination.badgeCount;
+    if (count == null || count <= 0) return icon;
+    return AdaptiveBadge(
+      count: count,
+      semanticsLabel: destination.badgeSemanticsLabel,
+      child: icon,
+    );
+  }
+
   String _resolveAndroidNavigationIcon(dynamic rawIcon) {
     if (rawIcon is AndroidM3EIcon) return rawIcon.name;
     if (rawIcon is IconData) {
@@ -1170,6 +1426,22 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       'AdaptiveScaffold Android navigation requires a serializable Material '
       'icon. Use AndroidM3EIcon, a supported IconData, or an enum name string.',
     );
+  }
+
+  Map<String, Object?>? _androidNavigationIconStyle(dynamic rawIcon) {
+    if (rawIcon is! Icon) return null;
+    if (!canSerializeAndroidM3EIconStyle(rawIcon)) {
+      throw FlutterError(
+        'AdaptiveScaffold Android navigation cannot render this Icon style '
+        'in Compose. Use an Icon with size, color and semanticLabel only, or '
+        'supply a custom bottomNavigationBar.',
+      );
+    }
+    return {
+      'size': rawIcon.size,
+      'color': rawIcon.color?.toARGB32(),
+      'semanticLabel': rawIcon.semanticLabel,
+    };
   }
 }
 

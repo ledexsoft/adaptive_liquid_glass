@@ -1,7 +1,57 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../platform/platform_info.dart';
 import 'android/android_m3e_overlay.dart';
+import 'android/android_m3e_text_options.dart';
+
+bool _canRenderAndroidTooltipDecoration(
+  Decoration? decoration,
+  TextDirection direction,
+) {
+  if (decoration == null) return true;
+  if (decoration is! BoxDecoration ||
+      decoration.shape != BoxShape.rectangle ||
+      decoration.border != null ||
+      (decoration.boxShadow?.isNotEmpty ?? false) ||
+      decoration.gradient != null ||
+      decoration.image != null ||
+      decoration.backgroundBlendMode != null) {
+    return false;
+  }
+  final corners = decoration.borderRadius?.resolve(direction);
+  if (corners == null) return true;
+  return [
+    corners.topLeft,
+    corners.topRight,
+    corners.bottomRight,
+    corners.bottomLeft,
+  ].every(
+    (corner) => corner.x == corner.y && corner.x.isFinite && corner.x >= 0,
+  );
+}
+
+bool _hasInvalidAndroidTooltipInsets(
+  EdgeInsetsGeometry? insets,
+  TextDirection direction,
+) {
+  if (insets == null) return false;
+  final resolved = insets.resolve(direction);
+  return [
+    resolved.left,
+    resolved.top,
+    resolved.right,
+    resolved.bottom,
+  ].any((value) => !value.isFinite || value < 0);
+}
+
+/// Preferred placement for a native Android Material tooltip.
+///
+/// [start] and [end] follow the app's text direction; [left] and [right] are
+/// physical screen directions. Compose may flip placement near a screen edge.
+enum AdaptiveTooltipAnchorPosition { above, below, start, end, left, right }
 
 /// An adaptive tooltip that renders platform-specific tooltip styles
 ///
@@ -21,6 +71,13 @@ class AdaptiveTooltip extends StatelessWidget {
     super.key,
     required this.message,
     this.preferBelow = true,
+    this.androidPosition,
+    this.androidSpacing,
+    this.androidCaret = false,
+    this.androidCaretSize,
+    this.androidTitle,
+    this.androidActionLabel,
+    this.onAndroidAction,
     this.verticalOffset,
     this.padding,
     this.margin,
@@ -41,6 +98,38 @@ class AdaptiveTooltip extends StatelessWidget {
   /// the preferred direction, the tooltip will be displayed in the opposite
   /// direction.
   final bool preferBelow;
+
+  /// Preferred placement for the real Compose tooltip on Android.
+  ///
+  /// When null, [preferBelow] chooses above or below as before. Other
+  /// platforms continue to use [preferBelow].
+  final AdaptiveTooltipAnchorPosition? androidPosition;
+
+  /// Gap between the anchor and its native Android tooltip in logical pixels.
+  ///
+  /// Must be finite and nonnegative. When null, [verticalOffset] remains the
+  /// gap for above/below placement.
+  final double? androidSpacing;
+
+  /// Whether to draw Compose's native tooltip caret on Android.
+  final bool androidCaret;
+
+  /// Optional size of the native Android caret in logical pixels.
+  ///
+  /// Supplying a size also enables the caret. Both dimensions must be finite
+  /// and positive.
+  final Size? androidCaretSize;
+
+  /// Optional title for the native Android Material 3 RichTooltip.
+  final String? androidTitle;
+
+  /// Label of the native Android RichTooltip action button.
+  ///
+  /// Must be supplied together with [onAndroidAction].
+  final String? androidActionLabel;
+
+  /// Called after the native RichTooltip closes when its action is pressed.
+  final VoidCallback? onAndroidAction;
 
   /// The vertical gap between the widget and the displayed tooltip
   final double? verticalOffset;
@@ -71,6 +160,48 @@ class AdaptiveTooltip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (message.isEmpty) return child;
+    if (PlatformInfo.usesNativeAndroidViews) {
+      if (androidSpacing != null &&
+          (!androidSpacing!.isFinite || androidSpacing! < 0)) {
+        throw FlutterError('androidSpacing must be finite and nonnegative.');
+      }
+      if (verticalOffset != null && !verticalOffset!.isFinite) {
+        throw FlutterError('verticalOffset must be finite on Android.');
+      }
+      if (height != null && (!height!.isFinite || height! < 0)) {
+        throw FlutterError('height must be finite and nonnegative on Android.');
+      }
+      final direction = Directionality.of(context);
+      if (_hasInvalidAndroidTooltipInsets(padding, direction)) {
+        throw FlutterError(
+          'padding must be finite and nonnegative on Android.',
+        );
+      }
+      if (_hasInvalidAndroidTooltipInsets(margin, direction)) {
+        throw FlutterError('margin must be finite and nonnegative on Android.');
+      }
+      if (androidTitle != null && androidTitle!.trim().isEmpty) {
+        throw FlutterError('androidTitle must not be blank.');
+      }
+      if (androidCaretSize case final size?
+          when !size.width.isFinite ||
+              !size.height.isFinite ||
+              size.width <= 0 ||
+              size.height <= 0) {
+        throw FlutterError(
+          'androidCaretSize must have finite positive dimensions.',
+        );
+      }
+      if ((androidActionLabel == null) != (onAndroidAction == null) ||
+          (androidActionLabel != null && androidActionLabel!.trim().isEmpty)) {
+        throw FlutterError(
+          'androidActionLabel and onAndroidAction must be supplied together '
+          'with a nonblank label.',
+        );
+      }
+    }
+
     // iOS - Use custom iOS-style tooltip
     if (PlatformInfo.isIOS) {
       return _IOSTooltip(
@@ -88,10 +219,35 @@ class AdaptiveTooltip extends StatelessWidget {
       );
     }
 
-    if (PlatformInfo.usesNativeAndroidViews) {
+    final canUseNativeAndroidTooltip =
+        canRenderAndroidM3ETextStyle(textStyle) &&
+        _canRenderAndroidTooltipDecoration(
+          decoration,
+          Directionality.of(context),
+        );
+    if (PlatformInfo.usesNativeAndroidViews &&
+        (androidPosition != null ||
+            androidCaret ||
+            androidCaretSize != null ||
+            androidTitle != null ||
+            androidActionLabel != null) &&
+        !canUseNativeAndroidTooltip) {
+      throw FlutterError(
+        'Android native tooltip options require a text style and decoration '
+        'supported by Compose.',
+      );
+    }
+    if (PlatformInfo.usesNativeAndroidViews && canUseNativeAndroidTooltip) {
       return _AndroidM3ETooltip(
         message: message,
         preferBelow: preferBelow,
+        androidPosition: androidPosition,
+        androidSpacing: androidSpacing,
+        androidCaret: androidCaret,
+        androidCaretSize: androidCaretSize,
+        androidTitle: androidTitle,
+        androidActionLabel: androidActionLabel,
+        onAndroidAction: onAndroidAction,
         verticalOffset: verticalOffset,
         padding: padding,
         margin: margin,
@@ -127,6 +283,13 @@ class _AndroidM3ETooltip extends StatefulWidget {
   const _AndroidM3ETooltip({
     required this.message,
     required this.preferBelow,
+    required this.androidPosition,
+    required this.androidSpacing,
+    required this.androidCaret,
+    required this.androidCaretSize,
+    required this.androidTitle,
+    required this.androidActionLabel,
+    required this.onAndroidAction,
     required this.verticalOffset,
     required this.padding,
     required this.margin,
@@ -140,6 +303,13 @@ class _AndroidM3ETooltip extends StatefulWidget {
 
   final String message;
   final bool preferBelow;
+  final AdaptiveTooltipAnchorPosition? androidPosition;
+  final double? androidSpacing;
+  final bool androidCaret;
+  final Size? androidCaretSize;
+  final String? androidTitle;
+  final String? androidActionLabel;
+  final VoidCallback? onAndroidAction;
   final double? verticalOffset;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
@@ -156,21 +326,126 @@ class _AndroidM3ETooltip extends StatefulWidget {
 
 class _AndroidM3ETooltipState extends State<_AndroidM3ETooltip> {
   final _key = GlobalKey();
+  Timer? _hoverTimer;
+  Timer? _touchDismissTimer;
+  Timer? _transferDismissTimer;
+  ValueNotifier<bool>? _dismissalSignal;
+  bool _hovered = false;
+  bool _keyboardFocused = false;
+  bool _popupHovered = false;
+  bool _popupActionFocused = false;
   bool _visible = false;
   bool _disposed = false;
 
-  void _show() async {
+  void _dismissWhenOutside() {
+    if (_hovered || _keyboardFocused || _popupHovered || _popupActionFocused) {
+      return;
+    }
+    _transferDismissTimer?.cancel();
+    if (widget.androidActionLabel == null) {
+      _dismissalSignal?.value = true;
+      return;
+    }
+    // The native popup is a separate window. Give the pointer or keyboard
+    // focus time to move from the Flutter anchor to its Compose action.
+    _transferDismissTimer = Timer(const Duration(milliseconds: 250), () {
+      if (!_disposed &&
+          !_hovered &&
+          !_keyboardFocused &&
+          !_popupHovered &&
+          !_popupActionFocused) {
+        _dismissalSignal?.value = true;
+      }
+    });
+  }
+
+  void _onNativePopupInteraction(String event, Object? value) {
+    if (value is! bool) return;
+    final wasEngaged = event == 'popupHovered'
+        ? _popupHovered
+        : _popupActionFocused;
+    if (wasEngaged == value) return;
+    if (event == 'popupHovered') _popupHovered = value;
+    if (event == 'actionFocused') _popupActionFocused = value;
+    if (value) {
+      _transferDismissTimer?.cancel();
+    } else {
+      _dismissWhenOutside();
+    }
+  }
+
+  void _onHoverEnter(PointerEnterEvent event) {
+    _hovered = true;
+    _hoverTimer?.cancel();
+    _touchDismissTimer?.cancel();
+    _transferDismissTimer?.cancel();
+    _hoverTimer = Timer(widget.waitDuration ?? Duration.zero, () {
+      if (_hovered && !_disposed) _show(persistent: true);
+    });
+  }
+
+  void _onHoverExit(PointerExitEvent event) {
+    _hovered = false;
+    _hoverTimer?.cancel();
+    _dismissWhenOutside();
+  }
+
+  void _onFocusChange(bool focused) {
+    _keyboardFocused = focused;
+    if (focused) {
+      _hoverTimer?.cancel();
+      _touchDismissTimer?.cancel();
+      _transferDismissTimer?.cancel();
+      _show(persistent: true);
+    } else {
+      _dismissWhenOutside();
+    }
+  }
+
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape &&
+        _visible) {
+      _dismissalSignal?.value = true;
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _onLongPress() {
+    _touchDismissTimer?.cancel();
+    _show(persistent: true);
+  }
+
+  void _onLongPressEnd() {
+    _touchDismissTimer?.cancel();
+    _touchDismissTimer = Timer(
+      widget.showDuration ?? const Duration(seconds: 1),
+      () {
+        if (!_disposed &&
+            !_hovered &&
+            !_keyboardFocused &&
+            !_popupHovered &&
+            !_popupActionFocused) {
+          _dismissalSignal?.value = true;
+        }
+      },
+    );
+  }
+
+  void _show({bool persistent = false}) async {
     if (_visible || _disposed) return;
     final box = _key.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
     final origin = box.localToGlobal(Offset.zero);
     final size = box.size;
-    final padding =
-        widget.padding?.resolve(Directionality.of(context)) ??
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    final padding = widget.padding?.resolve(Directionality.of(context));
     final margin =
         widget.margin?.resolve(Directionality.of(context)) ?? EdgeInsets.zero;
     final decoration = widget.decoration;
+    final corners = decoration is BoxDecoration
+        ? decoration.borderRadius?.resolve(Directionality.of(context))
+        : null;
     Color? background;
     if (decoration != null) {
       if (decoration is BoxDecoration) {
@@ -181,46 +456,111 @@ class _AndroidM3ETooltipState extends State<_AndroidM3ETooltip> {
         );
       }
     }
+    final dismissalSignal = ValueNotifier<bool>(false);
+    final onAndroidAction = widget.onAndroidAction;
+    var actionPressed = false;
+    _dismissalSignal = dismissalSignal;
+    _popupHovered = false;
+    _popupActionFocused = false;
     setState(() => _visible = true);
-    await showAndroidM3EOverlay(
-      context: context,
-      component: 'tooltip',
-      terminalEvents: const {'dismissed'},
-      properties: {
-        'message': widget.message,
-        'left': origin.dx,
-        'top': origin.dy,
-        'width': size.width,
-        'height': size.height,
-        'preferBelow': widget.preferBelow,
-        'verticalOffset': widget.verticalOffset ?? 8,
-        'tooltipHeight': widget.height,
-        'padding': [padding.left, padding.top, padding.right, padding.bottom],
-        'margin': [margin.left, margin.top, margin.right, margin.bottom],
-        'backgroundColor': background?.toARGB32(),
-        'textColor': widget.textStyle?.color?.toARGB32(),
-        'fontSize': widget.textStyle?.fontSize,
-        'showDurationMs':
-            (widget.showDuration ?? const Duration(seconds: 2)).inMilliseconds,
-      },
-    );
-    if (mounted) setState(() => _visible = false);
+    try {
+      await showAndroidM3ENonModalOverlay(
+        context: context,
+        component: 'tooltip',
+        dismissalSignal: dismissalSignal,
+        terminalEvents: const {'dismissed'},
+        onEvent: (event, value) {
+          if (event == 'popupHovered' || event == 'actionFocused') {
+            _onNativePopupInteraction(event, value);
+          }
+          if (event == 'actionPressed' && !actionPressed) {
+            actionPressed = true;
+            _transferDismissTimer?.cancel();
+            dismissalSignal.value = true;
+          }
+        },
+        properties: {
+          'message': widget.message,
+          'title': widget.androidTitle,
+          'actionLabel': widget.androidActionLabel,
+          'showCaret': widget.androidCaret || widget.androidCaretSize != null,
+          'caretWidth': widget.androidCaretSize?.width,
+          'caretHeight': widget.androidCaretSize?.height,
+          'left': origin.dx,
+          'top': origin.dy,
+          'width': size.width,
+          'height': size.height,
+          'preferBelow': widget.preferBelow,
+          'anchorPosition': widget.androidPosition?.name,
+          'anchorSpacing': widget.androidSpacing,
+          'verticalOffset': widget.verticalOffset,
+          'tooltipHeight': widget.height,
+          'padding': padding == null
+              ? null
+              : [padding.left, padding.top, padding.right, padding.bottom],
+          'margin': [margin.left, margin.top, margin.right, margin.bottom],
+          'backgroundColor': background?.toARGB32(),
+          'cornerRadii': corners == null
+              ? null
+              : [
+                  corners.topLeft.x,
+                  corners.topRight.x,
+                  corners.bottomRight.x,
+                  corners.bottomLeft.x,
+                ],
+          'textColor': widget.textStyle?.color?.toARGB32(),
+          'textOptions': widget.textStyle == null
+              ? null
+              : androidM3ETextOptions(
+                  Text(widget.message, style: widget.textStyle),
+                ),
+          'persistentTrigger': persistent,
+          'showDurationMs': (widget.showDuration ?? const Duration(seconds: 1))
+              .inMilliseconds,
+        },
+      );
+    } finally {
+      _transferDismissTimer?.cancel();
+      _popupHovered = false;
+      _popupActionFocused = false;
+      if (identical(_dismissalSignal, dismissalSignal)) {
+        _dismissalSignal = null;
+      }
+      dismissalSignal.dispose();
+      if (mounted) setState(() => _visible = false);
+    }
+    if (actionPressed) onAndroidAction?.call();
   }
 
   @override
   void dispose() {
     _disposed = true;
+    _hoverTimer?.cancel();
+    _touchDismissTimer?.cancel();
+    _transferDismissTimer?.cancel();
+    _dismissalSignal?.value = true;
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    key: _key,
-    onLongPress: () =>
-        Future<void>.delayed(widget.waitDuration ?? Duration.zero, _show),
-    onTap: () =>
-        Future<void>.delayed(widget.waitDuration ?? Duration.zero, _show),
-    child: widget.child,
+  Widget build(BuildContext context) => Semantics(
+    tooltip: widget.message,
+    child: Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: _onFocusChange,
+      onKeyEvent: _onKeyEvent,
+      child: MouseRegion(
+        onEnter: _onHoverEnter,
+        onExit: _onHoverExit,
+        child: GestureDetector(
+          key: _key,
+          onLongPress: _onLongPress,
+          onLongPressEnd: (_) => _onLongPressEnd(),
+          child: widget.child,
+        ),
+      ),
+    ),
   );
 }
 

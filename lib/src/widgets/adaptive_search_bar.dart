@@ -17,6 +17,8 @@ class AdaptiveSearchBar extends StatefulWidget {
     this.onSubmitted,
     this.onTap,
     this.onClear,
+    this.androidSuggestions,
+    this.onAndroidSuggestionSelected,
     this.enabled = true,
     this.autofocus = false,
     this.focusNode,
@@ -40,6 +42,18 @@ class AdaptiveSearchBar extends StatefulWidget {
   /// Called when the user clears the field.
   final VoidCallback? onClear;
 
+  /// Optional suggestions for the state-based native Android search view.
+  ///
+  /// A non-null list enables the real expanded Compose search bar. An empty
+  /// list still enables it, so suggestions can arrive after a query change.
+  /// Other platforms continue to render the compact search field.
+  final List<String>? androidSuggestions;
+
+  /// Called after the native expanded search view closes on a suggestion.
+  ///
+  /// Requires [androidSuggestions] on Android.
+  final ValueChanged<String>? onAndroidSuggestionSelected;
+
   /// Whether the field is enabled.
   final bool enabled;
 
@@ -57,6 +71,8 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
   late final TextEditingController _internalController;
   late final FocusNode _internalFocusNode;
   int _focusRequestVersion = 0;
+  int _externalRevision = 0;
+  bool _applyingNativeEdit = false;
 
   TextEditingController get _controller =>
       widget.controller ?? _internalController;
@@ -68,6 +84,7 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
     super.initState();
     _internalController = TextEditingController();
     _internalFocusNode = FocusNode();
+    _internalFocusNode.addListener(_handleFocusNodeChanged);
     widget.controller?.addListener(_handleControllerChanged);
     widget.focusNode?.addListener(_handleFocusNodeChanged);
   }
@@ -78,6 +95,7 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?.removeListener(_handleControllerChanged);
       widget.controller?.addListener(_handleControllerChanged);
+      _externalRevision++;
     }
     if (oldWidget.focusNode != widget.focusNode) {
       oldWidget.focusNode?.removeListener(_handleFocusNodeChanged);
@@ -86,6 +104,8 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
   }
 
   void _handleControllerChanged() {
+    if (_applyingNativeEdit) return;
+    _externalRevision++;
     if (mounted) setState(() {});
   }
 
@@ -95,6 +115,7 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
   }
 
   void _clear() {
+    if (!widget.enabled) return;
     _controller.clear();
     widget.onClear?.call();
     widget.onChanged?.call('');
@@ -104,38 +125,92 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
   void _handleAndroidEvent(String event, Object? value) {
     switch (event) {
       case 'changed':
-        if (value is! String) return;
-        if (_controller.text != value) {
-          _controller.value = TextEditingValue(
-            text: value,
-            selection: TextSelection.collapsed(offset: value.length),
-          );
+        if (!widget.enabled) return;
+        final incoming = _decodeNativeEdit(value);
+        if (incoming == null) return;
+        final previous = _controller.value;
+        if (previous != incoming) {
+          _applyingNativeEdit = true;
+          try {
+            _controller.value = incoming;
+          } finally {
+            _applyingNativeEdit = false;
+          }
         }
-        widget.onChanged?.call(value);
-        setState(() {});
+        if (previous.text != incoming.text) {
+          widget.onChanged?.call(incoming.text);
+        }
+        if (mounted) setState(() {});
         return;
       case 'submitted':
-        if (value is String) widget.onSubmitted?.call(value);
+        if (widget.enabled && value is String) widget.onSubmitted?.call(value);
         return;
       case 'tapped':
-        widget.onTap?.call();
+        if (widget.enabled) widget.onTap?.call();
         return;
       case 'cleared':
         _clear();
         return;
+      case 'suggestionSelected':
+        if (widget.enabled &&
+            widget.androidSuggestions != null &&
+            value is String) {
+          widget.onAndroidSuggestionSelected?.call(value);
+        }
+        return;
       case 'focusChanged':
         if (value == true) {
-          widget.focusNode?.requestFocus();
+          _focusNode.requestFocus();
         } else {
-          widget.focusNode?.unfocus();
+          _focusNode.unfocus();
         }
         return;
     }
   }
 
+  TextEditingValue? _decodeNativeEdit(Object? value) {
+    if (value is String) {
+      return TextEditingValue(
+        text: value,
+        selection: TextSelection.collapsed(offset: value.length),
+      );
+    }
+    if (value is! Map) return null;
+    final text = value['text'];
+    if (text is! String) return null;
+    final length = text.length;
+    final base = (value['selectionBase'] as num?)?.toInt();
+    final extent = (value['selectionExtent'] as num?)?.toInt();
+    final selection =
+        base != null &&
+            extent != null &&
+            base >= 0 &&
+            base <= length &&
+            extent >= 0 &&
+            extent <= length
+        ? TextSelection(baseOffset: base, extentOffset: extent)
+        : TextSelection.collapsed(offset: length);
+    final composingBase = (value['composingBase'] as num?)?.toInt();
+    final composingExtent = (value['composingExtent'] as num?)?.toInt();
+    final composing =
+        composingBase != null &&
+            composingExtent != null &&
+            composingBase >= 0 &&
+            composingBase < composingExtent &&
+            composingExtent <= length
+        ? TextRange(start: composingBase, end: composingExtent)
+        : TextRange.empty;
+    return TextEditingValue(
+      text: text,
+      selection: selection,
+      composing: composing,
+    );
+  }
+
   @override
   void dispose() {
     _internalController.dispose();
+    _internalFocusNode.removeListener(_handleFocusNodeChanged);
     _internalFocusNode.dispose();
     widget.controller?.removeListener(_handleControllerChanged);
     widget.focusNode?.removeListener(_handleFocusNodeChanged);
@@ -166,27 +241,64 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
       );
     }
 
+    final materialLocalizations = Localizations.of<MaterialLocalizations>(
+      context,
+      MaterialLocalizations,
+    );
+    final effectiveHint =
+        widget.hintText ??
+        materialLocalizations?.searchFieldLabel ??
+        const DefaultMaterialLocalizations().searchFieldLabel;
+
     if (PlatformInfo.usesNativeAndroidViews) {
-      return AndroidM3EPlatformView(
-        component: 'searchBar',
-        height: 56,
-        properties: {
-          'query': _controller.text,
-          'hint': widget.hintText ?? '',
-          'enabled': widget.enabled,
-          'autofocus': widget.autofocus,
-          'showClear': _controller.text.isNotEmpty,
-          'focusRequested': _focusNode.hasFocus,
-          'focusRequestVersion': _focusRequestVersion,
-        },
-        onEvent: _handleAndroidEvent,
+      if (widget.onAndroidSuggestionSelected != null &&
+          widget.androidSuggestions == null) {
+        throw FlutterError(
+          'onAndroidSuggestionSelected requires androidSuggestions on Android.',
+        );
+      }
+      return Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        descendantsAreFocusable: widget.enabled,
+        includeSemantics: false,
+        child: Focus.withExternalFocusNode(
+          focusNode: _focusNode,
+          autofocus: widget.autofocus,
+          includeSemantics: false,
+          child: AndroidM3EPlatformView(
+            component: 'searchBar',
+            height: 56,
+            properties: {
+              'query': _controller.text,
+              'selectionBase': _controller.selection.baseOffset,
+              'selectionExtent': _controller.selection.extentOffset,
+              'composingBase': _controller.value.composing.start,
+              'composingExtent': _controller.value.composing.end,
+              'externalRevision': _externalRevision,
+              'hint': effectiveHint,
+              'searchSuggestions': widget.androidSuggestions,
+              'backDescription':
+                  materialLocalizations?.backButtonTooltip ??
+                  const DefaultMaterialLocalizations().backButtonTooltip,
+              'enabled': widget.enabled,
+              'autofocus': widget.autofocus,
+              'showClear': _controller.text.isNotEmpty,
+              'clearDescription':
+                  materialLocalizations?.clearButtonTooltip ??
+                  const DefaultMaterialLocalizations().clearButtonTooltip,
+              'focusRequested': _focusNode.hasFocus,
+              'focusRequestVersion': _focusRequestVersion,
+            },
+            onEvent: _handleAndroidEvent,
+          ),
+        ),
       );
     }
 
     // Android & other platforms - Material 3 SearchBar look via TextField
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
 
     return TextField(
       controller: _controller,
@@ -198,20 +310,21 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
         setState(() {});
       },
       onSubmitted: widget.onSubmitted,
+      onTap: widget.onTap,
       onTapOutside: (_) => _focusNode.unfocus(),
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
-        hintText: widget.hintText,
+        hintText: effectiveHint,
         prefixIcon: const Icon(Icons.search_rounded),
         suffixIcon: _controller.text.isNotEmpty
             ? IconButton(
                 icon: const Icon(Icons.clear_rounded),
-                tooltip: 'Clear',
-                onPressed: _clear,
+                tooltip: MaterialLocalizations.of(context).clearButtonTooltip,
+                onPressed: widget.enabled ? _clear : null,
               )
             : null,
         filled: true,
-        fillColor: isDark ? cs.surfaceContainerHigh : cs.surfaceContainerHigh,
+        fillColor: cs.surfaceContainerHigh,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,

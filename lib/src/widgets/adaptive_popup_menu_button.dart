@@ -5,6 +5,7 @@ import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_overlay.dart';
 import 'android/android_m3e_platform_view.dart';
 import 'ios26/ios26_popup_menu_button.dart';
+import 'native_occurrence_ids.dart';
 
 export 'ios26/ios26_popup_menu_button.dart'
     show
@@ -12,6 +13,8 @@ export 'ios26/ios26_popup_menu_button.dart'
         AdaptivePopupMenuDivider,
         AdaptivePopupMenuEntry,
         PopupButtonStyle;
+
+final _nativePopupMenuItemIds = NativeOccurrenceIds<AdaptivePopupMenuEntry>();
 
 /// An adaptive popup menu button that renders platform-specific styles
 class AdaptivePopupMenuButton<T> {
@@ -29,6 +32,12 @@ class AdaptivePopupMenuButton<T> {
     bool shrinkWrap = false,
     PopupButtonStyle buttonStyle = PopupButtonStyle.plain,
   }) {
+    if (label.trim().isEmpty) {
+      throw FlutterError(
+        'AdaptivePopupMenuButton.text label must be nonempty.',
+      );
+    }
+    _validateMenuItems(items);
     // iOS 26+ - Use native iOS 26 popup menu button
     if (PlatformInfo.isIOS26OrHigher()) {
       return IOS26PopupMenuButton<T>(
@@ -64,40 +73,14 @@ class AdaptivePopupMenuButton<T> {
           height: height,
         );
       }
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          if (!constraints.maxWidth.isFinite) {
-            return _flutterPopupMenu<T>(
-              key: key,
-              items: items,
-              onSelected: onSelected,
-              child: Text(label),
-              height: height,
-            );
-          }
-          return AndroidM3EPlatformView(
-            key: key,
-            component: 'popupMenuButton',
-            height: height,
-            width: constraints.maxWidth,
-            properties: {
-              'anchorType': 'text',
-              'label': label,
-              'style': _nativeMenuButtonStyle(buttonStyle),
-              'tint': tint?.toARGB32(),
-              'items': _nativeMenuItems<T>(items),
-            },
-            onEvent: (event, value) {
-              if (event == 'selected' &&
-                  value is int &&
-                  value >= 0 &&
-                  value < items.length) {
-                final entry = items[value];
-                if (entry is AdaptivePopupMenuItem<T>) onSelected(value, entry);
-              }
-            },
-          );
-        },
+      return _AndroidNativeTextPopupMenuButton<T>(
+        key: key,
+        label: label,
+        items: items,
+        onSelected: onSelected,
+        tint: tint,
+        height: height,
+        buttonStyle: buttonStyle,
       );
     }
 
@@ -126,6 +109,7 @@ class AdaptivePopupMenuButton<T> {
     VoidCallback? onTap,
     required Widget child,
   }) {
+    _validateMenuItems(items);
     assert(
       onTap == null || triggerOnLongPress,
       'onTap is only used with triggerOnLongPress: true (tap fires onTap, '
@@ -203,6 +187,7 @@ class AdaptivePopupMenuButton<T> {
     double size = 44.0,
     PopupButtonStyle buttonStyle = PopupButtonStyle.glass,
   }) {
+    _validateMenuItems(items);
     // iOS 26+ - Use native iOS 26 popup menu button (expects String - SF Symbol)
     if (PlatformInfo.isIOS26OrHigher()) {
       return IOS26PopupMenuButton<T>.icon(
@@ -240,27 +225,32 @@ class AdaptivePopupMenuButton<T> {
           height: size,
         );
       }
-      return AndroidM3EPlatformView(
-        key: key,
-        component: 'popupMenuButton',
-        width: size,
-        height: size,
-        properties: {
-          'anchorType': 'icon',
-          'icon': _nativeIconName(icon, parameterName: 'icon'),
-          'style': _nativeMenuButtonStyle(buttonStyle),
-          'tint': tint?.toARGB32(),
-          'items': _nativeMenuItems<T>(items),
-        },
-        onEvent: (event, value) {
-          if (event == 'selected' &&
-              value is int &&
-              value >= 0 &&
-              value < items.length) {
-            final entry = items[value];
-            if (entry is AdaptivePopupMenuItem<T>) onSelected(value, entry);
-          }
-        },
+      return Builder(
+        builder: (context) => AndroidM3EPlatformView(
+          key: key,
+          component: 'popupMenuButton',
+          width: size < 48 ? 48 : size,
+          height: size < 48 ? 48 : size,
+          properties: {
+            'anchorType': 'icon',
+            'icon': _nativeIconName(icon, parameterName: 'icon'),
+            'semanticLabel':
+                Localizations.of<MaterialLocalizations>(
+                  context,
+                  MaterialLocalizations,
+                )?.moreButtonTooltip ??
+                'More options',
+            'style': _nativeMenuButtonStyle(buttonStyle),
+            'buttonSize': size,
+            'tint': tint?.toARGB32(),
+            'items': _nativeMenuItems<T>(items),
+          },
+          onEvent: (event, value) {
+            if (event == 'selected') {
+              _dispatchNativeSelection<T>(value, items, onSelected);
+            }
+          },
+        ),
       );
     }
 
@@ -282,6 +272,14 @@ class AdaptivePopupMenuButton<T> {
       icon is AndroidM3EIcon ||
       (icon is IconData &&
           canResolveAndroidM3EIcon(child: Icon(icon), nativeIcon: null));
+
+  static void _validateMenuItems(List<AdaptivePopupMenuEntry> items) {
+    for (final entry in items) {
+      if (entry is AdaptivePopupMenuItem && entry.label.trim().isEmpty) {
+        throw FlutterError('AdaptivePopupMenuItem.label must be nonempty.');
+      }
+    }
+  }
 
   static bool _canSerializeNativeMenuItems<T>(
     List<AdaptivePopupMenuEntry> items,
@@ -312,7 +310,9 @@ class AdaptivePopupMenuButton<T> {
       onSelected: (index) {
         if (index >= 0 && index < items.length) {
           final entry = items[index];
-          if (entry is AdaptivePopupMenuItem<T>) onSelected(index, entry);
+          if (entry is AdaptivePopupMenuItem<T> && entry.enabled) {
+            onSelected(index, entry);
+          }
         }
       },
       itemBuilder: (context) => [
@@ -334,22 +334,47 @@ class AdaptivePopupMenuButton<T> {
 
   static List<Map<String, Object?>> _nativeMenuItems<T>(
     List<AdaptivePopupMenuEntry> items,
-  ) => [
-    for (final entry in items)
-      if (entry is AdaptivePopupMenuItem<T>)
-        {
-          'label': entry.label,
-          'subtitle': entry.subtitle,
-          'icon': entry.icon == null
-              ? null
-              : _nativeIconName(entry.icon, parameterName: 'item.icon'),
-          'imageBytes': entry.imageBytes,
-          'enabled': entry.enabled,
-          'destructive': entry.isDestructive,
-        }
-      else
-        {'divider': true},
-  ];
+  ) {
+    final itemIds = _nativePopupMenuItemIds.forItems(items);
+    return [
+      for (final (index, entry) in items.indexed)
+        if (entry is AdaptivePopupMenuItem<T>)
+          {
+            'id': itemIds[index],
+            'label': entry.label,
+            'subtitle': entry.subtitle,
+            'icon': entry.icon == null
+                ? null
+                : _nativeIconName(entry.icon, parameterName: 'item.icon'),
+            'imageBytes': entry.imageBytes,
+            'enabled': entry.enabled,
+            'destructive': entry.isDestructive,
+          }
+        else
+          {'divider': true},
+    ];
+  }
+
+  static void _dispatchNativeSelection<T>(
+    Object? value,
+    List<AdaptivePopupMenuEntry> items,
+    void Function(int, AdaptivePopupMenuItem<T>) onSelected,
+  ) {
+    int? index;
+    if (value is Map) {
+      final id = value['id'];
+      if (id is! int) return;
+      index = _nativePopupMenuItemIds.forItems(items).indexOf(id);
+    } else if (value is int) {
+      // Accept events from an Android host built before item IDs were added.
+      index = value;
+    }
+    if (index == null || index < 0 || index >= items.length) return;
+    final entry = items[index];
+    if (entry is AdaptivePopupMenuItem<T> && entry.enabled) {
+      onSelected(index, entry);
+    }
+  }
 
   static String _nativeMenuButtonStyle(PopupButtonStyle style) =>
       switch (style) {
@@ -458,11 +483,114 @@ class AdaptivePopupMenuButton<T> {
 
     if (selected != null) {
       final selectedEntry = items[selected];
-      if (selectedEntry is AdaptivePopupMenuItem<T>) {
+      if (selectedEntry is AdaptivePopupMenuItem<T> && selectedEntry.enabled) {
         onSelected(selected, selectedEntry);
       }
     }
   }
+}
+
+class _AndroidNativeTextPopupMenuButton<T> extends StatefulWidget {
+  const _AndroidNativeTextPopupMenuButton({
+    super.key,
+    required this.label,
+    required this.items,
+    required this.onSelected,
+    required this.tint,
+    required this.height,
+    required this.buttonStyle,
+  });
+
+  final String label;
+  final List<AdaptivePopupMenuEntry> items;
+  final void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected;
+  final Color? tint;
+  final double height;
+  final PopupButtonStyle buttonStyle;
+
+  @override
+  State<_AndroidNativeTextPopupMenuButton<T>> createState() =>
+      _AndroidNativeTextPopupMenuButtonState<T>();
+}
+
+class _AndroidNativeTextPopupMenuButtonState<T>
+    extends State<_AndroidNativeTextPopupMenuButton<T>> {
+  double? _nativeWidth;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    Theme.of(context);
+    MediaQuery.textScalerOf(context);
+    _nativeWidth = null;
+  }
+
+  @override
+  void didUpdateWidget(_AndroidNativeTextPopupMenuButton<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.label != widget.label ||
+        oldWidget.height != widget.height ||
+        oldWidget.buttonStyle != widget.buttonStyle) {
+      _nativeWidth = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      if (!constraints.maxWidth.isFinite) {
+        return AdaptivePopupMenuButton._flutterPopupMenu<T>(
+          key: null,
+          items: widget.items,
+          onSelected: widget.onSelected,
+          child: Text(widget.label),
+          height: widget.height,
+        );
+      }
+      final width =
+          _nativeWidth?.clamp(0.0, constraints.maxWidth) ??
+          constraints.maxWidth;
+      return Align(
+        alignment: Alignment.topLeft,
+        child: AndroidM3EPlatformView(
+          component: 'popupMenuButton',
+          requestTriggerSizeOnCreate: true,
+          height: widget.height < 48 ? 48 : widget.height,
+          width: width,
+          properties: {
+            'anchorType': 'text',
+            'label': widget.label,
+            'buttonHeight': widget.height,
+            'style': AdaptivePopupMenuButton._nativeMenuButtonStyle(
+              widget.buttonStyle,
+            ),
+            'tint': widget.tint?.toARGB32(),
+            'items': AdaptivePopupMenuButton._nativeMenuItems<T>(widget.items),
+          },
+          onEvent: (event, value) {
+            if (event == 'triggerSize' && value is List && value.isNotEmpty) {
+              final reportedWidth = value.first;
+              if (reportedWidth is num &&
+                  reportedWidth.isFinite &&
+                  reportedWidth > 0 &&
+                  (_nativeWidth == null ||
+                      (_nativeWidth! - reportedWidth).abs() > 0.5)) {
+                setState(() => _nativeWidth = reportedWidth.toDouble());
+              }
+              return;
+            }
+            if (event == 'selected') {
+              AdaptivePopupMenuButton._dispatchNativeSelection<T>(
+                value,
+                widget.items,
+                widget.onSelected,
+              );
+            }
+          },
+        ),
+      );
+    },
+  );
 }
 
 class _AndroidNativePopupMenuAnchor<T> extends StatefulWidget {
@@ -490,11 +618,11 @@ class _AndroidNativePopupMenuAnchorState<T>
     extends State<_AndroidNativePopupMenuAnchor<T>> {
   final _anchorKey = GlobalKey();
 
-  void _show() {
+  Future<void> _show() async {
     final box = _anchorKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return;
     final origin = box.localToGlobal(Offset.zero);
-    showAndroidM3EOverlay(
+    final result = await showAndroidM3EOverlay(
       context: context,
       component: 'anchoredPopupMenu',
       rootNavigator: true,
@@ -503,16 +631,16 @@ class _AndroidNativePopupMenuAnchorState<T>
         'anchorY': origin.dy + box.size.height,
         'items': AdaptivePopupMenuButton._nativeMenuItems<T>(widget.items),
       },
-      onEvent: (event, value) {
-        if (event == 'selected' &&
-            value is int &&
-            value >= 0 &&
-            value < widget.items.length) {
-          final item = widget.items[value];
-          if (item is AdaptivePopupMenuItem<T>) widget.onSelected(value, item);
-        }
-      },
     );
+    if (!mounted || result is! AndroidM3EOverlayResult) return;
+    final value = result.value;
+    if (result.event == 'selected') {
+      AdaptivePopupMenuButton._dispatchNativeSelection<T>(
+        value,
+        widget.items,
+        widget.onSelected,
+      );
+    }
   }
 
   @override

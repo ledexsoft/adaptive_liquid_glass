@@ -32,6 +32,7 @@ class _HomePageState extends State<HomePage> {
             AdaptiveAppBarAction(
               iosSymbol: 'arrow.uturn.backward',
               icon: Icons.undo,
+              semanticLabel: 'Undo',
 
               onPressed: () {
                 if (kDebugMode) {
@@ -42,6 +43,7 @@ class _HomePageState extends State<HomePage> {
             AdaptiveAppBarAction(
               iosSymbol: 'arrow.uturn.forward',
               icon: Icons.redo,
+              semanticLabel: 'Redo',
               onPressed: () {
                 if (kDebugMode) {
                   print("Redo action pressed");
@@ -54,6 +56,7 @@ class _HomePageState extends State<HomePage> {
             AdaptiveAppBarAction(
               iosSymbol: 'pencil.tip.crop.circle',
               icon: Icons.edit,
+              semanticLabel: 'Edit',
               onPressed: () {
                 if (kDebugMode) {
                   print("Edit action pressed");
@@ -63,6 +66,7 @@ class _HomePageState extends State<HomePage> {
             AdaptiveAppBarAction(
               iosSymbol: 'ellipsis.circle',
               icon: Icons.more_horiz,
+              semanticLabel: 'More options',
               onPressed: () {
                 if (kDebugMode) {
                   print("More action pressed");
@@ -73,6 +77,7 @@ class _HomePageState extends State<HomePage> {
             AdaptiveAppBarAction(
               iosSymbol: 'info.circle',
               icon: Icons.info,
+              semanticLabel: 'Information',
               onPressed: () {
                 RouterService.goNamed(
                   context: context,
@@ -316,9 +321,7 @@ class _HomePageState extends State<HomePage> {
                 isNew: true,
               ),
               _DemoItem(
-                icon: PlatformInfo.isIOS
-                    ? CupertinoIcons.search
-                    : Icons.search,
+                icon: PlatformInfo.isIOS ? CupertinoIcons.search : Icons.search,
                 title: 'Search · Divider · SwitchList',
                 description:
                     'Adaptive search bar, divider and switch list tiles',
@@ -366,8 +369,7 @@ class _HomePageState extends State<HomePage> {
                     ? CupertinoIcons.textformat
                     : Icons.title,
                 title: 'App Bar Title',
-                description:
-                    'Subtitle and custom titleWidget in the app bar',
+                description: 'Subtitle and custom titleWidget in the app bar',
                 routeName: RouterService.routes.appBarTitle,
                 isNew: true,
               ),

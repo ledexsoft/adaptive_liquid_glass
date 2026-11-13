@@ -48,10 +48,14 @@ android {
 }
 
 dependencies {
+    implementation 'androidx.activity:activity-compose:1.13.0'
     implementation 'androidx.compose.material3:material3:1.5.0-rc01'
     implementation 'androidx.graphics:graphics-shapes:1.0.1'
     implementation 'androidx.compose.material:material-icons-extended:1.7.8'
     implementation 'androidx.compose.ui:ui:1.12.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-android:2.10.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-android:2.10.0'
+    implementation 'androidx.savedstate:savedstate-android:1.4.0'
 }
 
 // AGP 9 built-in Kotlin; the Compose compiler plugin above enables Compose compilation.

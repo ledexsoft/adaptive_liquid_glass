@@ -39,8 +39,76 @@ enum AdaptiveFabColor { primary, secondary, tertiary, surface }
 /// Native size of an Android Material 3 Expressive floating action button.
 enum AdaptiveFabSize { small, medium, large }
 
+/// The four native Android Material 3 floating action button sizes.
+///
+/// This is separate from [AdaptiveFabSize], whose `medium` value is the
+/// existing 56 dp FAB-menu toggle size.
+enum AdaptiveAndroidFabSize { small, standard, medium, large }
+
 /// Horizontal alignment of an Android Material 3 Expressive FAB menu.
 enum AdaptiveFabMenuPosition { left, right }
+
+/// Whether the native bridge can retain an [Icon]'s explicit drawing options.
+///
+/// Size, color, and semantic label have matching Compose `Icon` parameters.
+/// Font axes and Flutter paint effects need a Flutter-rendered fallback.
+bool canSerializeAndroidM3EIconStyle(Widget? value) {
+  if (value is! Icon) return true;
+  return (value.size == null || (value.size!.isFinite && value.size! >= 0)) &&
+      value.fill == null &&
+      value.weight == null &&
+      value.grade == null &&
+      value.opticalSize == null &&
+      !(value.shadows?.isNotEmpty ?? false) &&
+      value.textDirection == null &&
+      value.applyTextScaling == null &&
+      value.blendMode == null &&
+      value.fontWeight == null;
+}
+
+/// Compose text fields expose focused, unfocused, disabled, and error icon
+/// colors. Flutter can additionally vary an icon tint on hover or on combined
+/// states; those values need the Flutter text-field route.
+bool canSerializeAndroidM3ETextFieldIconColor(Color? color) {
+  if (color is! WidgetStateColor) return true;
+  const stateSets = <Set<WidgetState>>[
+    {},
+    {WidgetState.focused},
+    {WidgetState.error},
+    {WidgetState.disabled},
+    {WidgetState.focused, WidgetState.error},
+    {WidgetState.focused, WidgetState.disabled},
+    {WidgetState.error, WidgetState.disabled},
+    {WidgetState.focused, WidgetState.error, WidgetState.disabled},
+  ];
+  for (final states in stateSets) {
+    final role = states.contains(WidgetState.disabled)
+        ? color.resolve(const {WidgetState.disabled})
+        : states.contains(WidgetState.error)
+        ? color.resolve(const {WidgetState.error})
+        : states.contains(WidgetState.focused)
+        ? color.resolve(const {WidgetState.focused})
+        : color.resolve(const {});
+    if (color.resolve(states) != role ||
+        color.resolve({...states, WidgetState.hovered}) != role) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/// The four icon-color roles available on Compose's real outlined text field.
+Map<String, int>? androidM3ETextFieldIconColors(Color? color) {
+  if (color == null) return null;
+  Color resolve(Set<WidgetState> states) =>
+      color is WidgetStateColor ? color.resolve(states) : color;
+  return {
+    'focused': resolve(const {WidgetState.focused}).toARGB32(),
+    'unfocused': resolve(const {}).toARGB32(),
+    'disabled': resolve(const {WidgetState.disabled}).toARGB32(),
+    'error': resolve(const {WidgetState.error}).toARGB32(),
+  };
+}
 
 /// Finds a native icon for simple Flutter [Icon] children or raises a clear
 /// migration error for arbitrary children that Compose cannot receive.

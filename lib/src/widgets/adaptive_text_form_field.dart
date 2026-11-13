@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../platform/platform_info.dart';
 import 'android/android_m3e_native_icon.dart';
-import 'android/android_m3e_text_field.dart';
+import 'adaptive_text_field.dart';
 
 /// An adaptive text form field that renders platform-specific styles
 ///
@@ -171,31 +171,26 @@ class AdaptiveTextFormField extends StatelessWidget {
     }
 
     if (PlatformInfo.isAndroid && PlatformInfo.usesNativeAndroidViews) {
-      final inputDecoration = decoration;
+      final inputDecoration = (decoration ?? const InputDecoration())
+          .applyDefaults(InputDecorationTheme.of(context));
       if (!_canUseAndroidM3ETextField(inputDecoration)) {
         return _buildMaterialTextFormField(context);
       }
-      return FormField<String>(
-        initialValue: controller?.text ?? initialValue ?? '',
+      return _NativeAndroidTextFormField(
+        controller: controller,
+        initialValue: initialValue,
         validator: validator,
         onSaved: onSaved,
         autovalidateMode: autovalidateMode ?? AutovalidateMode.disabled,
-        builder: (field) => AndroidM3ETextField(
-          controller: controller,
+        onChanged: onChanged,
+        builder: (field) => AdaptiveTextField(
+          controller: field.editingController,
           focusNode: focusNode,
-          initialValue: field.value,
-          label: inputDecoration?.labelText ?? placeholder,
-          placeholder: inputDecoration?.hintText,
-          helperText: inputDecoration?.helperText,
-          errorText: field.errorText ?? inputDecoration?.errorText,
-          prefixText:
-              inputDecoration?.prefixText ??
-              _plainDecorationText(prefix, 'prefix'),
-          suffixText:
-              inputDecoration?.suffixText ??
-              _plainDecorationText(suffix, 'suffix'),
-          prefixIcon: inputDecoration?.prefixIcon ?? prefixIcon,
-          suffixIcon: inputDecoration?.suffixIcon ?? suffixIcon,
+          placeholder: placeholder,
+          prefix: prefix,
+          suffix: suffix,
+          prefixIcon: prefixIcon,
+          suffixIcon: suffixIcon,
           nativePrefixIcon: nativePrefixIcon,
           nativeSuffixIcon: nativeSuffixIcon,
           keyboardType: keyboardType,
@@ -211,14 +206,22 @@ class AdaptiveTextFormField extends StatelessWidget {
           autofocus: autofocus,
           enabled: enabled,
           readOnly: readOnly,
-          padding: inputDecoration?.contentPadding ?? padding,
-          filled: inputDecoration?.filled ?? false,
-          fillColor: inputDecoration?.fillColor,
+          padding: padding,
+          decoration: decoration == null
+              ? (field.errorText == null
+                    ? null
+                    : InputDecoration(
+                        hintText: placeholder,
+                        errorText: field.errorText,
+                      ))
+              : decoration!.copyWith(
+                  errorText: field.errorText ?? decoration!.errorText,
+                ),
           inputFormatters: inputFormatters,
           autofillHints: autofillHints,
           onTapOutside: onTapOutside,
           onChanged: (value) {
-            field.didChange(value);
+            if (field.value != value) field.didChange(value);
             onChanged?.call(value);
           },
           onSubmitted: onSubmitted,
@@ -230,18 +233,9 @@ class AdaptiveTextFormField extends StatelessWidget {
     return _buildMaterialTextFormField(context);
   }
 
-  String? _plainDecorationText(Widget? widget, String parameter) {
-    if (widget == null) return null;
-    if (widget is Text && widget.data != null && widget.style == null) {
-      return widget.data;
-    }
-    throw FlutterError(
-      'Android native text fields require $parameter to be plain Text. '
-      'Custom Flutter widget trees cannot cross into Compose.',
-    );
-  }
-
   bool _canUseAndroidM3ETextField(InputDecoration? inputDecoration) {
+    // Compose's secure field cannot represent a read-only or multiline input.
+    if (obscureText && (readOnly || maxLines != 1)) return false;
     bool plainText(Widget? value) =>
         value == null ||
         (value is Text && value.data != null && value.style == null);
@@ -249,7 +243,9 @@ class AdaptiveTextFormField extends StatelessWidget {
       if (value == null) return true;
       // Compose can render the glyph but cannot forward callbacks from a
       // Flutter IconButton. Keep the Material widget tree for those fields.
-      if (value is IconButton) return false;
+      if (value is IconButton || !canSerializeAndroidM3EIconStyle(value)) {
+        return false;
+      }
       if (nativeIcon != null) return true;
       return canResolveAndroidM3EIcon(child: value, nativeIcon: null);
     }
@@ -262,6 +258,12 @@ class AdaptiveTextFormField extends StatelessWidget {
         plainText(effectiveSuffix) &&
         serializableIcon(effectivePrefixIcon, nativePrefixIcon) &&
         serializableIcon(effectiveSuffixIcon, nativeSuffixIcon) &&
+        canSerializeAndroidM3ETextFieldIconColor(
+          inputDecoration?.prefixIconColor,
+        ) &&
+        canSerializeAndroidM3ETextFieldIconColor(
+          inputDecoration?.suffixIconColor,
+        ) &&
         (inputDecoration?.icon == null);
   }
 
@@ -409,5 +411,94 @@ class AdaptiveTextFormField extends StatelessWidget {
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
           ),
     );
+  }
+}
+
+/// Keeps the native Compose field and Flutter's FormField state in sync.
+class _NativeAndroidTextFormField extends FormField<String> {
+  _NativeAndroidTextFormField({
+    required this.controller,
+    required this.onChanged,
+    required Widget Function(_NativeAndroidTextFormFieldState) builder,
+    required String? initialValue,
+    required super.validator,
+    required super.onSaved,
+    required super.autovalidateMode,
+  }) : super(
+         initialValue: controller?.text ?? initialValue ?? '',
+         builder: (field) => builder(field as _NativeAndroidTextFormFieldState),
+       );
+
+  final TextEditingController? controller;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  FormFieldState<String> createState() => _NativeAndroidTextFormFieldState();
+}
+
+class _NativeAndroidTextFormFieldState extends FormFieldState<String> {
+  TextEditingController? _internalController;
+  late final String _initialText;
+
+  _NativeAndroidTextFormField get _nativeField =>
+      widget as _NativeAndroidTextFormField;
+
+  TextEditingController get editingController =>
+      _nativeField.controller ?? _internalController!;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialText = _nativeField.initialValue ?? '';
+    if (_nativeField.controller == null) {
+      _internalController = TextEditingController(text: _initialText);
+    } else {
+      _nativeField.controller!.addListener(_handleControllerChanged);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _NativeAndroidTextFormField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_nativeField.controller == oldWidget.controller) return;
+
+    oldWidget.controller?.removeListener(_handleControllerChanged);
+    final newController = _nativeField.controller;
+    if (newController == null) {
+      _internalController = TextEditingController.fromValue(
+        oldWidget.controller?.value ?? TextEditingValue(text: value ?? ''),
+      );
+    } else {
+      newController.addListener(_handleControllerChanged);
+      setValue(newController.text);
+      _internalController?.dispose();
+      _internalController = null;
+    }
+  }
+
+  @override
+  void didChange(String? value) {
+    super.didChange(value);
+    if (editingController.text != value) {
+      editingController.value = TextEditingValue(text: value ?? '');
+    }
+  }
+
+  @override
+  void reset() {
+    editingController.value = TextEditingValue(text: _initialText);
+    super.reset();
+    _nativeField.onChanged?.call(editingController.text);
+  }
+
+  void _handleControllerChanged() {
+    if (editingController.text != value) didChange(editingController.text);
+  }
+
+  @override
+  void dispose() {
+    _nativeField.controller?.removeListener(_handleControllerChanged);
+    _internalController?.dispose();
+    super.dispose();
   }
 }

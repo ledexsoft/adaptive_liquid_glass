@@ -15,6 +15,7 @@ class _SliderDemoPageState extends State<SliderDemoPage> {
   double _redValue = 0.7;
   double _greenValue = 0.6;
   double _rangeValue = 50.0;
+  RangeValues _selectedRange = const RangeValues(20, 80);
 
   @override
   Widget build(BuildContext context) {
@@ -101,6 +102,32 @@ class _SliderDemoPageState extends State<SliderDemoPage> {
                             ? CupertinoColors.systemGrey
                             : CupertinoColors.systemGrey2)
                       : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 32),
+        _buildSection(
+          'Two-thumb Range (0-100)',
+          Column(
+            children: [
+              AdaptiveRangeSlider(
+                values: _selectedRange,
+                min: 0,
+                max: 100,
+                divisions: 20,
+                labels: RangeLabels(
+                  _selectedRange.start.toStringAsFixed(0),
+                  _selectedRange.end.toStringAsFixed(0),
+                ),
+                onChanged: (values) => setState(() => _selectedRange = values),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Selected: ${_selectedRange.start.toStringAsFixed(0)}–${_selectedRange.end.toStringAsFixed(0)}',
+                style: TextStyle(
+                  color: isDark ? Colors.grey[400] : Colors.grey[700],
                 ),
               ),
             ],

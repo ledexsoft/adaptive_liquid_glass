@@ -2,8 +2,11 @@
 
 `AdaptiveExpressiveTypography` carries the paired Material 3 text scales in a
 Flutter `ThemeExtension`. It is opt-in: it does not replace `ThemeData.textTheme`
-or restyle package widgets. The two scales are independent because each token
-captures its full font, size, line height, tracking, and weight properties.
+or restyle package widgets by itself. Pass it to
+`AdaptiveMaterialExpressiveTheme(typography: ...)` to apply its baseline scale
+to Flutter text and both scales to the native Android theme. The two scales are
+independent because each token captures its full font, size, line height,
+tracking, and weight properties.
 
 ## The scale and how to use it
 
@@ -29,8 +32,8 @@ chooses these styles.
 
 ## Configure the theme
 
-Build both scales from your design tokens, then register the extension. Keep
-the same role and size between the two scales so the hierarchy stays
+Build both scales from your design tokens, then pass them to the theme wrapper.
+Keep the same role and size between the two scales so the hierarchy stays
 predictable.
 
 The example below customizes two emphasized tokens and leaves the others equal
@@ -58,10 +61,24 @@ final expressiveType = AdaptiveExpressiveTypography(
   baseline: baseline,
   emphasized: emphasized,
 );
-final theme = base.copyWith(
-  extensions: <ThemeExtension<dynamic>>[expressiveType],
+// Place this below MaterialApp (or another Theme provider).
+final content = AdaptiveMaterialExpressiveTheme(
+  typography: expressiveType,
+  child: const Scaffold(body: Center(child: Text('Hola'))),
 );
 ```
+
+The wrapper merges the baseline scale into the current Flutter `TextTheme`,
+preserving roles that the scale leaves unspecified. Android Compose receives
+the active baseline roles and, when the wrapper has an explicit scale, its
+emphasized roles. The wrapper also registers the extension for `of(context)`
+and preserves other theme extensions. If the scale is needed outside the
+wrapper, register it in `ThemeData.extensions`; registering it alone does not
+apply the emphasized scale to native controls.
+
+`AdaptiveApp` reads an expressive type extension from its active
+`materialLightTheme` or `materialDarkTheme` and passes it through its built-in
+wrapper, so apps using `AdaptiveApp` do not need a second wrapper.
 
 `of(context)` requires the extension and gives setup guidance if it is absent;
 use `maybeOf(context)` when the feature is optional. `styleFor` resolves a role
@@ -168,9 +185,34 @@ all apps.
 
 ## Platform boundary
 
-This API supplies Flutter text styles. Android widgets rendered wholly inside
-native Compose continue to use the app's Compose `MaterialExpressiveTheme`
-typography; changing a Flutter `TextTheme` does not restyle those native views.
+Android widgets rendered inside Compose use its real `MaterialExpressiveTheme`
+`Typography`. The bridge forwards the active Flutter theme's numeric type
+metrics (size, weight, style, tracking, and line height) and font family for
+the 15 baseline roles. An explicit wrapper scale also forwards its 15
+emphasized roles. For a family declared in the app's `pubspec.yaml`, Android
+loads its bundled faces through Compose's asset `Font` API with their declared
+weights and styles. If the primary family is unavailable, the bridge tries a
+listed bundled fallback; otherwise Compose retains its default family.
+On Android 8/API 26 and newer, each role's `TextStyle.fontVariations` is also
+applied when the selected family is bundled with the app. The bridge requires
+unique four-character printable ASCII axis tags and finite values in Flutter's
+16.16 range. Android 7/API 24–25 uses the declared static face and weight;
+Compose does not apply variable axes there. Unspecified metrics and Android
+font scaling remain native. Common OpenType `fontFeatures`, such as
+`FontFeature.tabularFigures()`, also reach Compose typography roles, supported
+native text slots and native text fields. The bridge accepts four-character
+alphanumeric feature tags with nonnegative values. Per-widget styled custom
+font families also resolve through the consuming app's `FontManifest.json` in
+native text slots and fields. Android system-installed family names use
+Compose's optional device-font lookup, so availability can vary by device.
+When an individual native text slot or text field specifies both `fontFamily`
+and `fontVariations`, the same validated axes reach its declared asset family
+or installed Android family on API 26+. API 24–25 retains the static face.
+Axes without an explicit family stay in Flutter because the native bridge
+cannot identify the inherited face to modify. Ordered cross-family glyph
+fallback and text decorations are not bridged yet; verify custom fonts,
+feature shaping, axis ranges and large text on a device before relying on
+visual parity.
 
 ## Material guidance
 
@@ -179,3 +221,5 @@ typography; changing a Flutter `TextTheme` does not restyle those native views.
 - [Applying type](https://m3.material.io/styles/typography/applying-type)
 - [Editorial treatments](https://m3.material.io/styles/typography/editorial-treatments)
 - [Flutter `TextStyle.fontVariations`](https://api.flutter.dev/flutter/painting/TextStyle/fontVariations.html)
+- [Flutter `FontFeature`](https://api.flutter.dev/flutter/dart-ui/FontFeature-class.html)
+- [Compose `TextStyle.fontFeatureSettings`](https://developer.android.com/reference/kotlin/androidx/compose/ui/text/TextStyle)

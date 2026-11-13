@@ -13,6 +13,7 @@ class IOS26NativeToolbar extends StatefulWidget {
     this.title,
     this.leading,
     this.leadingText,
+
     /// Inset horizontal del leading superpuesto. El back automático (botón
     /// glass con padding interno propio) usa 0 para que el chevron quede al
     /// inset estándar de iOS; los leadings personalizados conservan 16.
@@ -68,8 +69,9 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
     Color resolvedColor = color;
     if (color is CupertinoDynamicColor) {
       final brightness = MediaQuery.platformBrightnessOf(context);
-      resolvedColor =
-          brightness == Brightness.dark ? color.darkColor : color.color;
+      resolvedColor = brightness == Brightness.dark
+          ? color.darkColor
+          : color.color;
     }
 
     return ((resolvedColor.a * 255.0).round() & 0xff) << 24 |
@@ -129,8 +131,9 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
     }
 
     // Sync tint color
-    final tint =
-        widget.tintColor != null ? _colorToARGB(widget.tintColor!) : null;
+    final tint = widget.tintColor != null
+        ? _colorToARGB(widget.tintColor!)
+        : null;
     if (_lastTint != tint) {
       try {
         await ch.invokeMethod('setStyle', {'tint': tint});
@@ -142,7 +145,9 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   }
 
   bool _actionsEqual(
-      List<AdaptiveAppBarAction>? a, List<AdaptiveAppBarAction>? b) {
+    List<AdaptiveAppBarAction>? a,
+    List<AdaptiveAppBarAction>? b,
+  ) {
     if (identical(a, b)) return true;
     if (a == null || b == null) return false;
     if (a.length != b.length) return false;
@@ -212,10 +217,10 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
     _channel = MethodChannel('adaptive_liquid_glass/ios26_toolbar_$id');
     _channel!.setMethodCallHandler(_handleMethodCall);
     _lastIsDark = _isDark;
-    _lastTint =
-        widget.tintColor != null ? _colorToARGB(widget.tintColor!) : null;
-    _lastActions =
-        widget.actions != null ? List.of(widget.actions!) : null;
+    _lastTint = widget.tintColor != null
+        ? _colorToARGB(widget.tintColor!)
+        : null;
+    _lastActions = widget.actions != null ? List.of(widget.actions!) : null;
   }
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
@@ -226,7 +231,14 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
       case 'onActionTapped':
         if (call.arguments is Map) {
           final index = (call.arguments as Map)['index'] as int?;
-          if (index != null) widget.onActionTap?.call(index);
+          final actions = widget.actions;
+          if (index != null &&
+              actions != null &&
+              index >= 0 &&
+              index < actions.length &&
+              actions[index].enabled) {
+            widget.onActionTap?.call(index);
+          }
         }
         break;
     }
@@ -243,7 +255,8 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
 
   Widget _buildFallbackToolbar() {
     return CupertinoNavigationBar(
-      middle: widget.titleWidget ??
+      middle:
+          widget.titleWidget ??
           (widget.title != null ? Text(widget.title!) : null),
       leading: widget.leading,
       heroTag: _fallbackHeroTag,
@@ -254,7 +267,7 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
               children: widget.actions!.map((action) {
                 return CupertinoButton(
                   padding: EdgeInsets.zero,
-                  onPressed: action.onPressed,
+                  onPressed: action.enabled ? action.onPressed : null,
                   child: action.icon != null
                       ? Icon(action.icon)
                       : Text(action.title ?? ''),

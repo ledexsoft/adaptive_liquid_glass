@@ -175,6 +175,7 @@ class _TextFieldDemoPageState extends State<TextFieldDemoPage> {
                                 ? CupertinoIcons.clear_circled
                                 : Icons.clear,
                             iconColor: Colors.white,
+                            semanticLabel: 'Clear name',
                             onPressed: () {
                               _nameController.clear();
                             },

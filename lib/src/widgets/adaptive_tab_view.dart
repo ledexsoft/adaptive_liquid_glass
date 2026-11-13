@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import '../platform/platform_info.dart';
 import '../utils/animation.dart';
 import 'adaptive_segmented_control.dart';
+import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
+
+/// Native Android Material 3 tab-row hierarchy.
+enum AdaptiveTabRowStyle { primary, secondary }
 
 /// An adaptive tab bar view (horizontal swipeable tabs)
 ///
@@ -11,7 +14,8 @@ import 'android/android_m3e_platform_view.dart';
 ///
 /// On iOS 26+: Uses native iOS 26 segmented control with Liquid Glass + PageView
 /// On iOS <26: Uses CupertinoSegmentedControl + PageView
-/// On Android: Uses Material TabBar + TabBarView
+/// On Android: Uses a native Compose primary or secondary tab row with a
+/// Flutter PageView. Optional Android icons can accompany or replace labels.
 ///
 /// Example:
 /// ```dart
@@ -34,12 +38,15 @@ class AdaptiveTabBarView extends StatefulWidget {
     this.backgroundColor,
     this.selectedColor,
     this.unselectedColor,
+    this.androidRowStyle = AdaptiveTabRowStyle.primary,
+    this.androidIcons,
+    this.androidShowLabels = true,
   });
 
-  /// Tab labels
+  /// Tab labels. Supply one [children] page for each label.
   final List<String> tabs;
 
-  /// Tab content pages
+  /// Tab content pages. The count must match [tabs].
   final List<Widget> children;
 
   /// Callback when tab changes
@@ -52,13 +59,26 @@ class AdaptiveTabBarView extends StatefulWidget {
 
   /// Color for the selected tab
   /// On iOS: Thumb color of the selected segment
-  /// On Android: Label color of the selected tab
+  /// On Android: Selected tab content color
   final Color? selectedColor;
 
   /// Color for unselected tabs
   /// On iOS: Text color of unselected segments
-  /// On Android: Label color of unselected tabs
+  /// On Android: Unselected tab content color
   final Color? unselectedColor;
+
+  /// The real Compose primary or secondary tab row on Android.
+  /// Other platforms retain their segmented-control navigation.
+  final AdaptiveTabRowStyle androidRowStyle;
+
+  /// Optional native icon for each Android tab, in [tabs] order.
+  /// Null entries keep text-only tabs; the list length must match [tabs].
+  final List<AndroidM3EIcon?>? androidIcons;
+
+  /// Whether Android tabs show [tabs] as visible text. When false, every tab
+  /// needs an [androidIcons] entry and its label becomes the icon's accessible
+  /// name. Other platforms continue to display the labels.
+  final bool androidShowLabels;
 
   @override
   State<AdaptiveTabBarView> createState() => _AdaptiveTabBarViewState();
@@ -68,6 +88,7 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView> {
   late PageController _pageController;
   late _ExpressivePageTarget _expressivePageTarget;
   late _MaterialExpressivePageScrollPhysics _expressivePagePhysics;
+  final Stopwatch _scrollClock = Stopwatch()..start();
   int _currentIndex = 0;
   Duration? _lastPageScrollSampleTime;
   double? _lastPageScrollSamplePixels;
@@ -85,11 +106,33 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView> {
 
   @override
   void dispose() {
+    _scrollClock.stop();
     _pageController.dispose();
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant AdaptiveTabBarView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.tabs.isEmpty) {
+      _currentIndex = 0;
+      return;
+    }
+    if (_currentIndex >= widget.tabs.length) {
+      final clampedIndex = widget.tabs.length - 1;
+      _currentIndex = clampedIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted &&
+            _currentIndex == clampedIndex &&
+            _pageController.hasClients) {
+          _pageController.jumpToPage(clampedIndex);
+        }
+      });
+    }
+  }
+
   void _onPageChanged(int index) {
+    if (index < 0 || index >= widget.tabs.length) return;
     setState(() {
       _currentIndex = index;
     });
@@ -97,6 +140,7 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView> {
   }
 
   void _onSegmentChanged(int index, {bool expressiveMotion = false}) {
+    if (index < 0 || index >= widget.tabs.length) return;
     if (expressiveMotion) {
       if (MediaQuery.of(context).disableAnimations) {
         _pageController.jumpToPage(index);
@@ -120,7 +164,7 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView> {
 
   bool _recordPageScrollVelocity(ScrollNotification notification) {
     if (notification.metrics.axis != Axis.horizontal) return false;
-    final now = SchedulerBinding.instance.currentFrameTimeStamp;
+    final now = _scrollClock.elapsed;
     if (notification is ScrollEndNotification) {
       _pageScrollVelocity = 0;
       _lastPageScrollSampleTime = null;
@@ -146,8 +190,7 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView> {
   double _currentPageScrollVelocity() {
     final sampleTime = _lastPageScrollSampleTime;
     if (sampleTime == null) return 0;
-    final sampleAge =
-        SchedulerBinding.instance.currentFrameTimeStamp - sampleTime;
+    final sampleAge = _scrollClock.elapsed - sampleTime;
     return sampleAge <= const Duration(milliseconds: 100)
         ? _pageScrollVelocity
         : 0;
@@ -155,6 +198,21 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.tabs.length != widget.children.length) {
+      throw FlutterError(
+        'AdaptiveTabBarView requires one child for each tab '
+        '(${widget.tabs.length} tabs, ${widget.children.length} children).',
+      );
+    }
+    for (final (index, label) in widget.tabs.indexed) {
+      if (label.trim().isEmpty) {
+        throw FlutterError(
+          'AdaptiveTabBarView.tabs[$index] requires a visible label.',
+        );
+      }
+    }
+    if (widget.tabs.isEmpty) return const SizedBox.shrink();
+
     // iOS implementation - Uses AdaptiveSegmentedControl
     // On iOS 26+: Native segmented control with Liquid Glass
     // On iOS <26: CupertinoSlidingSegmentedControl
@@ -187,25 +245,44 @@ class _AdaptiveTabBarViewState extends State<AdaptiveTabBarView> {
 
     // Android - Material Design implementation
     if (PlatformInfo.usesNativeAndroidViews) {
+      final icons = widget.androidIcons;
+      if (icons != null && icons.length != widget.tabs.length) {
+        throw FlutterError(
+          'AdaptiveTabBarView.androidIcons must have one entry per tab.',
+        );
+      }
+      if (!widget.androidShowLabels &&
+          (icons == null || icons.any((icon) => icon == null))) {
+        throw FlutterError(
+          'Android icon-only tabs require an androidIcons entry for every tab.',
+        );
+      }
+      final hasIcons = icons?.any((icon) => icon != null) ?? false;
       return Column(
         children: [
-          SizedBox(
-            height: 64,
-            child: AndroidM3EPlatformView(
-              component: 'tabs',
-              properties: {
-                'labels': widget.tabs,
-                'selectedIndex': _currentIndex,
-                'backgroundColor': widget.backgroundColor?.toARGB32(),
-                'selectedColor': widget.selectedColor?.toARGB32(),
-                'unselectedColor': widget.unselectedColor?.toARGB32(),
-              },
-              onEvent: (event, value) {
-                if (event == 'selected' && value is int) {
-                  _onSegmentChanged(value, expressiveMotion: true);
-                }
-              },
-            ),
+          AndroidM3EMeasuredHeightView(
+            component: 'tabs',
+            initialHeight: widget.androidShowLabels && hasIcons ? 72 : 48,
+            properties: {
+              'labels': widget.tabs,
+              'icons': [
+                for (final icon in icons ?? <AndroidM3EIcon?>[]) icon?.name,
+              ],
+              'showLabels': widget.androidShowLabels,
+              'rowStyle': widget.androidRowStyle.name,
+              'selectedIndex': _currentIndex,
+              'backgroundColor': widget.backgroundColor?.toARGB32(),
+              'selectedColor': widget.selectedColor?.toARGB32(),
+              'unselectedColor': widget.unselectedColor?.toARGB32(),
+            },
+            onEvent: (event, value) {
+              if (event == 'selected' &&
+                  value is int &&
+                  value >= 0 &&
+                  value < widget.tabs.length) {
+                _onSegmentChanged(value, expressiveMotion: true);
+              }
+            },
           ),
           Expanded(
             child: NotificationListener<ScrollNotification>(

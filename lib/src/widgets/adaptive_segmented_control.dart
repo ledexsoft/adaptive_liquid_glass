@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
@@ -22,6 +24,7 @@ class AdaptiveSegmentedControl extends StatelessWidget {
     this.height = 36.0,
     this.shrinkWrap = false,
     this.sfSymbols,
+    this.semanticLabels,
     this.iconSize,
     this.iconColor,
     this.textColor,
@@ -51,6 +54,10 @@ class AdaptiveSegmentedControl extends StatelessWidget {
 
   /// Optional SF Symbol names or IconData
   final List<dynamic>? sfSymbols;
+
+  /// Localized names for Android segments without visible text, including
+  /// icon-only and numeric fallback segments.
+  final List<String>? semanticLabels;
 
   /// Icon size
   final double? iconSize;
@@ -110,24 +117,111 @@ class AdaptiveSegmentedControl extends StatelessWidget {
           'IconData or AndroidM3EIcon value.',
         );
       }).toList();
-      final itemCount = nativeIcons?.length ?? labels.length;
+      final iconCount = nativeIcons?.length ?? 0;
+      final itemCount = labels.length > iconCount ? labels.length : iconCount;
       if (itemCount == 0) return const SizedBox.shrink();
-      return SizedBox(
-        height: height,
-        child: AndroidM3EPlatformView(
+      final effectiveSelectedIndex = selectedIndex.clamp(0, itemCount - 1);
+      for (var index = 0; index < itemCount; index++) {
+        final visibleLabel = index < labels.length ? labels[index].trim() : '';
+        if (visibleLabel.isNotEmpty) continue;
+        final name = index < (semanticLabels?.length ?? 0)
+            ? semanticLabels![index].trim()
+            : '';
+        if (name.isEmpty) {
+          throw FlutterError(
+            'AdaptiveSegmentedControl segment $index requires a localized '
+            'semanticLabels entry on Android when it has no visible text.',
+          );
+        }
+      }
+      var contentHeight = 18.0;
+      for (var index = 0; index < itemCount; index++) {
+        final text = index < labels.length && labels[index].trim().isNotEmpty
+            ? labels[index]
+            : index >= iconCount
+            ? '${index + 1}'
+            : '';
+        if (text.isEmpty) continue;
+        final painter = TextPainter(
+          text: TextSpan(
+            text: text,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+          maxLines: 1,
+        )..layout();
+        contentHeight = math.max(contentHeight, painter.height);
+        painter.dispose();
+      }
+      if (iconCount > 0 && iconSize != null) {
+        contentHeight = math.max(contentHeight, iconSize!);
+      }
+      final nativeHeight = math.max(40.0, height);
+      final initialHostHeight = math.max(nativeHeight, contentHeight + 16);
+      final properties = <String, Object?>{
+        'labels': labels,
+        'icons': nativeIcons,
+        'semanticLabels': semanticLabels,
+        'selectedIndex': effectiveSelectedIndex,
+        'enabled': enabled,
+        'height': nativeHeight,
+        'selectedColor': color?.toARGB32(),
+        'iconSize': iconSize,
+        'iconColor': iconColor?.toARGB32(),
+        'textColor': textColor?.toARGB32(),
+        'selectedTextColor': selectedTextColor?.toARGB32(),
+      };
+      void handleEvent(String event, Object? value) {
+        if (event == 'selected' &&
+            enabled &&
+            value is int &&
+            value >= 0 &&
+            value < itemCount &&
+            value != effectiveSelectedIndex) {
+          onValueChanged(value);
+        }
+      }
+
+      if (!shrinkWrap) {
+        return AndroidM3EMeasuredHeightView(
           component: 'segmentedButton',
-          properties: {
-            'labels': labels,
-            'icons': nativeIcons,
-            'selectedIndex': selectedIndex.clamp(0, labels.length - 1),
-            'enabled': enabled,
-            'height': height,
-            'selectedColor': color?.toARGB32(),
-          },
-          onEvent: (event, value) {
-            if (event == 'selected' && value is int) onValueChanged(value);
-          },
-        ),
+          initialHeight: initialHostHeight,
+          properties: properties,
+          onEvent: handleEvent,
+        );
+      }
+      final widthMeasurementKey = Object.hashAll(<Object?>[
+        ...labels,
+        if (nativeIcons != null) ...nativeIcons,
+        itemCount,
+        iconSize,
+        Theme.of(context).textTheme.labelLarge,
+        MediaQuery.textScalerOf(context),
+        Directionality.of(context),
+      ]);
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final bounded = constraints.maxWidth.isFinite;
+          return Align(
+            heightFactor: 1,
+            child: AndroidM3EMeasuredHeightView(
+              component: 'segmentedButton',
+              initialHeight: initialHostHeight,
+              // A finite first width lets AndroidView mount even in a
+              // horizontal scroller. Compose reports its intrinsic width.
+              initialWidth: bounded ? constraints.maxWidth : itemCount * 96.0,
+              maxWidth: bounded ? constraints.maxWidth : null,
+              widthMeasurementKey: widthMeasurementKey,
+              properties: {
+                ...properties,
+                'shrinkWrap': true,
+                'allowIntrinsicWidth': !bounded,
+              },
+              onEvent: handleEvent,
+            ),
+          );
+        },
       );
     }
 
