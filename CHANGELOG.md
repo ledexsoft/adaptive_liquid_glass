@@ -1,8 +1,17 @@
+## [0.2.22]
+* **FIX**: Fall back to Flutter navigation for unsupported Material icons, custom widgets, and icon effects instead of throwing while serializing Android navigation. Mixed bars preserve explicit native enum icons in the Flutter route.
+* **FIX**: Keep legacy Flutter app-bar icon actions without semantic labels on the Flutter route. Provide localized semantic labels to retain accessibility and native rendering.
+* **FIX**: Observe body scroll only for native Android app bars and defer layout-time updates to avoid rebuilds during a frame.
+* **TESTS**: Add navigation selection/callback and layout scroll regressions.
+
 ## [0.2.21]
 * **FIX**: Expose `dynamicColoring` on `AdaptiveApp` and `AdaptiveApp.router`, allowing applications to choose between Android's wallpaper palette and the active Flutter `ColorScheme` for native Compose controls.
 * **DOCS**: Clarify how apps keep native Android controls aligned with app-selected M3 color variants and contrast.
 
 ## [0.2.20]
+* **NEW**: Expand Android Material 3 Expressive native coverage with chips, range sliders, expressive shape scales, progress values, native accessibility and interaction support.
+* **UPDATE**: Improve adaptive widgets, themes, Android Compose bridges, iOS toolbars, examples, and documentation.
+* **TESTS**: Add broad native bridge and widget regression coverage.
 * **NEW**: Expand Android Material 3 Expressive native coverage with chips, range sliders, progress values, toolbars, button groups, FAB menus, and additional native controls.
 * **NEW**: Bridge Flutter-declared fonts, expressive typography, and shape scales to native Compose controls.
 * **FIX**: Improve Android app bar and navigation insets, native control accessibility, state handling, and Flutter fallbacks for unsupported content.

@@ -1,6 +1,7 @@
 import 'package:adaptive_liquid_glass/src/widgets/ios26/ios26_native_tab_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import '../platform/platform_info.dart';
 import '../style/sf_symbol.dart';
 import 'adaptive_app_bar.dart';
@@ -236,6 +237,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       GlobalKey<_MinimizableTabBarState>();
   final GlobalKey<ScaffoldState> _internalScaffoldKey =
       GlobalKey<ScaffoldState>();
+  bool _androidScrollRebuildScheduled = false;
   double _androidAppBarScrollOffset = 0;
   bool _androidAppBarScrolling = false;
   bool _androidAppBarScrollAtStart = true;
@@ -274,19 +276,33 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         nextScrolling != _androidAppBarScrolling ||
         nextAtStart != _androidAppBarScrollAtStart ||
         nextEndSerial != _androidAppBarScrollEndSerial) {
-      setState(() {
-        _androidAppBarScrollOffset = nextOffset;
-        _androidAppBarScrolling = nextScrolling;
-        _androidAppBarScrollAtStart = nextAtStart;
-        _androidAppBarScrollEndSerial = nextEndSerial;
-      });
+      _androidAppBarScrollOffset = nextOffset;
+      _androidAppBarScrolling = nextScrolling;
+      _androidAppBarScrollAtStart = nextAtStart;
+      _androidAppBarScrollEndSerial = nextEndSerial;
+      if (SchedulerBinding.instance.schedulerPhase ==
+          SchedulerPhase.persistentCallbacks) {
+        // Scroll corrections can notify during layout. Rebuilding the scaffold
+        // in that phase schedules a frame while the tree is still being built.
+        if (!_androidScrollRebuildScheduled) {
+          _androidScrollRebuildScheduled = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _androidScrollRebuildScheduled = false;
+            if (mounted) setState(() {});
+          });
+        }
+      } else {
+        setState(() {});
+      }
     }
     return false;
   }
 
   Widget _buildAndroidObservedBody() {
     final shouldObserveScroll =
-        widget.appBar != null && widget.appBar!.appBar == null;
+        widget.appBar != null &&
+        widget.appBar!.appBar == null &&
+        _canRenderAndroidTopAppBarNatively;
     if (!shouldObserveScroll) {
       return widget.body ?? const SizedBox.shrink();
     }
@@ -822,7 +838,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         bottomNavBar = widget.bottomNavigationBar!.bottomNavigationBar;
       }
       // Priority 2: Build from items
-      else if (PlatformInfo.usesNativeAndroidViews) {
+      else if (_canRenderAndroidBottomBarNatively(destinations)) {
         for (final (index, destination) in destinations.indexed) {
           if (destination.label.trim().isNotEmpty) continue;
           final normalName = destination.icon is Icon
@@ -1231,6 +1247,28 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     }
   }
 
+  bool _canRenderAndroidBottomBarNatively(
+    List<AdaptiveNavigationDestination> destinations,
+  ) {
+    if (!PlatformInfo.usesNativeAndroidViews) return false;
+    for (final destination in destinations) {
+      for (final icon in [destination.icon, destination.selectedIcon]) {
+        if (icon == null) continue;
+        if (icon is Icon && !canSerializeAndroidM3EIconStyle(icon)) {
+          return false;
+        }
+        try {
+          _resolveAndroidNavigationIcon(icon);
+        } on FlutterError {
+          // Custom widgets and unmapped Material icons must remain Flutter
+          // content rather than crashing while building a native bar.
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   bool get _canRenderAndroidTopAppBarNatively {
     if (!PlatformInfo.usesNativeAndroidViews) return false;
     final config = widget.appBar;
@@ -1251,6 +1289,20 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 
     for (final action in config.actions ?? const <AdaptiveAppBarAction>[]) {
       if (!canSerializeAndroidM3EIconStyle(action.iconWidget)) return false;
+      final hasTitle = action.title?.trim().isNotEmpty ?? false;
+      final iconLabel = action.iconWidget is Icon
+          ? (action.iconWidget as Icon).semanticLabel
+          : null;
+      final hasLabel =
+          (action.semanticLabel?.trim().isNotEmpty ?? false) ||
+          (iconLabel?.trim().isNotEmpty ?? false);
+      if (!hasTitle &&
+          !hasLabel &&
+          (action.icon != null || action.iconWidget != null)) {
+        // Keep legacy Flutter actions functional. Applications should still
+        // provide localized labels for accessibility and native rendering.
+        return false;
+      }
       if (action.androidIcon != null) continue;
       if (action.icon == null && action.iconWidget == null) continue;
       final child = action.iconWidget ?? Icon(action.icon);
@@ -1355,7 +1407,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     }
 
     final IconData iconData;
-    if (rawIcon is String) {
+    if (rawIcon is AndroidM3EIcon) {
+      iconData = androidM3EFlutterIcon(rawIcon);
+    } else if (rawIcon is String) {
       iconData = platform == TargetPlatform.iOS
           ? _sfSymbolToCupertinoIcon(rawIcon)
           : Icons.circle;

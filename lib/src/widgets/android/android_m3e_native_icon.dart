@@ -200,3 +200,32 @@ bool canResolveAndroidM3EIcon({
     return false;
   }
 }
+
+/// Flutter counterpart used when a mixed navigation bar needs a Flutter fallback.
+IconData androidM3EFlutterIcon(AndroidM3EIcon icon) => switch (icon) {
+  AndroidM3EIcon.add => Icons.add,
+  AndroidM3EIcon.arrowBack => Icons.arrow_back,
+  AndroidM3EIcon.arrowDropDown => Icons.arrow_drop_down,
+  AndroidM3EIcon.arrowForward => Icons.arrow_forward,
+  AndroidM3EIcon.autoAwesome => Icons.auto_awesome,
+  AndroidM3EIcon.calendarToday => Icons.calendar_today,
+  AndroidM3EIcon.check => Icons.check,
+  AndroidM3EIcon.close => Icons.close,
+  AndroidM3EIcon.delete => Icons.delete,
+  AndroidM3EIcon.done => Icons.done,
+  AndroidM3EIcon.edit => Icons.edit,
+  AndroidM3EIcon.expandMore => Icons.expand_more,
+  AndroidM3EIcon.favorite => Icons.favorite,
+  AndroidM3EIcon.home => Icons.home,
+  AndroidM3EIcon.info => Icons.info,
+  AndroidM3EIcon.message => Icons.message,
+  AndroidM3EIcon.menu => Icons.menu,
+  AndroidM3EIcon.moreVert => Icons.more_vert,
+  AndroidM3EIcon.notifications => Icons.notifications,
+  AndroidM3EIcon.person => Icons.person,
+  AndroidM3EIcon.refresh => Icons.refresh,
+  AndroidM3EIcon.save => Icons.save,
+  AndroidM3EIcon.search => Icons.search,
+  AndroidM3EIcon.settings => Icons.settings,
+  AndroidM3EIcon.share => Icons.share,
+};

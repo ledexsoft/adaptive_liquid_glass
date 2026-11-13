@@ -8,6 +8,47 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   tearDown(PlatformInfo.resetDebugOverrides);
 
+  testWidgets('unmapped navigation icons preserve selection in Flutter', (
+    tester,
+  ) async {
+    PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+    var selected = -1;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: AdaptiveScaffold(
+          body: const Text('Content'),
+          bottomNavigationBar: AdaptiveBottomNavigationBar(
+            selectedIndex: 1,
+            hideLabels: false,
+            onTap: (value) => selected = value,
+            items: const [
+              AdaptiveNavigationDestination(
+                icon: Icons.dashboard_rounded,
+                label: 'Dashboard',
+              ),
+              AdaptiveNavigationDestination(
+                icon: AndroidM3EIcon.home,
+                label: 'Home',
+                badgeCount: 3,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byIcon(Icons.dashboard_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.home), findsOneWidget);
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      1,
+    );
+    await tester.tap(find.text('Dashboard'));
+    expect(selected, 0);
+  });
+
   testWidgets('Android keeps a custom bottom bar without generated items', (
     tester,
   ) async {
@@ -175,31 +216,35 @@ void main() {
     });
   });
 
-  testWidgets('native navigation rejects icon effects Compose cannot draw', (
-    tester,
-  ) async {
-    PlatformInfo.debugPlatformOverride = TargetPlatform.android;
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: AdaptiveScaffold(
-          body: Text('Content'),
-          bottomNavigationBar: AdaptiveBottomNavigationBar(
-            items: [
-              AdaptiveNavigationDestination(
-                icon: Icon(Icons.home, shadows: [Shadow(blurRadius: 2)]),
-                label: 'Home',
-              ),
-            ],
+  testWidgets(
+    'native navigation falls back for icon effects Compose cannot draw',
+    (tester) async {
+      PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AdaptiveScaffold(
+            body: Text('Content'),
+            bottomNavigationBar: AdaptiveBottomNavigationBar(
+              items: [
+                AdaptiveNavigationDestination(
+                  icon: Icon(Icons.home, shadows: [Shadow(blurRadius: 2)]),
+                  label: 'Home',
+                ),
+                AdaptiveNavigationDestination(
+                  icon: Icons.search,
+                  label: 'Search',
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(
-      tester.takeException().toString(),
-      contains('cannot render this Icon style'),
-    );
-  });
+      expect(tester.takeException(), isNull);
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(AndroidView), findsNothing);
+    },
+  );
 
   testWidgets('icon-only native destinations need a name in both states', (
     tester,

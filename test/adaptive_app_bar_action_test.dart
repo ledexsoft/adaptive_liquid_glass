@@ -393,7 +393,7 @@ void main() {
     expect((actions.single! as Map<Object?, Object?>)['icon'], 'add');
   });
 
-  testWidgets('Android native icon action requires a meaningful label', (
+  testWidgets('legacy Flutter icon action without label keeps Flutter route', (
     tester,
   ) async {
     PlatformInfo.debugPlatformOverride = TargetPlatform.android;
@@ -411,10 +411,9 @@ void main() {
       ),
     );
 
-    expect(
-      tester.takeException().toString(),
-      contains('requires a localized semanticLabel or title'),
-    );
+    expect(tester.takeException(), isNull);
+    expect(find.byType(AppBar), findsOneWidget);
+    expect(find.byType(AndroidView), findsNothing);
   });
 
   testWidgets('Android native action accepts an Icon semantic label', (

@@ -5,6 +5,41 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   tearDown(PlatformInfo.resetDebugOverrides);
 
+  for (final native in [false, true]) {
+    testWidgets('layout scroll notifications are safe (native=$native)', (
+      tester,
+    ) async {
+      PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+      PlatformInfo.debugNativeAndroidViewsOverride = native;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdaptiveScaffold(
+            appBar: const AdaptiveAppBar(title: 'Profile'),
+            body: LayoutBuilder(
+              builder: (context, constraints) {
+                ScrollStartNotification(
+                  metrics: FixedScrollMetrics(
+                    minScrollExtent: 0,
+                    maxScrollExtent: 1000,
+                    pixels: 100,
+                    viewportDimension: 400,
+                    axisDirection: AxisDirection.down,
+                    devicePixelRatio: 1,
+                  ),
+                  context: context,
+                ).dispatch(context);
+                return const SizedBox.expand();
+              },
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('rebuilding the body keeps its native app-bar scroll offset', (
     tester,
   ) async {
