@@ -7,18 +7,22 @@ import android.view.ContextThemeWrapper
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.StandardMessageCodec
@@ -206,39 +210,17 @@ private fun Context.findLifecycleOwner(): LifecycleOwner? {
   return null
 }
 
-private fun setLifecycleOwner(view: View, lifecycleOwner: LifecycleOwner) {
-  val ownerClass = Class.forName("androidx.lifecycle.ViewTreeLifecycleOwner")
-  ownerClass
-    .getMethod("set", View::class.java, LifecycleOwner::class.java)
-    .invoke(null, view, lifecycleOwner)
-}
-
 private fun setComposeViewTreeOwners(view: View, lifecycleOwner: LifecycleOwner) {
-  setLifecycleOwner(view, lifecycleOwner)
+  view.setViewTreeLifecycleOwner(lifecycleOwner)
   val savedStateOwner = lifecycleOwner as? SavedStateRegistryOwner
     ?: throw IllegalStateException("M3 Expressive views require a SavedStateRegistryOwner.")
-  setTreeOwner(
-    "androidx.savedstate.ViewTreeSavedStateRegistryOwner",
-    "androidx.savedstate.SavedStateRegistryOwner",
-    view,
-    savedStateOwner,
-  )
+  view.setViewTreeSavedStateRegistryOwner(savedStateOwner)
   val viewModelStoreOwner = lifecycleOwner as? ViewModelStoreOwner
     ?: throw IllegalStateException("M3 Expressive views require a ViewModelStoreOwner.")
-  setTreeOwner(
-    "androidx.lifecycle.ViewTreeViewModelStoreOwner",
-    "androidx.lifecycle.ViewModelStoreOwner",
-    view,
-    viewModelStoreOwner,
-  )
+  view.setViewTreeViewModelStoreOwner(viewModelStoreOwner)
   val backDispatcherOwner = view.context.findOnBackPressedDispatcherOwner()
   if (backDispatcherOwner != null) {
-    setTreeOwner(
-      "androidx.activity.ViewTreeOnBackPressedDispatcherOwner",
-      "androidx.activity.OnBackPressedDispatcherOwner",
-      view,
-      backDispatcherOwner,
-    )
+    view.setViewTreeOnBackPressedDispatcherOwner(backDispatcherOwner)
   }
 }
 
@@ -276,17 +258,6 @@ private class ComposeViewTreeOwner(
   }
 }
 
-private fun setTreeOwner(
-  treeOwnerClassName: String,
-  ownerClassName: String,
-  view: View,
-  owner: Any,
-) {
-  val ownerClass = Class.forName(ownerClassName)
-  Class.forName(treeOwnerClassName)
-    .getMethod("set", View::class.java, ownerClass)
-    .invoke(null, view, owner)
-}
 
 private fun asStringMap(value: Any?): Map<String, Any?> {
   val map = value as? Map<*, *> ?: return emptyMap()

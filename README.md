@@ -703,6 +703,12 @@ AdaptiveRadio<Options>(
 
 ### AdaptiveCard (tarjetas)
 
+En Android, la tarjeta sin `style` conserva la elevación predeterminada; las
+variantes `filled` y `outlined` son planas salvo que se indique `elevation`.
+El contenido y el efecto de interacción siguen siendo nativos de Compose;
+la sombra se pinta fuera del recorte de la vista de plataforma para que no
+desaparezca en sus bordes.
+
 ```dart
 AdaptiveCard(
   padding: EdgeInsets.all(16),

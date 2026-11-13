@@ -1,3 +1,7 @@
+## [0.2.27]
+* **FIX**: Use direct AndroidX view-tree owner APIs so R8-optimized Android releases can create native Material 3 Expressive views without reflective method lookups.
+* **FIX**: Restore the default elevated card appearance on Android and render the host shadow outside the clipped native platform view; explicit filled, outlined, and zero-elevation cards remain flat.
+
 ## [0.2.26]
 * **FIX**: Supply Material fallback ancestry, theme and localization inside the macOS Cupertino app/scaffold, including router apps, without changing iOS or Android paths.
 * **FIX**: Render standalone macOS toolbars without requiring Material Scaffold geometry; retain custom tabbed app-bar titles and explicit action accessibility labels.

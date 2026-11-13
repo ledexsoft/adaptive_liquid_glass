@@ -12,7 +12,10 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: AdaptiveCard(child: SizedBox(width: 120, height: 80)),
+          body: AdaptiveCard(
+            style: AdaptiveCardStyle.filled,
+            child: SizedBox(width: 120, height: 80),
+          ),
         ),
       ),
     );
@@ -24,6 +27,38 @@ void main() {
     expect(properties['style'], 'filled');
     expect(properties['elevation'], isNull);
     expect(properties['radius'], isNull);
+    expect(
+      find.byKey(const ValueKey('android-native-card-shadow')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('default native card retains a visible host shadow', (
+    tester,
+  ) async {
+    PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AdaptiveCard(child: SizedBox(width: 120, height: 80)),
+        ),
+      ),
+    );
+    final view = tester.widget<AndroidView>(find.byType(AndroidView));
+    final properties = view.creationParams! as Map<Object?, Object?>;
+    expect(properties['style'], 'elevated');
+    final shadow = tester.widget<PhysicalShape>(
+      find.byKey(const ValueKey('android-native-card-shadow')),
+    );
+    expect(shadow.elevation, 1);
+    expect(shadow.clipBehavior, Clip.none);
+    expect(
+      find.descendant(
+        of: find.byWidget(shadow),
+        matching: find.byType(AndroidView),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('native cards forward elevated and outlined variants', (
@@ -148,6 +183,34 @@ void main() {
     final view = tester.widget<AndroidView>(find.byType(AndroidView));
     final properties = view.creationParams! as Map<Object?, Object?>;
     expect(properties['elevation'], 8);
+    expect(
+      tester
+          .widget<PhysicalShape>(
+            find.byKey(const ValueKey('android-native-card-shadow')),
+          )
+          .elevation,
+      8,
+    );
+  });
+
+  testWidgets('explicit zero elevation keeps the native card flat', (
+    tester,
+  ) async {
+    PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AdaptiveCard(
+            elevation: 0,
+            child: SizedBox(width: 120, height: 80),
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.byKey(const ValueKey('android-native-card-shadow')),
+      findsNothing,
+    );
   });
 
   testWidgets('native card forwards an explicit corner radius', (tester) async {

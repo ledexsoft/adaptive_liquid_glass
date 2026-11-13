@@ -221,6 +221,14 @@ class AdaptiveCard extends StatelessWidget {
               )?.toNativeRadii()['medium'] ??
               12,
         );
+    // Before the native Android card bridge, the default card had 1 dp of
+    // elevation. Keep that behavior when no explicit M3 variant is chosen.
+    final effectiveStyle =
+        style ??
+        (glass ? AdaptiveCardStyle.filled : AdaptiveCardStyle.elevated);
+    final effectiveElevation =
+        elevation ??
+        (glass || effectiveStyle == AdaptiveCardStyle.elevated ? 1.0 : 0.0);
     final uniformRadius = explicitRadius?.topLeft.x;
     final isUniformCircularRadius =
         explicitRadius != null &&
@@ -240,7 +248,7 @@ class AdaptiveCard extends StatelessWidget {
         cardPressController: onTap == null ? null : pressController,
         properties: {
           'interactive': onTap != null,
-          'style': (style ?? AdaptiveCardStyle.filled).name,
+          'style': effectiveStyle.name,
           'color': color?.toARGB32(),
           'glass': glass,
           'elevation': elevation ?? (glass ? 1.0 : null),
@@ -292,6 +300,22 @@ class AdaptiveCard extends StatelessWidget {
             ),
           ),
         ],
+      );
+    }
+    if (effectiveElevation > 0) {
+      // Flutter clips a platform view to its bounds, so a Compose shadow
+      // cannot paint beyond that view. Paint the host shadow outside the
+      // clipped native surface while Compose still renders the actual card.
+      cardContent = PhysicalShape(
+        key: const ValueKey('android-native-card-shadow'),
+        clipper: ShapeBorderClipper(
+          shape: RoundedRectangleBorder(borderRadius: effectiveRadius),
+        ),
+        elevation: effectiveElevation,
+        color: Colors.transparent,
+        shadowColor: Theme.of(context).colorScheme.shadow,
+        clipBehavior: Clip.none,
+        child: cardContent,
       );
     }
     final withMargin = Padding(
