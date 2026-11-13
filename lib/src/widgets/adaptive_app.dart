@@ -96,6 +96,7 @@ class AdaptiveApp extends StatelessWidget {
     this.themeMode,
     this.materialLightTheme,
     this.materialDarkTheme,
+    this.dynamicColoring = true,
     this.expressiveShapeScale,
     this.cupertinoLightTheme,
     this.cupertinoDarkTheme,
@@ -127,6 +128,7 @@ class AdaptiveApp extends StatelessWidget {
     this.themeMode,
     this.materialLightTheme,
     this.materialDarkTheme,
+    this.dynamicColoring = true,
     this.expressiveShapeScale,
     this.cupertinoLightTheme,
     this.cupertinoDarkTheme,
@@ -195,6 +197,14 @@ class AdaptiveApp extends StatelessWidget {
   final ThemeMode? themeMode;
   final ThemeData? materialLightTheme;
   final ThemeData? materialDarkTheme;
+
+  /// Whether native Android Material 3 Expressive controls should use the
+  /// wallpaper's dynamic palette on Android 12+. When false, they use the
+  /// effective Flutter [ThemeData.colorScheme], including app-selected
+  /// variants and contrast. Defaults to true to preserve existing behavior.
+  /// Set this to `false` when the Flutter themes already contain the desired
+  /// system or app-selected palette, so native controls stay in sync with them.
+  final bool dynamicColoring;
 
   /// Optional radius overrides for Compose's eight Material 3 shape roles.
   final AdaptiveExpressiveShapeScale? expressiveShapeScale;
@@ -402,6 +412,7 @@ class AdaptiveApp extends StatelessWidget {
 
     Widget expressiveBuilder(BuildContext context, Widget? child) {
       final themedChild = AdaptiveMaterialExpressiveTheme(
+        dynamicColoring: dynamicColoring,
         typography: Theme.of(context).extension<AdaptiveExpressiveTypography>(),
         shapeScale: expressiveShapeScale,
         child: child ?? const SizedBox.shrink(),

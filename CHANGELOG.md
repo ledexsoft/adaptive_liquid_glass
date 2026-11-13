@@ -1,3 +1,12 @@
+## [0.2.21]
+* **FIX**: Expose `dynamicColoring` on `AdaptiveApp` and `AdaptiveApp.router`, allowing applications to choose between Android's wallpaper palette and the active Flutter `ColorScheme` for native Compose controls.
+* **DOCS**: Clarify how apps keep native Android controls aligned with app-selected M3 color variants and contrast.
+
+## [0.2.20]
+* **NEW**: Expand Android Material 3 Expressive native coverage with chips, range sliders, progress values, toolbars, button groups, FAB menus, and additional native controls.
+* **NEW**: Bridge Flutter-declared fonts, expressive typography, and shape scales to native Compose controls.
+* **FIX**: Improve Android app bar and navigation insets, native control accessibility, state handling, and Flutter fallbacks for unsupported content.
+
 ## [0.2.19]
 * **FIX**: Android native M3 Expressive app bars now receive space for the system status-bar inset in addition to their design height, preventing their content from being compressed and keeping the page body below the complete app bar.
 * **FIX**: Android native M3 Expressive navigation bars now reserve the system navigation-bar inset in the shared scaffold, preventing content from appearing beneath the bar.

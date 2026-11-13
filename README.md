@@ -154,6 +154,8 @@ Para un botón con contador, usa `badgeValue: 3` y `badgeSemanticsLabel: '3 avis
 
 Si tu aplicación usa un `MaterialApp` propio, puedes envolver su `builder` con `AdaptiveMaterialExpressiveTheme` para propagar tema, brillo y color semilla a las vistas Compose del paquete. Android 12+ usa por defecto la paleta dinámica del fondo de pantalla. Android 7–11 usa primero el `lightTheme` o `darkTheme` proporcionado; si indicas `seedColor`, aplica la misma paleta expresiva al contenido Flutter y a los controles nativos; en los demás casos genera una paleta expresiva desde el primario del tema. La variante expresiva puede desplazar el tono de la semilla. Configura `dynamicColoring: false` para usar el `ColorScheme` efectivo del tema Flutter en los controles nativos.
 
+`AdaptiveApp` y `AdaptiveApp.router` también aceptan `dynamicColoring`. Déjalo en `true` para conservar la paleta del wallpaper en Android 12+; usa `false` cuando tu app ya configura el `ColorScheme` Flutter (por ejemplo, para respetar variantes y niveles de contraste elegidos por el usuario) y quieras que Compose use exactamente ese esquema.
+
 ```dart
 MaterialApp(
   builder: (context, child) => AdaptiveMaterialExpressiveTheme(
