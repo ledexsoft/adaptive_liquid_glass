@@ -25,7 +25,7 @@ enum AdaptiveSnackBarType {
 
 /// An adaptive snackbar that shows platform-appropriate notifications
 ///
-/// - iOS: Shows a banner-style notification at the top
+/// - iOS/macOS: Shows a banner-style notification at the top
 /// - Android: Uses a native Compose Material 3 Snackbar.
 class AdaptiveSnackBar {
   static final Expando<_NativeSnackbarQueue> _nativeQueues =
@@ -127,7 +127,9 @@ class AdaptiveSnackBar {
       return;
     }
 
-    if (PlatformInfo.isIOS) {
+    // Match AdaptiveScaffold: Cupertino platforms do not require a Material
+    // Scaffold, so use an overlay rather than ScaffoldMessenger.
+    if (PlatformInfo.isIOS || PlatformInfo.isMacOS) {
       _showIOSSnackBar(
         context,
         message: message,

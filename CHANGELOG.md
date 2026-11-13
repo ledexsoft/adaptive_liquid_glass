@@ -1,3 +1,7 @@
+## [0.2.25]
+* **FIX**: Show macOS snackbars through the Cupertino overlay, matching AdaptiveScaffold without requiring an extra Material Scaffold.
+* **TESTS**: Cover macOS standalone scaffolds under CupertinoApp and MaterialApp, including action callbacks and dismissal.
+
 ## [0.2.24]
 * **FIX**: Deliver property changes made while an Android native view is being created; schedule the pending update even when creation completes between Flutter frames.
 * **FIX**: Preserve the current text, selection, and composing range when an Android text field switches from an external controller to its internal controller.
