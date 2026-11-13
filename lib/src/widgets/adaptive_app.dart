@@ -278,6 +278,15 @@ class AdaptiveApp extends StatelessWidget {
     final config =
         cupertino?.call(context, platform) ?? const CupertinoAppData();
 
+    // Desktop controls can use Material fallbacks inside the Cupertino shell.
+    // Keep consumer delegates first so localization overrides remain authoritative.
+    final effectiveDelegates = PlatformInfo.isMacOS
+        ? <LocalizationsDelegate<dynamic>>[
+            ...?localizationsDelegates,
+            DefaultMaterialLocalizations.delegate,
+          ]
+        : localizationsDelegates;
+
     // Prepare light and dark themes
     // If Cupertino theme is not provided, try to derive primaryColor from Material theme
     final effectiveLightTheme =
@@ -313,6 +322,19 @@ class AdaptiveApp extends StatelessWidget {
       // Apply the appropriate theme and ensure MediaQuery has correct brightness
       final theme = isDark ? effectiveDarkTheme : effectiveLightTheme;
 
+      Widget content = child ?? const SizedBox.shrink();
+      if (PlatformInfo.isMacOS) {
+        content = Theme(
+          data:
+              (isDark ? materialDarkTheme : materialLightTheme) ??
+              ThemeData(
+                brightness: effectiveBrightness,
+                platform: TargetPlatform.macOS,
+              ),
+          child: content,
+        );
+      }
+
       return MediaQuery(
         data: MediaQuery.of(
           context,
@@ -324,7 +346,7 @@ class AdaptiveApp extends StatelessWidget {
           value: isDark
               ? SystemUiOverlayStyle.light
               : SystemUiOverlayStyle.dark,
-          child: CupertinoTheme(data: theme, child: child!),
+          child: CupertinoTheme(data: theme, child: content),
         ),
       );
     }
@@ -354,7 +376,7 @@ class AdaptiveApp extends StatelessWidget {
         theme:
             effectiveLightTheme, // Default theme (will be overridden by builder)
         locale: locale,
-        localizationsDelegates: localizationsDelegates,
+        localizationsDelegates: effectiveDelegates,
         localeListResolutionCallback: localeListResolutionCallback,
         localeResolutionCallback: localeResolutionCallback,
         supportedLocales: supportedLocales,
@@ -387,7 +409,7 @@ class AdaptiveApp extends StatelessWidget {
       theme:
           effectiveLightTheme, // Default theme (will be overridden by builder)
       locale: locale,
-      localizationsDelegates: localizationsDelegates,
+      localizationsDelegates: effectiveDelegates,
       localeListResolutionCallback: localeListResolutionCallback,
       localeResolutionCallback: localeResolutionCallback,
       supportedLocales: supportedLocales,

@@ -527,9 +527,16 @@ class MacosNativeBlurViewState extends State<MacosNativeBlurView> {
               },
               creationParamsCodec: const StandardMessageCodec(),
               onPlatformViewCreated: (int id) {
+                if (!mounted) return;
                 _channel = MethodChannel(
                   'adaptive_liquid_glass/macos_blur_$id',
                 );
+                // creationParams are a snapshot. Reconcile updates that arrived
+                // while AppKit was creating the view, including inherited theme.
+                _lastIsDark = null;
+                _updateCornerRadius();
+                _updateTintColor();
+                _syncBrightnessIfNeeded();
               },
             ),
           ),

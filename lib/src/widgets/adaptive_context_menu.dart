@@ -113,6 +113,9 @@ class _AdaptiveContextMenuState extends State<AdaptiveContextMenu> {
 
   Widget _buildAndroidContextMenu(BuildContext context) {
     return GestureDetector(
+      onSecondaryTapUp: PlatformInfo.isMacOS
+          ? (details) => _showFlutterMenu(context, details.globalPosition)
+          : null,
       onLongPressStart: (details) {
         if (PlatformInfo.usesNativeAndroidViews) {
           _showAndroidMenu(context, details.globalPosition);

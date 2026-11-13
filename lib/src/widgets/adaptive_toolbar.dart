@@ -442,6 +442,26 @@ class AdaptiveToolbar extends StatelessWidget implements PreferredSizeWidget {
         if (trailing != null) trailing!,
       ],
     );
+    // CupertinoPageScaffold has no ScaffoldGeometry for BottomAppBar's notch.
+    // The macOS fallback needs only a surface, not a Material Scaffold.
+    if (PlatformInfo.isMacOS && Scaffold.maybeOf(context) == null) {
+      final theme = Theme.of(context);
+      return Material(
+        color: backgroundColor ?? theme.colorScheme.surfaceContainer,
+        elevation: elevation ?? 0,
+        child: SafeArea(
+          top: false,
+          bottom: safeArea,
+          child: SizedBox(
+            height: 64,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: content,
+            ),
+          ),
+        ),
+      );
+    }
     return BottomAppBar(
       color: backgroundColor,
       elevation: elevation,

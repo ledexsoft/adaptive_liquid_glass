@@ -93,6 +93,12 @@ class _AdaptiveSearchBarState extends State<AdaptiveSearchBar> {
   void didUpdateWidget(covariant AdaptiveSearchBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
+      if (PlatformInfo.isMacOS &&
+          oldWidget.controller != null &&
+          widget.controller == null) {
+        // Retain the editing session when ownership becomes internal.
+        _internalController.value = oldWidget.controller!.value;
+      }
       oldWidget.controller?.removeListener(_handleControllerChanged);
       widget.controller?.addListener(_handleControllerChanged);
       _externalRevision++;

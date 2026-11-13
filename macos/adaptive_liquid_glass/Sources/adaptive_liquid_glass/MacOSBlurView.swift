@@ -74,7 +74,7 @@ class MacOSBlurView: NSView {
                     glass?.setValue(color, forKey: "tintColor")
                 }
                 if let styleStr = params["style"] as? String {
-                    let styleValue = (styleStr == "clear") ? 0 : 1 // 0->clear, 1->regular
+                    let styleValue = (styleStr == "clear") ? 1 : 0 // AppKit: regular = 0, clear = 1
                     glass?.setValue(styleValue, forKey: "style")
                 }
                 if let dark = params["isDark"] as? Bool {
@@ -121,6 +121,10 @@ class MacOSBlurView: NSView {
         }
     }
 
+    deinit {
+        channel.setMethodCallHandler(nil)
+    }
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -149,7 +153,7 @@ class MacOSBlurView: NSView {
         case "setStyle":
             if let args = call.arguments as? [String: Any], let styleStr = args["style"] as? String {
                 if #available(macOS 26.0, *), let glass = glassView26 as? NSView {
-                    let styleValue = (styleStr == "clear") ? 0 : 1
+                    let styleValue = (styleStr == "clear") ? 1 : 0
                     glass.setValue(styleValue, forKey: "style")
                 } else if let effect = visualEffectView {
                     applyStyle(styleStr, to: effect)
@@ -180,14 +184,20 @@ class MacOSBlurView: NSView {
     }
 
     private func ensureTintOverlay(on effectView: NSVisualEffectView, color: NSColor) {
+        // ARGB zero is Flutter's absent/cleared tint. Do not turn transparent
+        // black into an opaque-looking overlay when a tint is removed.
+        guard color.alphaComponent > 0 else {
+            removeTintOverlay(from: effectView)
+            return
+        }
         if let overlay = tintOverlayView {
-            overlay.layer?.backgroundColor = color.withAlphaComponent(0.25).cgColor
+            overlay.layer?.backgroundColor = color.withAlphaComponent(color.alphaComponent * 0.25).cgColor
             return
         }
         let overlay = NSView(frame: .zero)
         overlay.translatesAutoresizingMaskIntoConstraints = false
         overlay.wantsLayer = true
-        overlay.layer?.backgroundColor = color.withAlphaComponent(0.25).cgColor
+        overlay.layer?.backgroundColor = color.withAlphaComponent(color.alphaComponent * 0.25).cgColor
         effectView.addSubview(overlay)
         NSLayoutConstraint.activate([
             overlay.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),

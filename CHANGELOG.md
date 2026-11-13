@@ -1,3 +1,10 @@
+## [0.2.26]
+* **FIX**: Supply Material fallback ancestry, theme and localization inside the macOS Cupertino app/scaffold, including router apps, without changing iOS or Android paths.
+* **FIX**: Render standalone macOS toolbars without requiring Material Scaffold geometry; retain custom tabbed app-bar titles and explicit action accessibility labels.
+* **FIX**: Support secondary-click context menus and preserve search editing state when removing an external controller on macOS.
+* **FIX**: Reconcile AppKit blur changes during asynchronous creation, correct regular/clear style values, preserve transparent tint and detach channel handlers on destruction.
+* **TESTS**: Add macOS integration, keyboard, navigation, controller-lifecycle and delayed platform-view regressions. Native visual/runtime validation remains separate; see docs/qa/macos-2026-11-13.md.
+
 ## [0.2.25]
 * **FIX**: Show macOS snackbars through the Cupertino overlay, matching AdaptiveScaffold without requiring an extra Material Scaffold.
 * **TESTS**: Cover macOS standalone scaffolds under CupertinoApp and MaterialApp, including action callbacks and dismissal.

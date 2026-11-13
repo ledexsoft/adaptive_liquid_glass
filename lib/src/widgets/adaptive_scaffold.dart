@@ -429,6 +429,12 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     );
   }
 
+  // macOS currently mixes Cupertino navigation with Material input fallbacks.
+  // Provide ink/input ancestry without replacing the navigation or page color.
+  Widget _macOSMaterialSurface(Widget child) => PlatformInfo.isMacOS
+      ? Material(type: MaterialType.transparency, child: child)
+      : child;
+
   @override
   Widget build(BuildContext context) {
     final useNativeToolbar = widget.appBar?.useNativeToolbar ?? false;
@@ -512,6 +518,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         // Priority 2: Build from title, actions, leading (if appBar has content)
         else if (widget.appBar != null &&
             (widget.appBar!.title != null ||
+                (PlatformInfo.isMacOS &&
+                    (widget.appBar!.titleWidget != null ||
+                        widget.appBar!.subtitle != null)) ||
                 (widget.appBar!.actions != null &&
                     widget.appBar!.actions!.isNotEmpty) ||
                 effectiveLeading != null ||
@@ -541,7 +550,14 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                       return CupertinoButton(
                         padding: EdgeInsets.zero,
                         onPressed: action.enabled ? action.onPressed : null,
-                        child: actionChild,
+                        child:
+                            PlatformInfo.isMacOS && action.semanticLabel != null
+                            ? Semantics(
+                                label: action.semanticLabel,
+                                excludeSemantics: true,
+                                child: actionChild,
+                              )
+                            : actionChild,
                       );
                     }).toList(),
                   )
@@ -680,11 +696,13 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
             tabBar != null;
 
         return _wrapWithDrawerIfNeeded(
-          CupertinoPageScaffold(
-            resizeToAvoidBottomInset:
-                widget.resizeToAvoidBottomInset ?? !hasNativeTabBar,
-            navigationBar: navigationBar,
-            child: bodyWidget,
+          _macOSMaterialSurface(
+            CupertinoPageScaffold(
+              resizeToAvoidBottomInset:
+                  widget.resizeToAvoidBottomInset ?? !hasNativeTabBar,
+              navigationBar: navigationBar,
+              child: _macOSMaterialSurface(bodyWidget),
+            ),
           ),
         );
       }
@@ -734,7 +752,14 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                     return CupertinoButton(
                       padding: EdgeInsets.zero,
                       onPressed: action.enabled ? action.onPressed : null,
-                      child: actionChild,
+                      child:
+                          PlatformInfo.isMacOS && action.semanticLabel != null
+                          ? Semantics(
+                              label: action.semanticLabel,
+                              excludeSemantics: true,
+                              child: actionChild,
+                            )
+                          : actionChild,
                     );
                   }).toList(),
                 )
@@ -774,7 +799,12 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 
       // Always use CupertinoPageScaffold to ensure proper background color
       return _wrapWithDrawerIfNeeded(
-        CupertinoPageScaffold(navigationBar: navigationBar, child: body),
+        _macOSMaterialSurface(
+          CupertinoPageScaffold(
+            navigationBar: navigationBar,
+            child: _macOSMaterialSurface(body),
+          ),
+        ),
       );
     }
 
