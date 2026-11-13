@@ -4,6 +4,46 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('updates arriving during native creation are delivered', (
+    tester,
+  ) async {
+    late StateSetter update;
+    var title = 'Loading';
+    final sent = <MethodCall>[];
+    const channel = MethodChannel('adaptive_liquid_glass/m3e_android_906');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      sent.add(call);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            update = setState;
+            return AndroidM3EPlatformView(
+              component: 'button',
+              properties: {'title': title},
+              onEvent: (_, _) {},
+            );
+          },
+        ),
+      ),
+    );
+    final initialView = tester.widget<AndroidView>(find.byType(AndroidView));
+    expect((initialView.creationParams! as Map)['title'], 'Loading');
+    update(() => title = 'Ready');
+    await tester.pump();
+    initialView.onPlatformViewCreated!(906);
+    await tester.pump();
+    await tester.pump();
+    final updates = sent.where((call) => call.method == 'setProperties');
+    expect(updates, hasLength(1));
+    expect((updates.single.arguments as Map)['title'], 'Ready');
+  });
+
   testWidgets('native view follows Flutter layout direction changes', (
     tester,
   ) async {

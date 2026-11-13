@@ -144,6 +144,9 @@ class _AndroidM3ETextFieldState extends State<AndroidM3ETextField> {
     }
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?.removeListener(_controllerChanged);
+      if (widget.controller == null && oldWidget.controller != null) {
+        _internalController.value = oldWidget.controller!.value;
+      }
       widget.controller?.addListener(_controllerChanged);
       _externalRevision++;
     }

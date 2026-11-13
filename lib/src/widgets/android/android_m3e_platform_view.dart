@@ -377,6 +377,7 @@ class _AndroidM3EPlatformViewState extends State<AndroidM3EPlatformView> {
   MethodChannel? _channel;
   Map<String, Object?> _latestProperties = const {};
   Map<String, Object?>? _sentProperties;
+  Map<String, Object?>? _creationProperties;
   Color? _fallbackSeed;
   Brightness? _fallbackBrightness;
   ColorScheme? _fallbackColors;
@@ -533,6 +534,10 @@ class _AndroidM3EPlatformViewState extends State<AndroidM3EPlatformView> {
   @override
   Widget build(BuildContext context) {
     _latestProperties = _propertiesFor(context);
+    // AndroidView consumes creationParams only when creating its controller.
+    // Rebuilds before the asynchronous creation callback must not be mistaken
+    // for properties already delivered to the native view.
+    _creationProperties ??= Map<String, Object?>.of(_latestProperties);
     _schedulePropertyUpdate();
 
     return SizedBox(
@@ -560,7 +565,8 @@ class _AndroidM3EPlatformViewState extends State<AndroidM3EPlatformView> {
     _channel = channel;
     widget.cardPressController?._attach(channel);
     widget.toolbarScrollController?._attach(channel);
-    _sentProperties = Map<String, Object?>.of(_latestProperties);
+    _sentProperties = Map<String, Object?>.of(_creationProperties!);
+    _schedulePropertyUpdate();
     channel.setMethodCallHandler((call) async {
       if (!mounted || !identical(channel, _channel)) return;
       widget.onEvent(call.method, call.arguments);
@@ -594,6 +600,8 @@ class _AndroidM3EPlatformViewState extends State<AndroidM3EPlatformView> {
       _sentProperties = next;
       unawaited(channel.invokeMethod<void>('setProperties', next));
     });
+    // Creation may complete between frames, when no rebuild is scheduled.
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   @override

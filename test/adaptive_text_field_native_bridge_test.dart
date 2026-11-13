@@ -7,6 +7,52 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   tearDown(PlatformInfo.resetDebugOverrides);
 
+  testWidgets('removing an external controller preserves the editing value', (
+    tester,
+  ) async {
+    PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+    final external = TextEditingController.fromValue(
+      const TextEditingValue(
+        text: 'draft',
+        selection: TextSelection(baseOffset: 1, extentOffset: 4),
+        composing: TextRange(start: 1, end: 4),
+      ),
+    );
+    addTearDown(external.dispose);
+    TextEditingController? current = external;
+    late StateSetter update;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              update = setState;
+              return AdaptiveTextField(controller: current);
+            },
+          ),
+        ),
+      ),
+    );
+    update(() => current = null);
+    await tester.pump();
+    final properties = tester
+        .widget<AndroidM3EPlatformView>(find.byType(AndroidM3EPlatformView))
+        .properties;
+    expect(properties['query'], 'draft');
+    expect(properties['selectionBase'], 1);
+    expect(properties['selectionExtent'], 4);
+    expect(properties['composingBase'], 1);
+    expect(properties['composingExtent'], 4);
+    external.text = 'detached';
+    await tester.pump();
+    expect(
+      tester
+          .widget<AndroidM3EPlatformView>(find.byType(AndroidM3EPlatformView))
+          .properties['query'],
+      'draft',
+    );
+  });
+
   testWidgets('native text field keeps supported editable text styling', (
     tester,
   ) async {

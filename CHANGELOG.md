@@ -1,3 +1,8 @@
+## [0.2.24]
+* **FIX**: Deliver property changes made while an Android native view is being created; schedule the pending update even when creation completes between Flutter frames.
+* **FIX**: Preserve the current text, selection, and composing range when an Android text field switches from an external controller to its internal controller.
+* **TESTS**: Add regressions for delayed native creation and removing/detaching an external editing controller.
+
 ## [0.2.23]
 * **FIX**: Mount the supplied `AdaptiveScaffold.body` only once on iOS 26, avoiding duplicate state, controllers, and GlobalKeys when bottom-navigation destinations are present.
 * **FIX**: Preserve native iOS scaffold and body state when tab selection changes instead of recreating the scaffold and discarding drafts.
