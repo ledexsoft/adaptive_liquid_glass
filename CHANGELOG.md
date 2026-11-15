@@ -1,3 +1,7 @@
+## [0.2.29]
+* **FIX**: Synchronize native iOS 26 leading text when its locale changes independently of toolbar actions, including removal, restoration, and replacement by a Flutter leading overlay.
+* **TESTS**: Cover stable and absent action lists, retained callbacks and platform-view identity, and retry after a failed channel update. UIKit and VoiceOver runtime validation remain separate.
+
 ## [0.2.28]
 * **FIX**: Forward localized action accessibility labels to native iOS 26 toolbars, with icon-label and visible-title fallbacks for existing callers.
 * **FIX**: Preserve the native leading button when toolbar actions update and synchronize transitions from no actions to an action list.
