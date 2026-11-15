@@ -1,3 +1,8 @@
+## [0.2.30]
+* **FIX**: Reconcile iOS 26 toolbar properties after delayed native creation and serialize subsequent snapshots, including title context, leading text, actions, theme and tint.
+* **SAFETY**: Reject native callbacks until their current item/context snapshot is acknowledged, after channel failure, and from stale view channels. Recovery after failure requires a successful rebuild; no automatic retry loop is introduced.
+* **TESTS**: Add deterministic delayed-creation, rapid-update, channel-failure, lifecycle, title-context and accessible-disabled-action coverage. Physical UIKit/VoiceOver QA and index-only event-protocol limitations remain documented in `docs/qa/ios26-toolbar-synchronization.md`.
+
 ## [0.2.29]
 * **FIX**: Synchronize native iOS 26 leading text when its locale changes independently of toolbar actions, including removal, restoration, and replacement by a Flutter leading overlay.
 * **TESTS**: Cover stable and absent action lists, retained callbacks and platform-view identity, and retry after a failed channel update. UIKit and VoiceOver runtime validation remain separate.
