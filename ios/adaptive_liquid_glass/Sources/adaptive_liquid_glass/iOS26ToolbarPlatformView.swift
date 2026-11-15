@@ -241,6 +241,13 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                 if let btn = button {
                     btn.tag = index
                     btn.isEnabled = action["enabled"] as? Bool ?? true
+                    // Keep the localized action name separate from its visible
+                    // SF Symbol. Older clients may only send a text title.
+                    btn.accessibilityLabel = [
+                        action["semanticLabel"] as? String,
+                        action["title"] as? String
+                    ].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .first { !$0.isEmpty }
 
                     // Apply prominent style (iOS 26+)
                     if action["prominent"] as? Bool == true {

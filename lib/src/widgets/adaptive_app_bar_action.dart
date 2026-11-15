@@ -115,7 +115,8 @@ class AdaptiveAppBarAction {
   /// - iOS <26 / Android: Ignored
   final Color? tintColor;
 
-  /// Accessible action name used by Android screen readers and tooltips.
+  /// Accessible action name used by iOS 26 native buttons and Android
+  /// screen readers and tooltips.
   /// Set this for icon-only actions; [title] or an [Icon.semanticLabel] is
   /// used when omitted. Native Android rejects an icon action without a name.
   final String? semanticLabel;
@@ -199,7 +200,19 @@ class AdaptiveAppBarAction {
 
   /// Convert action to map for native platform channel (iOS 26+ only)
   Map<String, dynamic> toNativeMap() {
+    final iconLabel = iconWidget is Icon
+        ? (iconWidget as Icon).semanticLabel
+        : null;
+    String? description;
+    for (final candidate in [semanticLabel, iconLabel, title]) {
+      final name = candidate?.trim();
+      if (name != null && name.isNotEmpty) {
+        description = name;
+        break;
+      }
+    }
     return {
+      if (description != null) 'semanticLabel': description,
       if (iosSymbol != null) 'icon': iosSymbol!,
       if (title != null) 'title': title!,
       'spacerAfter': spacerAfter.index, // 0=none, 1=fixed, 2=flexible

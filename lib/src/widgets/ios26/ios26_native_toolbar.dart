@@ -117,9 +117,13 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
 
     // Sync actions (per-action tint, prominent, etc.)
     final actions = widget.actions;
-    if (_lastActions != null && !_actionsEqual(_lastActions!, actions)) {
+    if (!_actionsEqual(_lastActions, actions)) {
       try {
         final params = <String, dynamic>{
+          // Native configureItems rebuilds leading items as well as actions.
+          // Do not drop Back when a locale or enabled state changes.
+          if (widget.leading == null && widget.leadingText != null)
+            'leading': widget.leadingText!,
           if (actions != null && actions.isNotEmpty)
             'actions': actions.map((a) => a.toNativeMap()).toList(),
         };
