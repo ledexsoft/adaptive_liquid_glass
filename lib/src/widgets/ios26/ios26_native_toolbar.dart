@@ -60,6 +60,10 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   bool? _lastIsDark;
   int? _lastTint;
   List<AdaptiveAppBarAction>? _lastActions;
+  String? _lastLeadingText;
+
+  String? get _nativeLeadingText =>
+      widget.leading == null ? widget.leadingText : null;
 
   bool get _isDark =>
       MediaQuery.platformBrightnessOf(context) == Brightness.dark;
@@ -115,20 +119,24 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
       }
     }
 
-    // Sync actions (per-action tint, prominent, etc.)
+    // Native items include both actions and the optional text leading.
+    // A locale change or Flutter-leading replacement must update either side
+    // even when the action list itself remains unchanged.
     final actions = widget.actions;
-    if (!_actionsEqual(_lastActions, actions)) {
+    final leadingText = _nativeLeadingText;
+    if (!_actionsEqual(_lastActions, actions) ||
+        _lastLeadingText != leadingText) {
       try {
         final params = <String, dynamic>{
           // Native configureItems rebuilds leading items as well as actions.
           // Do not drop Back when a locale or enabled state changes.
-          if (widget.leading == null && widget.leadingText != null)
-            'leading': widget.leadingText!,
+          if (leadingText != null) 'leading': leadingText,
           if (actions != null && actions.isNotEmpty)
             'actions': actions.map((a) => a.toNativeMap()).toList(),
         };
         await ch.invokeMethod('updateActions', params);
         _lastActions = actions != null ? List.of(actions) : null;
+        _lastLeadingText = leadingText;
       } catch (e) {
         // Ignore errors if platform view is not yet ready
       }
@@ -225,6 +233,7 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
         ? _colorToARGB(widget.tintColor!)
         : null;
     _lastActions = widget.actions != null ? List.of(widget.actions!) : null;
+    _lastLeadingText = _nativeLeadingText;
   }
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
