@@ -61,9 +61,18 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   int? _lastTint;
   List<AdaptiveAppBarAction>? _lastActions;
   String? _lastLeadingText;
+  String? _lastTitle;
+  int _channelEpoch = 0;
+  int? _syncingEpoch;
+  bool _syncRequested = false;
+  bool _needsFullSync = true;
+  bool _itemsReady = false;
 
   String? get _nativeLeadingText =>
       widget.leading == null ? widget.leadingText : null;
+
+  String get _nativeTitle =>
+      widget.titleWidget == null ? widget.title ?? '' : '';
 
   bool get _isDark =>
       MediaQuery.platformBrightnessOf(context) == Brightness.dark;
@@ -93,66 +102,95 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   @override
   void didUpdateWidget(IOS26NativeToolbar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _syncPropsToNativeIfNeeded();
-
-    if (widget.title != oldWidget.title) {
-      final ch = _channel;
-      // Skip when a titleWidget overlay is shown — the native title stays hidden
-      if (ch != null && widget.title != null && widget.titleWidget == null) {
-        ch.invokeMethod('updateTitle', {'title': widget.title!});
-      }
+    if (oldWidget.showNativeView && !widget.showNativeView) {
+      _detachChannel();
     }
+    _syncPropsToNativeIfNeeded();
   }
+
+  bool _isCurrentChannel(MethodChannel channel, int epoch) =>
+      mounted &&
+      widget.showNativeView &&
+      identical(_channel, channel) &&
+      _channelEpoch == epoch;
 
   Future<void> _syncPropsToNativeIfNeeded() async {
     final ch = _channel;
-    if (ch == null) return;
-
-    // Sync brightness
-    final isDark = _isDark;
-    if (_lastIsDark != isDark) {
-      try {
-        await ch.invokeMethod('setBrightness', {'isDark': isDark});
-        _lastIsDark = isDark;
-      } catch (e) {
-        // Ignore errors if platform view is not yet ready
-      }
+    if (ch == null || !mounted || !widget.showNativeView) return;
+    final epoch = _channelEpoch;
+    _syncRequested = true;
+    if (_needsFullSync ||
+        !_actionsEqual(_lastActions, widget.actions) ||
+        _lastLeadingText != _nativeLeadingText ||
+        _lastTitle != _nativeTitle) {
+      _itemsReady = false;
     }
-
-    // Native items include both actions and the optional text leading.
-    // A locale change or Flutter-leading replacement must update either side
-    // even when the action list itself remains unchanged.
-    final actions = widget.actions;
-    final leadingText = _nativeLeadingText;
-    if (!_actionsEqual(_lastActions, actions) ||
-        _lastLeadingText != leadingText) {
-      try {
-        final params = <String, dynamic>{
-          // Native configureItems rebuilds leading items as well as actions.
-          // Do not drop Back when a locale or enabled state changes.
-          if (leadingText != null) 'leading': leadingText,
-          if (actions != null && actions.isNotEmpty)
-            'actions': actions.map((a) => a.toNativeMap()).toList(),
-        };
-        await ch.invokeMethod('updateActions', params);
-        _lastActions = actions != null ? List.of(actions) : null;
-        _lastLeadingText = leadingText;
-      } catch (e) {
-        // Ignore errors if platform view is not yet ready
+    // Coalesce rebuilds while a platform call is pending. Never let an older
+    // acknowledgement overwrite a newer snapshot or enable mismatched buttons.
+    if (_syncingEpoch == epoch) return;
+    _syncingEpoch = epoch;
+    try {
+      while (_syncRequested && _isCurrentChannel(ch, epoch)) {
+        _syncRequested = false;
+        final force = _needsFullSync;
+        final isDark = _isDark;
+        final actions = widget.actions == null
+            ? null
+            : List<AdaptiveAppBarAction>.of(widget.actions!);
+        final leadingText = _nativeLeadingText;
+        final title = _nativeTitle;
+        final tint = widget.tintColor == null
+            ? null
+            : _colorToARGB(widget.tintColor!);
+        try {
+          if (force || _lastIsDark != isDark) {
+            await ch.invokeMethod('setBrightness', {'isDark': isDark});
+            if (!_isCurrentChannel(ch, epoch)) return;
+            _lastIsDark = isDark;
+          }
+          if (force ||
+              !_actionsEqual(_lastActions, actions) ||
+              _lastLeadingText != leadingText) {
+            _itemsReady = false;
+            await ch.invokeMethod('updateActions', <String, dynamic>{
+              // Native configureItems replaces both leading and actions.
+              if (leadingText != null) 'leading': leadingText,
+              if (actions != null && actions.isNotEmpty)
+                'actions': actions.map((a) => a.toNativeMap()).toList(),
+            });
+            if (!_isCurrentChannel(ch, epoch)) return;
+            _lastActions = actions;
+            _lastLeadingText = leadingText;
+          }
+          if (force || _lastTitle != title) {
+            await ch.invokeMethod('updateTitle', {'title': title});
+            if (!_isCurrentChannel(ch, epoch)) return;
+            _lastTitle = title;
+          }
+          if (force || _lastTint != tint) {
+            await ch.invokeMethod('setStyle', {'tint': tint});
+            if (!_isCurrentChannel(ch, epoch)) return;
+            _lastTint = tint;
+          }
+          _needsFullSync = false;
+          _itemsReady =
+              !_syncRequested &&
+              _actionsEqual(_lastActions, widget.actions) &&
+              _lastLeadingText == _nativeLeadingText &&
+              _lastTitle == _nativeTitle;
+        } catch (_) {
+          if (_isCurrentChannel(ch, epoch)) {
+            // Fail closed, without an unbounded retry loop. A later rebuild
+            // retries the latest full snapshot, including partially sent props.
+            _needsFullSync = true;
+            _itemsReady = false;
+            _syncRequested = false;
+          }
+          return;
+        }
       }
-    }
-
-    // Sync tint color
-    final tint = widget.tintColor != null
-        ? _colorToARGB(widget.tintColor!)
-        : null;
-    if (_lastTint != tint) {
-      try {
-        await ch.invokeMethod('setStyle', {'tint': tint});
-        _lastTint = tint;
-      } catch (e) {
-        // Ignore errors if platform view is not yet ready
-      }
+    } finally {
+      if (_syncingEpoch == epoch) _syncingEpoch = null;
     }
   }
 
@@ -225,18 +263,40 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
     );
   }
 
-  void _onPlatformViewCreated(int id) {
-    _channel = MethodChannel('adaptive_liquid_glass/ios26_toolbar_$id');
-    _channel!.setMethodCallHandler(_handleMethodCall);
-    _lastIsDark = _isDark;
-    _lastTint = widget.tintColor != null
-        ? _colorToARGB(widget.tintColor!)
-        : null;
-    _lastActions = widget.actions != null ? List.of(widget.actions!) : null;
-    _lastLeadingText = _nativeLeadingText;
+  void _detachChannel() {
+    _channelEpoch++;
+    _channel?.setMethodCallHandler(null);
+    _channel = null;
+    _itemsReady = false;
+    _syncRequested = false;
+    _needsFullSync = true;
   }
 
-  Future<dynamic> _handleMethodCall(MethodCall call) async {
+  void _onPlatformViewCreated(int id) {
+    if (!mounted || !widget.showNativeView) return;
+    _detachChannel();
+    final epoch = _channelEpoch;
+    _channel = MethodChannel('adaptive_liquid_glass/ios26_toolbar_$id');
+    _channel!.setMethodCallHandler((call) => _handleMethodCall(call, epoch));
+    // creationParams may have been captured before intervening rebuilds.
+    // Explicitly acknowledge the current snapshot instead of assuming it is
+    // already native. Taps remain blocked until that reconciliation completes.
+    _syncPropsToNativeIfNeeded();
+  }
+
+  @override
+  void dispose() {
+    _detachChannel();
+    super.dispose();
+  }
+
+  Future<dynamic> _handleMethodCall(MethodCall call, int epoch) async {
+    if (!mounted ||
+        !widget.showNativeView ||
+        epoch != _channelEpoch ||
+        !_itemsReady) {
+      return;
+    }
     switch (call.method) {
       case 'onLeadingTapped':
         widget.onLeadingTap?.call();
