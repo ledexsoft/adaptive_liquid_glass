@@ -1,3 +1,8 @@
+## [0.2.28]
+* **FIX**: Forward localized action accessibility labels to native iOS 26 toolbars, with icon-label and visible-title fallbacks for existing callers.
+* **FIX**: Preserve the native leading button when toolbar actions update and synchronize transitions from no actions to an action list.
+* **TESTS**: Cover action serialization, native-channel creation and updates, leading-button preservation, and empty-action transitions. The package suite and Swift typecheck pass; UIKit and VoiceOver runtime validation remain separate.
+
 ## [0.2.27]
 * **FIX**: Use direct AndroidX view-tree owner APIs so R8-optimized Android releases can create native Material 3 Expressive views without reflective method lookups.
 * **FIX**: Restore the default elevated card appearance on Android and render the host shadow outside the clipped native platform view; explicit filled, outlined, and zero-elevation cards remain flat.
