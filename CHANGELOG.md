@@ -1,3 +1,9 @@
+## [0.2.31]
+* **FEATURE**: Expose macOS-only `MacOSNativeButton.sfSymbol`, backed by an AppKit NSButton, with a system glass circular bezel on macOS 26 and native circular fallback on earlier versions.
+* **NAVIGATION**: Add opt-in `MacOSNavigationLeadingScope` for per-route macOS leading controls, preserving explicit leading widgets and other platforms. Native icon controls support configurable square dimensions.
+* **ACCESSIBILITY**: Provide one Flutter semantics node for embedded macOS controls, sharing current enabled state and callback with native activation; preserve localized native labels and tooltips.
+* **TESTS**: Cover delayed creation, property updates, disabled and stale callbacks, disposal, and accessibility actions. Other adaptive buttons/platforms are unchanged.
+
 ## [0.2.30]
 * **FIX**: Reconcile iOS 26 toolbar properties after delayed native creation and serialize subsequent snapshots, including title context, leading text, actions, theme and tint.
 * **SAFETY**: Reject native callbacks until their current item/context snapshot is acknowledged, after channel failure, and from stale view channels. Recovery after failure requires a successful rebuild; no automatic retry loop is introduced.

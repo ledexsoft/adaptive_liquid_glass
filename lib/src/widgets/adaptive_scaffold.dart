@@ -15,6 +15,7 @@ import 'android/android_m3e_native_icon.dart';
 import 'android/android_m3e_platform_view.dart';
 import 'android/android_m3e_text_options.dart';
 import 'native_occurrence_ids.dart';
+import 'macos/macos_navigation_leading_scope.dart';
 
 final _nativeAppBarActionIds = NativeOccurrenceIds<AdaptiveAppBarAction>();
 
@@ -498,7 +499,11 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     // iOS <26 (iOS 18 and below) OR iOS 26+ with useNativeToolbar: false
     // Use CupertinoPageScaffold with CupertinoTabBar if destinations provided
     if (PlatformInfo.isIOS || PlatformInfo.isMacOS) {
-      Widget? effectiveLeading = widget.appBar?.leading;
+      final effectiveLeading =
+          widget.appBar?.leading ??
+          (PlatformInfo.isMacOS
+              ? MacOSNavigationLeadingScope.maybeOf(context)?.builder(context)
+              : null);
 
       if (widget.bottomNavigationBar?.items != null &&
           widget.bottomNavigationBar!.items!.isNotEmpty &&

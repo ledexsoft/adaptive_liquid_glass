@@ -44,6 +44,7 @@ export 'src/widgets/adaptive_app.dart';
 export 'src/widgets/adaptive_app_bar.dart';
 export 'src/widgets/adaptive_bottom_navigation_bar.dart';
 export 'src/widgets/adaptive_button.dart';
+export 'src/widgets/macos/macos_native_button.dart';
 export 'src/widgets/adaptive_button_group.dart';
 export 'src/widgets/adaptive_filter_chip.dart';
 export 'src/widgets/adaptive_action_chips.dart';
@@ -102,3 +103,5 @@ export 'src/widgets/ios26/ios26_glass_grid.dart';
 export 'src/widgets/ios26/ios26_native_search_tab_bar.dart';
 export 'src/widgets/ios26/ios26_native_tab_bar.dart';
 export 'src/widgets/ios26/ios26_scaffold_legacy.dart';
+
+export 'src/widgets/macos/macos_navigation_leading_scope.dart';

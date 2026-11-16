@@ -55,36 +55,30 @@ class MacOSButtonView: NSView {
         button.bezelStyle = .texturedRounded
         button.font = NSFont.systemFont(ofSize: 13)
 
-        if let params = args as? [String: Any] {
-            if let title = params["title"] as? String { button.title = title }
-            if let iconName = params["icon"] as? String {
-                if #available(macOS 11.0, *) {
-                    if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) {
-                        button.image = image
-                        button.imagePosition = .imageOnly
-                    }
-                }
-            }
-            if let style = params["style"] as? String {
-                switch style {
-                case "bordered": button.bezelStyle = .rounded
-                case "plain": button.bezelStyle = .inline
-                default: button.bezelStyle = .texturedRounded
-                }
-            }
-            button.isEnabled = params["enabled"] as? Bool ?? true
-        }
+        let params = args as? [String: Any] ?? [:]
+        applyProperties(params)
 
         addSubview(button)
 
-        NSLayoutConstraint.activate([
-            button.centerXAnchor.constraint(equalTo: centerXAnchor),
-            button.centerYAnchor.constraint(equalTo: centerYAnchor),
-            button.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 4),
-            button.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -4),
-            button.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: 4),
-            button.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -4)
-        ])
+        if params["circular"] as? Bool == true {
+            // The public wrapper supplies a square 36 pt platform view. Pin the
+            // NSButton itself, leaving appearance/hit testing to AppKit.
+            NSLayoutConstraint.activate([
+                button.leadingAnchor.constraint(equalTo: leadingAnchor),
+                button.trailingAnchor.constraint(equalTo: trailingAnchor),
+                button.topAnchor.constraint(equalTo: topAnchor),
+                button.bottomAnchor.constraint(equalTo: bottomAnchor)
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                button.centerXAnchor.constraint(equalTo: centerXAnchor),
+                button.centerYAnchor.constraint(equalTo: centerYAnchor),
+                button.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 4),
+                button.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -4),
+                button.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: 4),
+                button.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -4)
+            ])
+        }
 
         channel.setMethodCallHandler { [weak self] call, result in
             self?.handleMethodCall(call, result: result)
@@ -96,14 +90,52 @@ class MacOSButtonView: NSView {
     }
 
 
+    deinit {
+        channel.setMethodCallHandler(nil)
+    }
+
+    private func applyProperties(_ params: [String: Any]) {
+        if let title = params["title"] as? String { button.title = title }
+        if let icon = params["icon"] as? String, #available(macOS 11.0, *) {
+            button.image = NSImage(systemSymbolName: icon, accessibilityDescription: nil)
+            button.imagePosition = .imageOnly
+        }
+        if let style = params["style"] as? String {
+            switch style {
+            case "glass":
+                if #available(macOS 26.0, *) {
+                    button.bezelStyle = .glass
+                    button.borderShape = .circle
+                } else {
+                    button.bezelStyle = .circular
+                }
+            case "bordered": button.bezelStyle = .rounded
+            case "plain": button.bezelStyle = .inline
+            default: button.bezelStyle = .texturedRounded
+            }
+        }
+        if let label = params["accessibilityLabel"] as? String {
+            button.setAccessibilityLabel(label)
+        }
+        if let tooltip = params["tooltip"] as? String { button.toolTip = tooltip }
+        if let enabled = params["enabled"] as? Bool { button.isEnabled = enabled }
+        if let isDark = params["isDark"] as? Bool {
+            appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
+        }
+    }
+
     @objc private func buttonPressed() {
+        guard button.isEnabled else { return }
         channel.invokeMethod("onPressed", arguments: nil)
     }
 
     private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        if call.method == "setEnabled", let args = call.arguments as? [String: Any], let enabled = args["enabled"] as? Bool {
-            button.isEnabled = enabled
+        switch call.method {
+        case "setEnabled", "updateProperties":
+            if let args = call.arguments as? [String: Any] { applyProperties(args) }
+            result(nil)
+        default:
+            result(FlutterMethodNotImplemented)
         }
-        result(nil)
     }
 }
