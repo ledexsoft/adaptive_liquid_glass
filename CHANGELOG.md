@@ -1,3 +1,6 @@
+## [0.2.32]
+* **ANDROID**: Add opt-in backdrop blur to the native top app bar when content scrolls underneath, retaining a lightly translucent Material surface.
+
 ## [0.2.31]
 * **FEATURE**: Expose macOS-only `MacOSNativeButton.sfSymbol`, backed by an AppKit NSButton, with a system glass circular bezel on macOS 26 and native circular fallback on earlier versions.
 * **NAVIGATION**: Add opt-in `MacOSNavigationLeadingScope` for per-route macOS leading controls, preserving explicit leading widgets and other platforms. Native icon controls support configurable square dimensions.

@@ -1239,7 +1239,11 @@ private fun NativeM3ETopAppBar(
   }
   val colors = TopAppBarDefaults.topAppBarColors(
     containerColor = surfaceColor,
-    scrolledContainerColor = if (transparentWhenScrolled) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
+    scrolledContainerColor = when {
+      transparentWhenScrolled -> Color.Transparent
+      properties.boolean("blurWhenScrolled") -> MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.88f)
+      else -> MaterialTheme.colorScheme.surfaceContainer
+    },
     titleContentColor = contentColor,
     navigationIconContentColor = contentColor,
     actionIconContentColor = contentColor,

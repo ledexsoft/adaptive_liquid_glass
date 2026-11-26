@@ -1,7 +1,10 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:adaptive_liquid_glass/src/widgets/ios26/ios26_native_tab_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+
 import '../platform/platform_info.dart';
 import '../style/sf_symbol.dart';
 import 'adaptive_app_bar.dart';
@@ -963,7 +966,10 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
         bottomNavigationBar: bottomNavBar,
         floatingActionButton: widget.floatingActionButton,
-        extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
+        extendBodyBehindAppBar:
+            widget.extendBodyBehindAppBar ||
+            (_canRenderAndroidTopAppBarNatively &&
+                (widget.appBar?.androidBlurWhenScrolled ?? false)),
         drawer: _drawerForAndroidScaffold(widget.drawer),
         endDrawer: _drawerForAndroidScaffold(widget.endDrawer),
         drawerScrimColor: _androidDrawerScrimColor,
@@ -1000,7 +1006,10 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
       bottomNavigationBar: widget.bottomNavigationBar?.bottomNavigationBar,
       floatingActionButton: widget.floatingActionButton,
-      extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
+      extendBodyBehindAppBar:
+          widget.extendBodyBehindAppBar ||
+          (_canRenderAndroidTopAppBarNatively &&
+              (widget.appBar?.androidBlurWhenScrolled ?? false)),
       drawer: _drawerForAndroidScaffold(widget.drawer),
       endDrawer: _drawerForAndroidScaffold(widget.endDrawer),
       drawerScrimColor: _androidDrawerScrimColor,
@@ -1131,98 +1140,117 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       preferredSize: Size.fromHeight(visibleNativeHeight - topSystemInset),
       child: ClipRect(
         key: const Key('native-top-bar-visible-region'),
-        child: OverflowBox(
-          alignment: Alignment.topCenter,
-          minHeight: maxNativeHeight,
-          maxHeight: maxNativeHeight,
-          child: AndroidM3EPlatformView(
-            key: ValueKey(geometryKey),
-            component: 'topAppBar',
-            height: maxNativeHeight,
-            properties: {
-              'title': title,
-              'titleTextOptions': titleWidget is Text
-                  ? androidM3ETextOptions(titleWidget)
-                  : null,
-              'titleColor': titleWidget is Text
-                  ? titleWidget.style?.color?.toARGB32()
-                  : null,
-              'subtitle': config.subtitle,
-              'variant': config.variant.name,
-              'centerAligned': config.centerAligned,
-              'logoBytes': config.androidLogoBytes,
-              'logoContentDescription': config.androidLogoContentDescription,
-              'logoReplacesSmallTitle': config.androidLogoReplacesSmallTitle,
-              'searchHint': config.resolveSearchHint(
-                localizations?.searchFieldLabel,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (config.androidBlurWhenScrolled && !_androidAppBarScrollAtStart)
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: const SizedBox.expand(),
               ),
-              'searchSuggestions': config.searchSuggestions,
-              'scrollBehavior': config.scrollBehavior.name,
-              'scrollOffset': _androidAppBarScrollOffset,
-              'scrolling': _androidAppBarScrolling,
-              'scrollAtStart': _androidAppBarScrollAtStart,
-              'scrollEndSerial': _androidAppBarScrollEndSerial,
-              'transparentWhenScrolled': config.transparentWhenScrolled,
-              'leadingIcon': leadingIcon,
-              'leadingIconSize': leadingIconChild is Icon
-                  ? leadingIconChild.size
-                  : null,
-              'leadingIconColor': leadingIconChild is Icon
-                  ? leadingIconChild.color?.toARGB32()
-                  : null,
-              'leadingEnabled': leadingWidget == null || leadingAction != null,
-              'leadingDescription': leadingDescription,
-              'moreDescription':
-                  localizations?.moreButtonTooltip ?? 'More actions',
-              if (config.tintColor != null)
-                'contentColor': config.tintColor!.toARGB32(),
-              'actions': serializedActions,
-            },
-            onEvent: (event, value) {
-              if (event == 'measuredHeight' && value is num && value.isFinite) {
-                if (_androidAppBarGeometryKey != geometryKey || !mounted) {
-                  return;
-                }
-                final nextHeight = value
-                    .toDouble()
-                    .clamp(topSystemInset, maxNativeHeight)
-                    .toDouble();
-                if (((_androidAppBarNativeHeight ?? maxNativeHeight) -
-                            nextHeight)
-                        .abs() >
-                    0.5) {
-                  setState(() => _androidAppBarNativeHeight = nextHeight);
-                }
-                return;
-              }
-              if (event == 'leadingPressed') {
-                if (leadingAction != null) {
-                  leadingAction();
-                } else if (hasDrawer) {
-                  if (widget.drawer != null) {
-                    _effectiveScaffoldKey.currentState?.openDrawer();
-                  } else {
-                    _effectiveScaffoldKey.currentState?.openEndDrawer();
+            OverflowBox(
+              alignment: Alignment.topCenter,
+              minHeight: maxNativeHeight,
+              maxHeight: maxNativeHeight,
+              child: AndroidM3EPlatformView(
+                key: ValueKey(geometryKey),
+                component: 'topAppBar',
+                height: maxNativeHeight,
+                properties: {
+                  'title': title,
+                  'titleTextOptions': titleWidget is Text
+                      ? androidM3ETextOptions(titleWidget)
+                      : null,
+                  'titleColor': titleWidget is Text
+                      ? titleWidget.style?.color?.toARGB32()
+                      : null,
+                  'subtitle': config.subtitle,
+                  'variant': config.variant.name,
+                  'centerAligned': config.centerAligned,
+                  'logoBytes': config.androidLogoBytes,
+                  'logoContentDescription':
+                      config.androidLogoContentDescription,
+                  'logoReplacesSmallTitle':
+                      config.androidLogoReplacesSmallTitle,
+                  'searchHint': config.resolveSearchHint(
+                    localizations?.searchFieldLabel,
+                  ),
+                  'searchSuggestions': config.searchSuggestions,
+                  'scrollBehavior': config.scrollBehavior.name,
+                  'scrollOffset': _androidAppBarScrollOffset,
+                  'scrolling': _androidAppBarScrolling,
+                  'scrollAtStart': _androidAppBarScrollAtStart,
+                  'scrollEndSerial': _androidAppBarScrollEndSerial,
+                  'transparentWhenScrolled': config.transparentWhenScrolled,
+                  'blurWhenScrolled': config.androidBlurWhenScrolled,
+                  'leadingIcon': leadingIcon,
+                  'leadingIconSize': leadingIconChild is Icon
+                      ? leadingIconChild.size
+                      : null,
+                  'leadingIconColor': leadingIconChild is Icon
+                      ? leadingIconChild.color?.toARGB32()
+                      : null,
+                  'leadingEnabled':
+                      leadingWidget == null || leadingAction != null,
+                  'leadingDescription': leadingDescription,
+                  'moreDescription':
+                      localizations?.moreButtonTooltip ?? 'More actions',
+                  if (config.tintColor != null)
+                    'contentColor': config.tintColor!.toARGB32(),
+                  'actions': serializedActions,
+                },
+                onEvent: (event, value) {
+                  if (event == 'measuredHeight' &&
+                      value is num &&
+                      value.isFinite) {
+                    if (_androidAppBarGeometryKey != geometryKey || !mounted) {
+                      return;
+                    }
+                    final nextHeight = value
+                        .toDouble()
+                        .clamp(topSystemInset, maxNativeHeight)
+                        .toDouble();
+                    if (((_androidAppBarNativeHeight ?? maxNativeHeight) -
+                                nextHeight)
+                            .abs() >
+                        0.5) {
+                      setState(() => _androidAppBarNativeHeight = nextHeight);
+                    }
+                    return;
                   }
-                } else {
-                  Navigator.of(context).maybePop();
-                }
-              }
-              if (event == 'actionPressed') {
-                final index = _selectedNativeAppBarActionIndex(value, actions);
-                if (index != null) actions[index].onPressed();
-              }
-              if (event == 'searchQueryChanged' && value is String) {
-                config.onSearchQueryChanged?.call(value);
-              }
-              if (event == 'searchSubmitted' && value is String) {
-                config.onSearchSubmitted?.call(value);
-              }
-              if (event == 'searchResultSelected' && value is String) {
-                config.onSearchResultSelected?.call(value);
-              }
-            },
-          ),
+                  if (event == 'leadingPressed') {
+                    if (leadingAction != null) {
+                      leadingAction();
+                    } else if (hasDrawer) {
+                      if (widget.drawer != null) {
+                        _effectiveScaffoldKey.currentState?.openDrawer();
+                      } else {
+                        _effectiveScaffoldKey.currentState?.openEndDrawer();
+                      }
+                    } else {
+                      Navigator.of(context).maybePop();
+                    }
+                  }
+                  if (event == 'actionPressed') {
+                    final index = _selectedNativeAppBarActionIndex(
+                      value,
+                      actions,
+                    );
+                    if (index != null) actions[index].onPressed();
+                  }
+                  if (event == 'searchQueryChanged' && value is String) {
+                    config.onSearchQueryChanged?.call(value);
+                  }
+                  if (event == 'searchSubmitted' && value is String) {
+                    config.onSearchSubmitted?.call(value);
+                  }
+                  if (event == 'searchResultSelected' && value is String) {
+                    config.onSearchResultSelected?.call(value);
+                  }
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );

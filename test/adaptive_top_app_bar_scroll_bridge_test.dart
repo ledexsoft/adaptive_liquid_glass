@@ -5,6 +5,42 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   tearDown(PlatformInfo.resetDebugOverrides);
 
+  testWidgets('opt-in native blur follows the scroll position', (tester) async {
+    PlatformInfo.debugPlatformOverride = TargetPlatform.android;
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AdaptiveScaffold(
+          appBar: const AdaptiveAppBar(
+            title: 'Home',
+            androidBlurWhenScrolled: true,
+          ),
+          body: ListView(
+            controller: controller,
+            children: const [SizedBox(height: 2400)],
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester.widget<Scaffold>(find.byType(Scaffold)).extendBodyBehindAppBar,
+      isTrue,
+    );
+    expect(find.byType(BackdropFilter), findsNothing);
+    expect(
+      (tester.widget<AndroidView>(find.byType(AndroidView)).creationParams!
+          as Map)['blurWhenScrolled'],
+      isTrue,
+    );
+    controller.jumpTo(100);
+    await tester.pump();
+    expect(find.byType(BackdropFilter), findsOneWidget);
+    controller.jumpTo(0);
+    await tester.pump();
+    expect(find.byType(BackdropFilter), findsNothing);
+  });
+
   for (final native in [false, true]) {
     testWidgets('layout scroll notifications are safe (native=$native)', (
       tester,

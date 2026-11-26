@@ -449,6 +449,10 @@ En Android puedes elegir las variantes nativas de Material 3 Expressive. Usa
 [guía de app bars Android](docs/android-m3e-app-bars.md) para búsqueda,
 sugerencias, acciones destacadas, logos y accesibilidad.
 
+Para desenfocar el contenido bajo la barra nativa de Android al desplazarlo,
+activa `androidBlurWhenScrolled: true`. La barra conserva una superficie
+Material ligeramente translúcida; la opción no modifica iOS.
+
 ```dart
 AdaptiveAppBar(
   variant: AdaptiveAppBarVariant.mediumFlexible,

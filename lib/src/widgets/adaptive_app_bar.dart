@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
+
 import 'adaptive_app_bar_action.dart';
 
 /// Native Android M3 Expressive app bar layout.
@@ -67,6 +68,7 @@ class AdaptiveAppBar {
     this.onSearchResultSelected,
     this.scrollBehavior = AdaptiveAppBarScrollBehavior.pinned,
     this.transparentWhenScrolled = false,
+    this.androidBlurWhenScrolled = false,
   }) : _searchHintOverride = searchHint;
 
   /// Title for the app bar
@@ -175,6 +177,9 @@ class AdaptiveAppBar {
   /// Use filled/tonal actions so controls remain distinct over content.
   final bool transparentWhenScrolled;
 
+  /// Blur the content behind the native Android bar after scrolling.
+  final bool androidBlurWhenScrolled;
+
   /// Creates a copy of this app bar with the given fields replaced
   AdaptiveAppBar copyWith({
     String? title,
@@ -198,6 +203,7 @@ class AdaptiveAppBar {
     ValueChanged<String>? onSearchResultSelected,
     AdaptiveAppBarScrollBehavior? scrollBehavior,
     bool? transparentWhenScrolled,
+    bool? androidBlurWhenScrolled,
   }) {
     return AdaptiveAppBar(
       title: title ?? this.title,
@@ -226,6 +232,8 @@ class AdaptiveAppBar {
       scrollBehavior: scrollBehavior ?? this.scrollBehavior,
       transparentWhenScrolled:
           transparentWhenScrolled ?? this.transparentWhenScrolled,
+      androidBlurWhenScrolled:
+          androidBlurWhenScrolled ?? this.androidBlurWhenScrolled,
     );
   }
 }
