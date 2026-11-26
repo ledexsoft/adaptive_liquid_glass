@@ -1,3 +1,6 @@
+## [0.2.33]
+* **ANDROID**: Increase the contrast of the optional scrolled app bar backdrop blur.
+
 ## [0.2.32]
 * **ANDROID**: Add opt-in backdrop blur to the native top app bar when content scrolls underneath, retaining a lightly translucent Material surface.
 

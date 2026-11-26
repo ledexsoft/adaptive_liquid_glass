@@ -1241,7 +1241,7 @@ private fun NativeM3ETopAppBar(
     containerColor = surfaceColor,
     scrolledContainerColor = when {
       transparentWhenScrolled -> Color.Transparent
-      properties.boolean("blurWhenScrolled") -> MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.88f)
+      properties.boolean("blurWhenScrolled") -> MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.72f)
       else -> MaterialTheme.colorScheme.surfaceContainer
     },
     titleContentColor = contentColor,

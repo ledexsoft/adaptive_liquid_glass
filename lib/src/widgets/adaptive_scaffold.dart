@@ -1145,7 +1145,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
           children: [
             if (config.androidBlurWhenScrolled && !_androidAppBarScrollAtStart)
               BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: const SizedBox.expand(),
               ),
             OverflowBox(
